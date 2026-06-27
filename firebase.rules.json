@@ -1,0 +1,94 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database
+  }/documents {
+    // ── KONTEN PUBLIK (bisa dibaca tanpa login) ──────────────────────────
+    match /meteorites/{meteorite
+    } {
+      allow read: if true; // Konten publik - ensiklopedia
+      allow create, update, delete: if false; // Hanya via API server-side (Firebase Admin SDK)
+    }
+
+    match /articles/{article
+    } {
+      allow read: if true; // Konten publik - blog
+      allow create, update, delete: if false; // Hanya via API server-side
+    }
+
+    match /apod_history/{apod
+    } {
+      allow read: if true; // Konten publik - galeri foto astronomi
+      allow create, update, delete: if false; // Hanya via API server-side
+    }
+    // ── FORUM (butuh login) ───────────────────────────────────────────────
+    match /forum_posts/{post
+    } {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.authorId ||
+        isAdmin()
+      );
+      allow delete: if request.auth != null && (
+        request.auth.uid == resource.data.authorId ||
+        isAdmin()
+      );
+    }
+
+    match /forum_comments/{comment
+    } {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && (
+        request.auth.uid == resource.data.authorId ||
+        isAdmin()
+      );
+    }
+    // ── USER PROFILES ─────────────────────────────────────────────────────
+    match /users/{userId
+    } {
+      // User bisa baca & update profilnya sendiri; admin bisa baca semua
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+    // ── DONASI (hanya via server-side API) ────────────────────────────────
+    match /donations/{donation
+    } {
+      allow read: if false; // Hanya via Admin SDK server-side
+      allow write: if false; // Hanya via Admin SDK server-side
+    }
+    // ── SETTINGS (hanya server-side) ─────────────────────────────────────
+    match /settings/{setting
+    } {
+      allow read: if false; // Hanya via Admin SDK server-side
+      allow write: if false; // Hanya via Admin SDK server-side
+    }
+    // ── ADMINS COLLECTION (hanya server-side) ────────────────────────────
+    match /admins/{adminDoc
+    } {
+      allow read: if false;
+      allow write: if false;
+    }
+    // ── SUBSCRIBERS ───────────────────────────────────────────────────────
+    match /subscribers/{sub
+    } {
+      allow read: if false;
+      allow write: if false; // Hanya via /api/subscribe server-side
+    }
+    // ── LAPORAN KONTEN ────────────────────────────────────────────────────
+    match /reported_content/{report
+    } {
+      allow read: if request.auth != null && isAdmin();
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && isAdmin();
+    }
+    // ── Helper function: cek admin via Auth UID ──────────────────────────
+    // Catatan: Cek admin sebenarnya dilakukan via Firebase Admin SDK di server
+    // Ini hanya fallback untuk rules sederhana
+    function isAdmin() {
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+  }
+}

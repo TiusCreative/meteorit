@@ -1,0 +1,226 @@
+# ---------------------------------------------------------------------------
+# Meteorit Indonesia .gitignore
+# Stack: Node.js, Next.js, TypeScript, Vercel, Firebase Admin, Cloudflare R2,
+# Midtrans, and a small Python worker.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Dependencies and Package Manager State
+# Keep lockfiles committed, but never commit installed dependency folders.
+# ---------------------------------------------------------------------------
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+.pnpm-store/
+.npm/
+
+# ---------------------------------------------------------------------------
+# Next.js, React, and Build Output
+# These folders are generated locally or by Vercel during deployment.
+# ---------------------------------------------------------------------------
+.next/
+out/
+build/
+dist/
+.turbo/
+.swc/
+next-env.d.ts
+*.tsbuildinfo
+
+# ---------------------------------------------------------------------------
+# Vercel
+# Vercel project metadata can contain machine/user-specific deployment links.
+# Keep vercel.json committed; ignore only the local .vercel folder.
+# ---------------------------------------------------------------------------
+.vercel/
+
+# ---------------------------------------------------------------------------
+# Environment Variables and Secrets
+# Never commit runtime secrets, API keys, private certs, service accounts, or
+# local backups. Configure production secrets in Vercel Environment Variables.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.sample
+*.local
+*.secret
+*.secrets
+secrets/
+credentials/
+private/
+service-account.json
+serviceAccount*.json
+firebase-adminsdk*.json
+google-application-credentials*.json
+*.pem
+*.key
+*.p8
+*.p12
+*.crt
+*.cer
+*.csr
+*.jks
+*.keystore
+id_rsa*
+id_dsa*
+id_ecdsa*
+id_ed25519*
+
+# ---------------------------------------------------------------------------
+# Firebase, Google Cloud, Cloudflare, and Local Tooling Credentials
+# Ignore local auth/session output while keeping deploy-safe config files.
+# ---------------------------------------------------------------------------
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+.runtimeconfig.json
+.gcloud/
+.config/gcloud/
+.wrangler/
+wrangler.toml.local
+.dev.vars
+.dev.vars.*
+
+# ---------------------------------------------------------------------------
+# Logs and Runtime Dumps
+# These grow quickly and waste AI/editor context.
+# ---------------------------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+debug.log*
+*.pid
+*.pid.lock
+*.seed
+*.stackdump
+*.heapdump
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# ---------------------------------------------------------------------------
+# Test, Coverage, and Analysis Output
+# ---------------------------------------------------------------------------
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+blob-report/
+jest-html-reporters-attach/
+.vitest/
+.stryker-tmp/
+lighthouse-report/
+.lighthouseci/
+
+# ---------------------------------------------------------------------------
+# Python Worker Cache and Virtual Environments
+# The worker folder can use Python locally; do not commit venvs or caches.
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+ENV/
+worker/.venv/
+worker/venv/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+htmlcov/
+*.egg-info/
+
+# ---------------------------------------------------------------------------
+# Docker and Local Database Volumes
+# Keep Dockerfiles/compose files committed, but ignore generated volumes/data.
+# ---------------------------------------------------------------------------
+.docker/
+docker-data/
+data/
+tmp/
+temp/
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.dump
+*.sql.gz
+
+# ---------------------------------------------------------------------------
+# Uploads, Generated Media, and Temporary Artifacts
+# Public assets should be committed intentionally; ignore only generated dumps.
+# ---------------------------------------------------------------------------
+uploads/
+generated/
+exports/
+downloads/
+screenshots/
+artifacts/
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+*.rej
+
+# ---------------------------------------------------------------------------
+# OS and Editor Noise
+# ---------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+*~
+
+# ---------------------------------------------------------------------------
+# AI Coding Assistant Cache and Context Bloat
+# Ignore local agent indexes, transcripts, and cache files. Project-authored
+# docs/prompts can still be committed outside these generated folders.
+# ---------------------------------------------------------------------------
+.cursor/
+.continue/
+.copilot/
+.aider*
+.claude/
+.codex/cache/
+.codex/logs/
+.codex/sessions/
+.agents/cache/
+.agents/logs/
+.windsurf/
+.tabnine/
+
+# ---------------------------------------------------------------------------
+# Miscellaneous Build Tool Caches
+# ---------------------------------------------------------------------------
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.prettier-cache
+.sass-cache/
+*.lcov

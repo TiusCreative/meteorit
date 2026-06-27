@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f172a;
+    --foreground: #f1f5f9;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.mars-prose h2 {
+  margin-top: 2rem;
+  margin-bottom: 0.85rem;
+  color: #fdba74;
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.mars-prose p {
+  margin-bottom: 1.15rem;
+  color: #cbd5e1;
+  font-size: 1rem;
+  line-height: 1.85;
+}
+
+.mars-prose ul {
+  margin: 1rem 0 1.25rem;
+  padding-left: 1.25rem;
+  color: #cbd5e1;
+  list-style: disc;
+}
+
+.mars-prose li {
+  margin-bottom: 0.55rem;
+  line-height: 1.75;
+}
+
+.mars-prose strong {
+  color: #fed7aa;
+  font-weight: 800;
+}
+
+@media print {
+  .mars-prose h2,
+  .mars-prose p,
+  .mars-prose ul,
+  .mars-prose li,
+  .mars-prose strong {
+    color: #000 !important;
+  }
+}

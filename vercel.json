@@ -1,0 +1,40 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/blog",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/mars",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/komet",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/astronot",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/nasa-alert",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/earth-monitoring",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/earth-monitoring-daily",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/earth-monitoring-weekly",
+      "schedule": "0 3 * * 6"
+    }
+  ]
+}
