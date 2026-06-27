@@ -140,7 +140,7 @@ function LocationSearch({ label, onResult }: { label: string; onResult: (data: L
     event.preventDefault();
     const normalizedQuery = query.trim();
     if (normalizedQuery.length < 3) {
-      setMessage('Masukkan minimal 3 karakter lokasi.');
+      setMessage('Masukkan minimal 3 karakter lokasi atau koordinat lengkap.');
       return;
     }
 
@@ -169,7 +169,7 @@ function LocationSearch({ label, onResult }: { label: string; onResult: (data: L
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Contoh: Jakarta Pusat"
+          placeholder="Jababeka, Jl Sudirman Jakarta, Desa Cibatu, -6.2088, 106.8456"
           className="min-h-10 flex-1 rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-300/50"
         />
         <button
@@ -181,6 +181,9 @@ function LocationSearch({ label, onResult }: { label: string; onResult: (data: L
           Cari
         </button>
       </div>
+      <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
+        Bisa pakai nama kawasan, jalan, desa/kelurahan, kecamatan, kota/kabupaten, atau titik koordinat latitude, longitude.
+      </p>
       {message ? <p className="mt-2 text-[11px] text-slate-300">{message}</p> : null}
     </form>
   );
@@ -284,12 +287,15 @@ function WeatherPanel() {
         <h3 className="text-xl font-black text-white">Info Cuaca & Intensitas Hujan</h3>
       </div>
 
-      <LocationSearch label="Cari desa, kecamatan, kota, atau perumahan" onResult={setLocationData} />
+      <LocationSearch label="Cari alamat, kawasan, desa, kota, atau koordinat" onResult={setLocationData} />
 
       {locationData && realtimeWeather ? (
         <div className="rounded-xl border border-emerald-300/20 bg-emerald-400/10 p-4">
           <p className="text-xs text-emerald-200">Hasil pencarian realtime</p>
           <h4 className="mt-1 text-base font-black text-white">{locationData.location.label}</h4>
+          <p className="mt-1 text-[11px] text-emerald-100/80">
+            Koordinat {locationData.location.latitude.toFixed(5)}, {locationData.location.longitude.toFixed(5)}
+          </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <div className="rounded-lg bg-slate-950/45 p-3">
               <p className="text-[11px] text-slate-400">Suhu</p>
@@ -362,12 +368,15 @@ function EnergyPanel() {
         <h3 className="text-xl font-black text-white">Energi Angin & Surya</h3>
       </div>
 
-      <LocationSearch label="Cari desa, kecamatan, kota, atau perumahan" onResult={setLocationData} />
+      <LocationSearch label="Cari alamat, kawasan, desa, kota, atau koordinat" onResult={setLocationData} />
 
       {locationData && realtimeEnergy ? (
         <div className="rounded-xl border border-cyan-300/20 bg-cyan-400/10 p-4">
           <p className="text-xs text-cyan-200">Hasil pencarian realtime</p>
           <h4 className="mt-1 text-base font-black text-white">{locationData.location.label}</h4>
+          <p className="mt-1 text-[11px] text-cyan-100/80">
+            Koordinat {locationData.location.latitude.toFixed(5)}, {locationData.location.longitude.toFixed(5)}
+          </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <div className="rounded-lg bg-slate-950/45 p-3">
               <p className="text-[11px] text-slate-400">Angin 10m</p>
