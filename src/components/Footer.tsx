@@ -1,68 +1,122 @@
+'use client'
+
 import Link from 'next/link'
-import { FaFacebookF, FaInstagram, FaTelegramPlane, FaWhatsapp } from 'react-icons/fa'
+import { useEffect, useState } from 'react'
+import { FaFacebookF, FaInstagram, FaTelegramPlane, FaWhatsapp, FaTwitter, FaYoutube, FaSpotify } from 'react-icons/fa'
+import { dictionary, defaultLanguage, isSiteLanguage, LANGUAGE_STORAGE_KEY, SiteLanguage } from '@/lib/i18n'
 
 const socialLinks = [
   {
     name: 'WhatsApp Channel',
     href: 'https://whatsapp.com/channel/meteorit',
     icon: FaWhatsapp,
-    hoverColor: 'hover:text-green-400',
+    hoverColor: 'hover:text-green-500 dark:hover:text-green-400',
   },
   {
     name: 'Telegram Channel',
     href: 'https://t.me/meteoritindonesia',
     icon: FaTelegramPlane,
-    hoverColor: 'hover:text-sky-400',
+    hoverColor: 'hover:text-sky-500 dark:hover:text-sky-400',
+  },
+  {
+    name: 'X (Twitter)',
+    href: 'https://x.com/meteoritind',
+    icon: FaTwitter,
+    hoverColor: 'hover:text-slate-800 dark:hover:text-white',
   },
   {
     name: 'Instagram',
     href: 'https://www.instagram.com/meteorit.indonesia/',
     icon: FaInstagram,
-    hoverColor: 'hover:text-pink-400',
+    hoverColor: 'hover:text-pink-500 dark:hover:text-pink-400',
   },
   {
     name: 'Facebook',
     href: 'https://www.facebook.com/profile.php?id=61591469427891',
     icon: FaFacebookF,
-    hoverColor: 'hover:text-blue-400',
+    hoverColor: 'hover:text-blue-600 dark:hover:text-blue-400',
+  },
+  {
+    name: 'YouTube Channel',
+    href: 'https://www.youtube.com/@Meteorit-h7d',
+    icon: FaYoutube,
+    hoverColor: 'hover:text-red-600 dark:hover:text-red-500',
+  },
+  {
+    name: 'Spotify Podcast',
+    href: 'https://open.spotify.com/show/033TOxHjscqNxAZYKR34CE',
+    icon: FaSpotify,
+    hoverColor: 'hover:text-emerald-500 dark:hover:text-emerald-400',
   },
 ]
 
 export default function Footer() {
+  const [language, setLanguage] = useState<SiteLanguage>(defaultLanguage)
+  const t = dictionary[language]
+
+  let reversedAttribution = '';
+  if (language === 'en') {
+    reversedAttribution = '.sesoprup lanoitacude rof desu era dna srenwo thgirypoc evitcepser rieht fo ytreporp era stemoc/setiroetem fo sogol dna sotohp llA .(ataD tuanortsA & rekcarT SSI) yfitoN nepO dna ,(2 yrarbiL hcnuaL) sveD ecapS ehT ,(yciloP ycavirP ASAN yciloP niamod cilbup ASAN rednu esu ot eerf — sWeoN ,CIPE ,DOPA) sIPA nepO ASAN yb emit-laer ni dedivorp ataD :noitubirttA ataD';
+  } else if (language === 'zh') {
+    reversedAttribution = '。的目育教于用并，产财的者有所权版各自其为均标徽和片照的星彗/石陨有所。供提时实（据数员航宇和器踪追 SSI）yfitoN nepO 和（2 yrarbiL hcnuaL）sveD ecapS ehT、（策政私隐 ASAN 策政域领共公 ASAN 据根 — sWeoN、CIPE、DOPA）sIPA nepO ASAN 由据数：名署据数';
+  } else if (language === 'ja') {
+    reversedAttribution = '。すまいてれさ用で使用的育教、りであ物有所の者有所権作著のぞれぞれはゴロと真写のすべて星彗/石隕。すまいてれさ供提でムタイリアルよにってに（データ士飛宇とーかっトラ SSI）yfitoN nepO びよお、（2 yrarbiL hcnuaL）sveD ecapS ehT、（シーポリいサーバイプラ ASAN シーポリメンイドッリクバパ の ASAN で下の下使用無で — sWeoN、CIPE、DOPA）sIPA nepO ASAN はデータ：属帰 of ータデ';
+  } else {
+    reversedAttribution = '.ikasude naujut ktunu nakadigud nad atpic kah kilimep gninasam-gnisasem kilim hala-da temok/tiroetem ogol nad otof huruleS .(ataD tuanortsA & rekcarT SSI) yfitoN nepO nad ,(2 yrarbiL hcnuaL) sveD ecapS ehT ,(ASAN isavirP nakajibeK ASAN kilbup niamod nakajibeK hawab id nakanugid ktunu sitarg — sWeoN ,CIPE ,DOPA) sIPA nepO ASAN helo emit-laer araces nakaidedis ataD :ataD isubirtA';
+  }
+
+  useEffect(() => {
+    const storedLanguage = window.localStorage.getItem(LANGUAGE_STORAGE_KEY)
+    if (isSiteLanguage(storedLanguage)) {
+      setLanguage(storedLanguage)
+    }
+    const handleLanguageChange = (event: Event) => {
+      const nextLanguage = (event as CustomEvent<SiteLanguage>).detail
+      if (isSiteLanguage(nextLanguage)) {
+        setLanguage(nextLanguage)
+      }
+    }
+    window.addEventListener('meteorit-language-change', handleLanguageChange)
+    return () => window.removeEventListener('meteorit-language-change', handleLanguageChange)
+  }, [])
+
   return (
-    <footer className="bg-slate-900 border-t border-slate-700 py-12">
+    <footer className="bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-cyan-950/30 py-12 text-slate-800 dark:text-slate-200 transition-colors duration-300">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div>
-            <h3 className="text-xl font-bold mb-4 text-amber-400">Meteorit Indonesia</h3>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Pusat data astronomi, edukasi sains, forum komunitas, dan jembatan transaksi meteorit terpercaya di Indonesia.
+            <h3 className="text-xl font-bold mb-4 text-slate-900 dark:text-amber-400">Meteorit Indonesia</h3>
+            <p className="text-slate-600 dark:text-gray-400 text-sm leading-relaxed">
+              {t.footerDescription}
             </p>
           </div>
           <div>
-            <h4 className="font-semibold mb-4 text-cyan-400">Menu Utama</h4>
-            <ul className="space-y-2 text-gray-400 text-sm">
-              <li><Link href="/" className="hover:text-cyan-400 transition-colors">Beranda</Link></li>
-              <li><Link href="/ensiklopedia" className="hover:text-cyan-400 transition-colors">Meteorit &amp; Komet</Link></li>
-              <li><Link href="/langit-malam" className="hover:text-cyan-400 transition-colors">🌠 Langit Malam</Link></li>
-              <li><Link href="/monitoring" className="hover:text-cyan-400 transition-colors">🚀 Misi Antariksa</Link></li>
-              <li><Link href="/blog" className="hover:text-cyan-400 transition-colors">Blog</Link></li>
-              <li><Link href="/apod" className="hover:text-cyan-400 transition-colors">Galeri APOD</Link></li>
-              <li><Link href="/forum" className="hover:text-cyan-400 transition-colors">Forum</Link></li>
+            <h4 className="font-semibold mb-4 text-slate-900 dark:text-cyan-400">{t.footerMainMenu}</h4>
+            <ul className="space-y-2 text-slate-600 dark:text-gray-400 text-sm">
+              <li><Link href="/" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">{t.navHome}</Link></li>
+              <li><Link href="/ensiklopedia" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">{t.navMeteor}</Link></li>
+              <li><Link href="/langit-malam" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">{t.navNightSky}</Link></li>
+              <li><Link href="/monitoring" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">{t.navMission}</Link></li>
+              <li><Link href="/blog" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">{t.navBlog}</Link></li>
+              <li><Link href="/apod" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">{t.navApod}</Link></li>
+              <li><Link href="/cuaca" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">🌤 {language === 'en' ? 'Weather' : language === 'ms' ? 'Cuaca' : language === 'zh' ? '天气' : language === 'ja' ? '天気' : language === 'fr' ? 'Météo' : language === 'ru' ? 'Погода' : 'Cuaca & Langit'}</Link></li>
+              <li><Link href="/miniapp" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">📱 Mini App</Link></li>
+              <li><Link href="/forum" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">Forum</Link></li>
+              <li><a href="https://open.spotify.com/show/033TOxHjscqNxAZYKR34CE" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">🎙 Spotify Podcast</a></li>
             </ul>
           </div>
           <div>
-            <h4 className="font-semibold mb-4 text-cyan-400">Tentang Kami</h4>
-            <ul className="space-y-2 text-gray-400 text-sm">
-              <li><Link href="/tentang" className="hover:text-cyan-400 transition-colors">Tentang Kami</Link></li>
-              <li><Link href="/visi-misi" className="hover:text-cyan-400 transition-colors">Visi &amp; Misi</Link></li>
-              <li><Link href="/kontak" className="hover:text-cyan-400 transition-colors">Kontak</Link></li>
-              <li><Link href="/syarat-ketentuan" className="hover:text-cyan-400 transition-colors">Syarat &amp; Ketentuan</Link></li>
-              <li><Link href="/kebijakan-privasi" className="hover:text-cyan-400 transition-colors">Kebijakan Privasi</Link></li>
+            <h4 className="font-semibold mb-4 text-slate-900 dark:text-cyan-400">{t.footerAbout}</h4>
+            <ul className="space-y-2 text-slate-600 dark:text-gray-400 text-sm">
+              <li><Link href="/tentang" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">{t.footerAboutUs}</Link></li>
+              <li><Link href="/visi-misi" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">{t.footerVision}</Link></li>
+              <li><Link href="/kontak" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">{t.footerContact}</Link></li>
+              <li><Link href="/syarat-ketentuan" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">{t.footerTerms}</Link></li>
+              <li><Link href="/kebijakan-privasi" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">{t.footerPrivacy}</Link></li>
             </ul>
           </div>
           <div>
-            <h4 className="font-semibold mb-4 text-cyan-400">Ikuti Kami</h4>
+            <h4 className="font-semibold mb-4 text-slate-900 dark:text-cyan-400">{t.footerFollow}</h4>
             <div className="flex space-x-4 mb-4">
               {socialLinks.map(({ name, href, icon: Icon, hoverColor }) => (
                 <a
@@ -70,7 +124,7 @@ export default function Footer() {
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`text-gray-400 ${hoverColor} transition-colors`}
+                  className={`text-slate-500 dark:text-gray-400 ${hoverColor} transition-colors`}
                   title={name}
                   aria-label={name}
                 >
@@ -78,34 +132,63 @@ export default function Footer() {
                 </a>
               ))}
             </div>
-            <p className="text-xs text-gray-500">
-              Bergabunglah di <a href="https://t.me/meteoritindonesia" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 hover:underline font-bold">Saluran Telegram</a> untuk info sains terupdate harian!
+            <p className="text-xs text-slate-500 dark:text-gray-500">
+              {t.footerJoinTelegram}
             </p>
           </div>
         </div>
 
         {/* NASA Attribution */}
-        <div className="border-t border-slate-800 pt-6 mb-6">
-          <div className="bg-slate-800/40 border border-slate-700/40 rounded-xl px-5 py-4">
-            <p className="text-xs text-gray-500 leading-relaxed">
-              <span className="text-gray-400 font-semibold">🛰️ Atribusi Data:</span>{' '}
-              Data di situs ini disediakan oleh{' '}
-              <a href="https://api.nasa.gov/" target="_blank" rel="noopener noreferrer" className="text-cyan-500 hover:text-cyan-400 underline font-semibold">NASA Open APIs</a>
-              {' '}(APOD, EPIC, NeoWs — bebas digunakan sesuai{' '}
-              <a href="https://www.nasa.gov/about/highlights/HP_Privacy.html" target="_blank" rel="noopener noreferrer" className="text-cyan-500 hover:text-cyan-400 underline">kebijakan NASA</a>
-              ),{' '}
-              <a href="https://thespacedevs.com/" target="_blank" rel="noopener noreferrer" className="text-cyan-500 hover:text-cyan-400 underline font-semibold">The Space Devs</a>
-              {' '}(Launch Library 2), dan{' '}
-              <a href="http://open-notify.org/" target="_blank" rel="noopener noreferrer" className="text-cyan-500 hover:text-cyan-400 underline font-semibold">Open Notify</a>
-              {' '}(ISS Tracker &amp; Astronaut Data). Hak cipta foto APOD tercantum pada masing-masing gambar sesuai ketentuan NASA.
+        <div className="border-t border-slate-200 dark:border-slate-800 pt-6 mb-6">
+          <div className="bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/40 rounded-xl px-5 py-4">
+            <p className="text-xs text-slate-500 dark:text-gray-500 leading-relaxed text-left select-none cursor-default" style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
+              <bdo 
+                dir="rtl" 
+                className="select-none cursor-default font-normal text-slate-500 dark:text-gray-400" 
+                style={{ 
+                  unicodeBidi: 'bidi-override', 
+                  direction: 'rtl', 
+                  userSelect: 'none', 
+                  WebkitUserSelect: 'none',
+                  pointerEvents: 'none'
+                }}
+              >
+                {reversedAttribution}
+              </bdo>
             </p>
           </div>
         </div>
 
-        <div className="border-t border-slate-700 pt-6 text-center text-gray-400 text-sm">
-          <p>© {new Date().getFullYear()} Meteorit Indonesia. All rights reserved.</p>
+        {/* Disclaimer & Source Links */}
+        <div className="border-t border-slate-200 dark:border-slate-800 pt-6 mb-6">
+          <div className="bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/40 rounded-xl px-5 py-4 text-xs text-slate-500 dark:text-gray-500 leading-relaxed text-left space-y-2">
+            <p>
+              <strong className="text-slate-700 dark:text-gray-400">Disclaimer:</strong> {t.footerDisclaimer}
+            </p>
+            <p className="select-none cursor-default" style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
+              <strong className="text-slate-700 dark:text-gray-400">{t.footerSourceLinks}</strong>{' '}
+              {/* Kami menggunakan bdo dir="rtl" + unicodeBidi: override untuk membalik teks di HTML (mengelabui scraper) tapi normal di layar user */}
+              <bdo 
+                dir="rtl" 
+                className="select-none cursor-default font-semibold text-cyan-600 dark:text-cyan-400" 
+                style={{ 
+                  unicodeBidi: 'bidi-override', 
+                  direction: 'rtl', 
+                  userSelect: 'none', 
+                  WebkitUserSelect: 'none',
+                  pointerEvents: 'none'
+                }}
+              >
+                SSI yfitoN nepO • 2 yrarbiL hcnuaL • IPA rehtaewNepO • TENOE ASAN • IPA llaberiF LPJ • sIPA ASAN
+              </bdo>
+            </p>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-200 dark:border-slate-800 pt-6 text-center text-slate-500 dark:text-gray-400 text-sm">
+          <p>© {new Date().getFullYear()} Meteorit Indonesia. {t.footerRights}</p>
           <p className="mt-2">
-            Dibuat dengan ❤️ untuk komunitas astronomi Indonesia
+            {t.footerMade}
           </p>
         </div>
       </div>
