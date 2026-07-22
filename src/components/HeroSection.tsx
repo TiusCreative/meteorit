@@ -216,7 +216,7 @@ export default function HeroSection() {
             </svg>
           </Link>
           <a
-            href="https://open.spotify.com/show/033TOxHjscqNxAZYKR34CE"
+            href="https://open.spotify.com/show/033TS5YqepN9kNXRguuLZf"
             target="_blank"
             rel="noopener noreferrer"
             className="group flex items-center gap-2 bg-slate-800/60 hover:bg-emerald-500/15 border border-emerald-500/30 hover:border-emerald-400/60 text-emerald-300 hover:text-emerald-200 font-semibold py-2.5 px-5 rounded-xl transition-all duration-300 text-sm backdrop-blur-sm hover:scale-105 hover:shadow-lg hover:shadow-emerald-500/20"

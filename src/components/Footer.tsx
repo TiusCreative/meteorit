@@ -44,7 +44,7 @@ const socialLinks = [
   },
   {
     name: 'Spotify Podcast',
-    href: 'https://open.spotify.com/show/033TOxHjscqNxAZYKR34CE',
+    href: 'https://open.spotify.com/show/033TS5YqepN9kNXRguuLZf',
     icon: FaSpotify,
     hoverColor: 'hover:text-emerald-500 dark:hover:text-emerald-400',
   },
@@ -102,7 +102,7 @@ export default function Footer() {
               <li><Link href="/cuaca" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">🌤 {language === 'en' ? 'Weather' : language === 'ms' ? 'Cuaca' : language === 'zh' ? '天气' : language === 'ja' ? '天気' : language === 'fr' ? 'Météo' : language === 'ru' ? 'Погода' : 'Cuaca & Langit'}</Link></li>
               <li><Link href="/miniapp" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">📱 Mini App</Link></li>
               <li><Link href="/forum" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">Forum</Link></li>
-              <li><a href="https://open.spotify.com/show/033TOxHjscqNxAZYKR34CE" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">🎙 Spotify Podcast</a></li>
+              <li><a href="https://open.spotify.com/show/033TS5YqepN9kNXRguuLZf" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">🎙 Spotify Podcast</a></li>
             </ul>
           </div>
           <div>

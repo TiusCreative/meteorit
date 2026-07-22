@@ -309,7 +309,7 @@ export async function GET(request: Request) {
       `📦 <b>Ukuran:</b> ${fileMb} MB\n\n` +
       `🔗 <b>Audio R2:</b> <a href="${enclosureUrl}">Download MP3</a>\n` +
       `🔗 <b>RSS Feed:</b> <a href="${getAbsoluteUrl('/podcast.xml')}">podcast.xml</a>\n` +
-      `🔗 <b>Spotify Show:</b> <a href="https://open.spotify.com/show/033TOxHjscqNxAZYKR34CE">Spotify Podcast</a>\n\n` +
+      `🔗 <b>Spotify Show:</b> <a href="https://open.spotify.com/show/033TS5YqepN9kNXRguuLZf">Spotify Podcast</a>\n\n` +
       `ℹ️ <i>Catatan: File MP3 akan otomatis dihapus dari R2 setelah 1 hari.</i>`;
 
     await sendTelegramMessage(TELEGRAM_CHAT_ID, successMsg);
