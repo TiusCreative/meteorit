@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { FaFacebookF, FaInstagram, FaTelegramPlane, FaWhatsapp, FaTwitter, FaYoutube, FaSpotify, FaPinterest } from 'react-icons/fa'
+import { FaFacebookF, FaInstagram, FaTelegramPlane, FaWhatsapp, FaTwitter, FaYoutube, FaSpotify, FaPinterest, FaPodcast, FaApple } from 'react-icons/fa'
 import { dictionary, defaultLanguage, isSiteLanguage, LANGUAGE_STORAGE_KEY, SiteLanguage } from '@/lib/i18n'
 
 const socialLinks = [
@@ -108,8 +108,38 @@ export default function Footer() {
               <li><Link href="/cuaca" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">🌤 {language === 'en' ? 'Weather' : language === 'ms' ? 'Cuaca' : language === 'zh' ? '天气' : language === 'ja' ? '天気' : language === 'fr' ? 'Météo' : language === 'ru' ? 'Погода' : 'Cuaca & Langit'}</Link></li>
               <li><Link href="/miniapp" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">📱 Mini App</Link></li>
               <li><Link href="/forum" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">Forum</Link></li>
-              <li><a href="https://open.spotify.com/show/033TS5YqepN9kNXRguuLZf" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">🎙 Spotify Podcast</a></li>
             </ul>
+
+            {/* Dropdown Menu Pilih Saluran Podcast */}
+            <div className="mt-4">
+              <label htmlFor="podcast-select" className="text-xs font-semibold text-slate-700 dark:text-cyan-400 mb-1 flex items-center gap-1.5">
+                <FaPodcast className="text-emerald-500 text-sm animate-pulse" /> 🎙️ {language === 'en' ? 'Podcast Channels' : 'Saluran Podcast'}:
+              </label>
+              <select
+                id="podcast-select"
+                onChange={(e) => {
+                  if (e.target.value) {
+                    window.open(e.target.value, '_blank', 'noopener,noreferrer');
+                  }
+                }}
+                defaultValue=""
+                className="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-cyan-900/60 text-slate-800 dark:text-cyan-300 rounded-lg px-2.5 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer shadow-sm"
+              >
+                <option value="" disabled>--- {language === 'en' ? 'Select Podcast Platform' : 'Pilih Saluran Podcast'} ---</option>
+                <optgroup label="🟢 Spotify Podcast">
+                  <option value="https://open.spotify.com/show/033TS5YqepN9kNXRguuLZf">🟢 Spotify (Bahasa Indonesia)</option>
+                  <option value="https://open.spotify.com/show/033UqoFQcUSeymMGLqEo0U">🌐 Spotify (English Edition)</option>
+                </optgroup>
+                <optgroup label="🍎 Apple Podcasts">
+                  <option value="https://podcasts.apple.com/us/podcast/meteorit-indonesia-podcast/id6793891219">🍎 Apple Podcasts (Bahasa Indonesia)</option>
+                  <option value="https://podcasts.apple.com/us/podcast/meteorit-indonesia-podcast/id6793889181">🍏 Apple Podcasts (English Edition)</option>
+                </optgroup>
+                <optgroup label="🔴 YouTube Podcast">
+                  <option value="https://www.youtube.com/playlist?list=PLIxFsHQZ1MDM">🔴 YouTube Podcast (Bahasa Indonesia)</option>
+                  <option value="https://www.youtube.com/playlist?list=PLdy8efOO8Zu8">🌐 YouTube Podcast (English Edition)</option>
+                </optgroup>
+              </select>
+            </div>
           </div>
           <div>
             <h4 className="font-semibold mb-4 text-slate-900 dark:text-cyan-400">{t.footerAbout}</h4>
