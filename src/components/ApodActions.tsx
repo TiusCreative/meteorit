@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
+import { FaPinterest } from 'react-icons/fa';
 import { getSiteHost } from '@/lib/siteUrl';
+import { useUserRole } from '@/lib/useUserRole';
 
 interface Apod {
   id: string;
@@ -65,8 +67,9 @@ const getThumbnailUrl = (url: string) => {
 };
 
 export default function ApodActions({ apod }: ApodActionsProps) {
+  const { isPremiumOrAdmin } = useUserRole();
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [shareUrls, setShareUrls] = useState({ whatsapp: '', telegram: '', facebook: '' });
+  const [shareUrls, setShareUrls] = useState({ whatsapp: '', telegram: '', facebook: '', pinterest: '' });
   const cardRef = useRef<HTMLDivElement>(null);
   const apodDisplayUrl = `${getSiteHost()}/apod`;
 
@@ -74,10 +77,12 @@ export default function ApodActions({ apod }: ApodActionsProps) {
     if (typeof window !== 'undefined') {
       const url = window.location.href;
       const titleText = apod.title?.id || apod.title?.en || 'Foto Antariksa';
+      const pinterestApiKey = process.env.NEXT_PUBLIC_PINTEREST_API_KEY || '916a7781bd006d5cea3ac39c5087513e3ae89adc';
       setShareUrls({
         whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(`Foto antariksa menarik "${titleText}" di Meteorit Indonesia: ${url}`)}`,
         telegram: `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(`Foto Antariksa NASA APOD: ${titleText}`)}`,
-        facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`
+        facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+        pinterest: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(url)}&media=${encodeURIComponent(apod.image_url || '')}&description=${encodeURIComponent(titleText)}&app_id=${pinterestApiKey}`
       });
     }
     return () => {
@@ -116,10 +121,14 @@ export default function ApodActions({ apod }: ApodActionsProps) {
       return;
     }
 
-    // Inject temporary style to force black text for PDF capture
+    // Inject temporary style to force black text for PDF capture and prevent elements from breaking across pages
     const styleEl = document.createElement('style');
     styleEl.id = 'pdf-force-black-text';
     styleEl.innerHTML = `
+      #printable-apod-content {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+      }
       #printable-apod-content * {
         color: #000 !important;
         background-color: transparent !important;
@@ -129,13 +138,79 @@ export default function ApodActions({ apod }: ApodActionsProps) {
       #printable-apod-content h2,
       #printable-apod-content h3 {
         color: #111 !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
       }
       #printable-apod-content [class*="bg-slate"],
       #printable-apod-content [class*="bg-cyan"] {
         background-color: #f8f9fa !important;
       }
+      #printable-apod-content p,
+      #printable-apod-content blockquote,
+      #printable-apod-content ul,
+      #printable-apod-content ol,
+      #printable-apod-content img,
+      #printable-apod-content figure,
+      #printable-apod-content table {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
     `;
     document.head.appendChild(styleEl);
+
+    // === INJECT TILED WATERMARK ===
+    if (!isPremiumOrAdmin) {
+      const watermarkEl = document.createElement('div');
+      watermarkEl.id = 'pdf-watermark-meteorit';
+      watermarkEl.style.cssText = `
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        pointer-events: none;
+        z-index: 10;
+        opacity: 0.18;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><text x='20' y='90' font-size='11' font-weight='bold' font-family='sans-serif' fill='%2306b6d4' transform='rotate(-28 20 90)' opacity='0.8'>Meteorit.my.id</text></svg>");
+        background-repeat: repeat;
+      `;
+      element.style.position = 'relative';
+      element.appendChild(watermarkEl);
+    }
+
+    // === INJECT FOOTER LEGALITAS ===
+    const copyrightText = apod.copyright ? `Foto: © ${apod.copyright}` : 'Foto: NASA Public Domain';
+    const footerEl = document.createElement('div');
+    footerEl.id = 'pdf-footer-meteorit';
+    footerEl.style.cssText = `
+      margin-top: 32px;
+      padding: 12px 0 4px;
+      border-top: 1.5px solid #e0e0e0;
+      text-align: center;
+      font-family: Arial, sans-serif;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    `;
+    footerEl.innerHTML = `
+      <p style="font-size: 10px; color: #555; margin: 0 0 4px; font-style: italic;">
+        ${copyrightText}
+      </p>
+      <p style="font-size: 10px; color: #888; margin: 0; line-height: 1.6;">
+        Generated by <strong>Meteorit.my.id</strong> &nbsp;|&nbsp; Source: NASA Open API &amp; BMKG Indonesia
+      </p>
+      <p style="font-size: 9px; color: #aaa; margin: 4px 0 0;">
+        &copy; ${new Date().getFullYear()} Meteorit.my.id &mdash; Semua konten hanya untuk tujuan edukasi.
+      </p>
+    `;
+    element.appendChild(footerEl);
+
+    // === BYPASS CORS FOR IMAGES ===
+    const images = element.getElementsByTagName('img');
+    const originalSrcs = new Map<HTMLImageElement, string>();
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+      originalSrcs.set(img, img.src);
+      if (img.src && !img.src.startsWith('data:') && !img.src.startsWith(window.location.origin)) {
+        img.src = `/api/image-proxy?url=${encodeURIComponent(img.src)}`;
+      }
+    }
 
     try {
       const html2pdf = (await import('html2pdf.js')).default;
@@ -144,7 +219,8 @@ export default function ApodActions({ apod }: ApodActionsProps) {
         filename: `apod-${apod.id}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
+        pagebreak: { mode: 'css' }
       };
       await html2pdf().from(element).set(opt as any).save();
     } catch (error) {
@@ -153,6 +229,18 @@ export default function ApodActions({ apod }: ApodActionsProps) {
     } finally {
       const injected = document.getElementById('pdf-force-black-text');
       if (injected) injected.remove();
+      const watermark = document.getElementById('pdf-watermark-meteorit');
+      if (watermark) watermark.remove();
+      const footer = document.getElementById('pdf-footer-meteorit');
+      if (footer) footer.remove();
+      element.style.position = '';
+
+      // Restore original image srcs
+      for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        const orig = originalSrcs.get(img);
+        if (orig) img.src = orig;
+      }
     }
   };
 
@@ -224,8 +312,11 @@ export default function ApodActions({ apod }: ApodActionsProps) {
           <a href={shareUrls.telegram} target="_blank" rel="noopener noreferrer" className="bg-sky-600/20 hover:bg-sky-600/40 text-sky-400 p-2 rounded-lg text-sm transition-all">
             TG
           </a>
-          <a href={shareUrls.facebook} target="_blank" rel="noopener noreferrer" className="bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 p-2 rounded-lg text-sm transition-all">
+          <a href={shareUrls.facebook} target="_blank" rel="noopener noreferrer" className="bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 p-2 rounded-lg text-sm transition-all" title="Bagikan ke Facebook">
             FB
+          </a>
+          <a href={shareUrls.pinterest} target="_blank" rel="noopener noreferrer" className="bg-red-600/20 hover:bg-red-600/40 text-red-400 p-2 rounded-lg text-sm transition-all flex items-center gap-1" title="Bagikan ke Pinterest">
+            <FaPinterest className="w-4 h-4" /> <span>PIN</span>
           </a>
           <button onClick={copyToClipboard} className="bg-slate-800 hover:bg-slate-700 text-gray-300 p-2 rounded-lg text-sm transition-all">
             Copy

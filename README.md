@@ -83,12 +83,13 @@ const R2_CONFIG = {
 ```
 
 ### API Keys
-- **NASA API**: `hlogNogFWGEANcJcPnYwlxYJh3auqScaH75m8ktN`
-- **Groq API**: `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`
-- **OpenRouter API**: `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`
+Configure via environment variables (.env.local or Vercel settings):
+- **NASA API**: `YOUR_NASA_API_KEY`
+- **Groq API**: `YOUR_GROQ_API_KEY`
+- **OpenRouter API**: `YOUR_OPENROUTER_API_KEY`
 - **Midtrans**: 
-  - Client Key: `Mid-client-W0vPic8NOjBtZxUa`
-  - Server Key: `Mid-server-GU5Ff23DEAiUyc16xmu2egkr`
+  - Client Key: `YOUR_MIDTRANS_CLIENT_KEY`
+  - Server Key: `YOUR_MIDTRANS_SERVER_KEY`
 
 ## Struktur Proyek
 

@@ -5,6 +5,7 @@ import { getSiteUrl, getAbsoluteUrl } from '@/lib/siteUrl';
 import { queryD1 } from '@/lib/d1Client';
 import { generateTtsMp3 } from '@/lib/tts';
 import { isValidCronRequest } from '@/lib/cronAuth';
+import { translateText } from '@/lib/translator';
 import R2_CONFIG from '@/lib/cloudflareR2Config';
 import fs from 'fs';
 import path from 'path';
@@ -22,6 +23,7 @@ interface EpisodeMetadata {
   duration: number;
   sourceId: string;
   sourceType: 'article' | 'apod' | 'meteorite';
+  language?: 'id' | 'en';
   deletedFromR2?: boolean;
 }
 
@@ -50,6 +52,10 @@ export async function GET(request: Request) {
   if (!isValidCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const { searchParams } = new URL(request.url);
+  const requestedLang = (searchParams.get('lang') || 'id').toLowerCase();
+  const lang: 'id' | 'en' = requestedLang === 'en' ? 'en' : 'id';
 
   const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '5429818332';
   const siteUrl = getSiteUrl();
@@ -124,18 +130,22 @@ export async function GET(request: Request) {
             try {
               if (row.translations) {
                 const transObj = JSON.parse(row.translations);
-                transTitle = transObj.title?.id || transObj.title || '';
-                transExplanation = transObj.explanation?.id || transObj.explanation || '';
+                transTitle = lang === 'en' 
+                  ? (transObj.title?.en || row.title || '')
+                  : (transObj.title?.id || transObj.title || '');
+                transExplanation = lang === 'en'
+                  ? (transObj.explanation?.en || row.explanation || '')
+                  : (transObj.explanation?.id || transObj.explanation || '');
               }
             } catch {}
 
             let finalTitle = row.title || '';
             let finalExplanation = row.explanation || '';
             if (finalTitle.startsWith('{')) {
-              try { finalTitle = JSON.parse(finalTitle).id || finalTitle; } catch {}
+              try { finalTitle = JSON.parse(finalTitle)[lang] || JSON.parse(finalTitle).id || finalTitle; } catch {}
             }
             if (finalExplanation.startsWith('{')) {
-              try { finalExplanation = JSON.parse(finalExplanation).id || finalExplanation; } catch {}
+              try { finalExplanation = JSON.parse(finalExplanation)[lang] || JSON.parse(finalExplanation).id || finalExplanation; } catch {}
             }
 
             title = transTitle || finalTitle;
@@ -153,15 +163,25 @@ export async function GET(request: Request) {
           );
           if (res.results && res.results.length > 0) {
             const row = res.results[0];
-            title = `Mengenal Meteorit ${row.translated_name || row.name}`;
             sourceId = row.id;
             sourceType = 'meteorite';
 
-            rawContent = row.translated_description || row.description || '';
-            if (!rawContent) {
-              const yearStr = row.year ? new Date(row.year).getFullYear() : 'tidak diketahui';
-              const massStr = row.mass ? `${(parseFloat(row.mass) / 1000).toFixed(2)} kg` : 'tidak diketahui';
-              rawContent = `Meteorit ${row.name} adalah batu antariksa kelas ${row.recclass || 'tidak diketahui'} dengan massa ${massStr} yang ditemukan pada tahun ${yearStr}.`;
+            if (lang === 'en') {
+              title = `Exploring Meteorite ${row.name}`;
+              rawContent = row.description || row.translated_description || '';
+              if (!rawContent) {
+                const yearStr = row.year ? new Date(row.year).getFullYear() : 'unknown';
+                const massStr = row.mass ? `${(parseFloat(row.mass) / 1000).toFixed(2)} kg` : 'unknown';
+                rawContent = `Meteorite ${row.name} is a space rock of class ${row.recclass || 'unknown'} with a mass of ${massStr} discovered in ${yearStr}.`;
+              }
+            } else {
+              title = `Mengenal Meteorit ${row.translated_name || row.name}`;
+              rawContent = row.translated_description || row.description || '';
+              if (!rawContent) {
+                const yearStr = row.year ? new Date(row.year).getFullYear() : 'tidak diketahui';
+                const massStr = row.mass ? `${(parseFloat(row.mass) / 1000).toFixed(2)} kg` : 'tidak diketahui';
+                rawContent = `Meteorit ${row.name} adalah batu antariksa kelas ${row.recclass || 'tidak diketahui'} dengan massa ${massStr} yang ditemukan pada tahun ${yearStr}.`;
+              }
             }
             found = true;
             break;
@@ -174,24 +194,44 @@ export async function GET(request: Request) {
 
     if (!found || !title || !rawContent) {
       // Fallback Statis
-      title = "Misteri Perjalanan Bintang Jatuh dan Batuan Meteorit";
-      rawContent = "Bagaimana sebuah batu luar angkasa mampu bertahan melewati atmosfer bumi dan memberikan wawasan ilmiah yang berharga bagi sains modern.";
+      if (lang === 'en') {
+        title = "Mysteries of Shooting Stars and Meteorite Space Rocks";
+        rawContent = "How space rocks survive the fiery entry through Earth's atmosphere and provide invaluable scientific insights for modern space science.";
+      } else {
+        title = "Misteri Perjalanan Bintang Jatuh dan Batuan Meteorit";
+        rawContent = "Bagaimana sebuah batu luar angkasa mampu bertahan melewati atmosfer bumi dan memberikan wawasan ilmiah yang berharga bagi sains modern.";
+      }
       sourceId = "fallback-static";
       sourceType = "article";
     }
 
-    // 3. Menyusun Naskah Podcast
-    const cleanContent = cleanContentForSpeech(rawContent);
+    // 3. Menyusun Naskah Podcast (Terjemahkan ke Bahasa Inggris jika lang === 'en')
+    let cleanContent = cleanContentForSpeech(rawContent);
+
+    if (lang === 'en') {
+      try {
+        title = await translateText(title, 'Translate this text to natural English for a podcast title.', 'en');
+        cleanContent = await translateText(cleanContent, 'Translate this astronomy content into clear, natural English for a podcast script.', 'en');
+      } catch (trErr) {
+        console.warn("[Podcast Cron] Translate to EN fallback:", trErr);
+      }
+    }
+
     // Batasi kata agar durasi audio TTS tidak terlampau panjang (> 250 kata)
     const maxWords = 250;
     const words = cleanContent.split(/\s+/);
     const excerptContent = words.slice(0, maxWords).join(' ') + (words.length > maxWords ? '...' : '');
 
-    const scriptText = `Halo pendengar, selamat datang di podcast Meteorit Indonesia. Episode kali ini berjudul: ${title}. \n\n ${excerptContent} \n\n Terima kasih telah mendengarkan podcast Meteorit Indonesia. Kunjungi website kami di meteorit.my.id untuk mendapatkan berita, peta kebencanaan, dan ensiklopedia astronomi secara real-time. Sampai jumpa di episode berikutnya!`;
+    let scriptText = '';
+    if (lang === 'en') {
+      scriptText = `Hello listeners, welcome to the Meteorit Indonesia Podcast. Today's episode is titled: ${title}. \n\n ${excerptContent} \n\n Thank you for listening to the Meteorit Indonesia Podcast. Visit our website at meteorit.my.id for real-time news, disaster maps, and astronomy encyclopedia. See you in the next episode!`;
+    } else {
+      scriptText = `Halo pendengar, selamat datang di podcast Meteorit Indonesia. Episode kali ini berjudul: ${title}. \n\n ${excerptContent} \n\n Terima kasih telah mendengarkan podcast Meteorit Indonesia. Kunjungi website kami di meteorit.my.id untuk mendapatkan berita, peta kebencanaan, dan ensiklopedia astronomi secara real-time. Sampai jumpa di episode berikutnya!`;
+    }
 
     // 4. Membuat file MP3 dari naskah
-    console.log(`[Podcast Cron] Memulai pembuatan audio TTS untuk: "${title}"`);
-    const mp3Buffer = await generateTtsMp3(scriptText);
+    console.log(`[Podcast Cron] Memulai pembuatan audio TTS (${lang}) untuk: "${title}"`);
+    const mp3Buffer = await generateTtsMp3(scriptText, lang);
     const enclosureLength = mp3Buffer.length;
     
     // Estimasi durasi (kecepatan rata-rata membaca 2.3 kata per detik)
@@ -199,7 +239,7 @@ export async function GET(request: Request) {
     const duration = Math.round(wordsCount / 2.3);
 
     // 5. Mengunggah audio MP3 ke Cloudflare R2
-    const episodeId = `podcast-${Date.now()}`;
+    const episodeId = `podcast-${lang}-${Date.now()}`;
     const mp3Key = `data/podcast/mp3s/${episodeId}.mp3`;
     const enclosureUrl = await uploadToR2(mp3Key, mp3Buffer, 'audio/mpeg');
     console.log(`[Podcast Cron] Berkas MP3 berhasil diunggah ke R2: ${enclosureUrl}`);
@@ -210,14 +250,15 @@ export async function GET(request: Request) {
     
     const newEpisode: EpisodeMetadata = {
       id: episodeId,
-      title,
+      title: lang === 'en' ? `[EN] ${title}` : title,
       description: cleanContent.substring(0, 300) + (cleanContent.length > 300 ? '...' : ''),
       pubDate: new Date().toISOString(),
       enclosureUrl,
       enclosureLength,
       duration,
       sourceId,
-      sourceType
+      sourceType,
+      language: lang
     };
 
     episodesList = [newEpisode, ...episodesList];
@@ -242,20 +283,33 @@ export async function GET(request: Request) {
     // Tulis kembali indeks episode terupdate ke R2
     await uploadToR2(episodesKey, JSON.stringify(episodesList, null, 2), 'application/json');
 
-    // 8. Membangun RSS Feed podcast.xml
-    let rssXml = `<?xml version="1.0" encoding="UTF-8"?>
+    // 8. Membangun RSS Feed (podcast.xml dan podcast-en.xml)
+    const generateRssXml = (langFilter?: 'id' | 'en') => {
+      const isEnglish = langFilter === 'en';
+      const channelTitle = isEnglish ? 'Meteorit Indonesia Podcast (English Edition)' : 'Meteorit Indonesia Podcast';
+      const channelDesc = isEnglish 
+        ? 'Exploring astronomy, meteorites, comets, space science, and natural phenomena with Meteorit Indonesia.'
+        : 'Membahas astronomi, meteor, komet, benda langit, dan peristiwa alam unik bersama Meteorit Indonesia.';
+      const channelLang = isEnglish ? 'en' : 'id';
+      const selfLink = isEnglish ? '/podcast-en.xml' : '/podcast.xml';
+
+      const filteredEpisodes = langFilter 
+        ? episodesList.filter(ep => ep.language === langFilter || (!ep.language && langFilter === 'id'))
+        : episodesList;
+
+      let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" 
      xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" 
      xmlns:content="http://purl.org/rss/1.0/modules/content/"
      xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Meteorit Indonesia Podcast</title>
-    <description>Membahas astronomi, meteor, komet, benda langit, dan peristiwa alam unik bersama Meteorit Indonesia.</description>
+    <title>${escapeXml(channelTitle)}</title>
+    <description>${escapeXml(channelDesc)}</description>
     <link>${siteUrl}</link>
-    <language>id</language>
+    <language>${channelLang}</language>
     <itunes:author>Meteorit Indonesia</itunes:author>
-    <itunes:subtitle>Sains Astronomi dan Edukasi Benda Langit</itunes:subtitle>
-    <itunes:summary>Membahas astronomi, meteor, komet, benda langit, dan peristiwa alam unik bersama Meteorit Indonesia.</itunes:summary>
+    <itunes:subtitle>Astronomy Science and Celestial Education</itunes:subtitle>
+    <itunes:summary>${escapeXml(channelDesc)}</itunes:summary>
     <itunes:owner>
       <itunes:name>Meteorit Indonesia</itunes:name>
       <itunes:email>creativecortex168@gmail.com</itunes:email>
@@ -267,14 +321,14 @@ export async function GET(request: Request) {
     <itunes:explicit>no</itunes:explicit>
     <image>
       <url>${logoUrl}</url>
-      <title>Meteorit Indonesia Podcast</title>
+      <title>${escapeXml(channelTitle)}</title>
       <link>${siteUrl}</link>
     </image>
-    <atom:link href="${getAbsoluteUrl('/podcast.xml')}" rel="self" type="application/rss+xml" />
+    <atom:link href="${getAbsoluteUrl(selfLink)}" rel="self" type="application/rss+xml" />
 `;
 
-    for (const ep of episodesList) {
-      rssXml += `    <item>
+      for (const ep of filteredEpisodes) {
+        xml += `    <item>
       <title>${escapeXml(ep.title)}</title>
       <description>${escapeXml(ep.description)}</description>
       <itunes:summary>${escapeXml(ep.description)}</itunes:summary>
@@ -286,14 +340,20 @@ export async function GET(request: Request) {
       <itunes:author>Meteorit Indonesia</itunes:author>
     </item>
 `;
-    }
+      }
 
-    rssXml += `  </channel>
+      xml += `  </channel>
 </rss>`;
+      return xml;
+    };
 
+    // Tulis RSS utama dan RSS khusus Bahasa Inggris ke R2
     const podcastXmlKey = 'data/podcast/podcast.xml';
-    await uploadToR2(podcastXmlKey, rssXml, 'application/xml; charset=utf-8');
-    console.log(`[Podcast Cron] Podcast RSS XML berhasil diperbarui di R2: ${podcastXmlKey}`);
+    const podcastEnXmlKey = 'data/podcast/podcast-en.xml';
+
+    await uploadToR2(podcastXmlKey, generateRssXml(), 'application/xml; charset=utf-8');
+    await uploadToR2(podcastEnXmlKey, generateRssXml('en'), 'application/xml; charset=utf-8');
+    console.log(`[Podcast Cron] Podcast RSS XML (Main & EN) berhasil diperbarui di R2`);
 
     // 9. Kirim laporan sukses ke Telegram Admin
     const fileMb = (enclosureLength / (1024 * 1024)).toFixed(2);

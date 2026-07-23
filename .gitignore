@@ -54,6 +54,8 @@ next-env.d.ts
 secrets/
 credentials/
 private/
+client_secret*.json
+youtube-share.md
 service-account.json
 serviceAccount*.json
 firebase-adminsdk*.json

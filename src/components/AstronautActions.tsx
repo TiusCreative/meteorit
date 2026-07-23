@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
+import { FaPinterest } from 'react-icons/fa';
 import { getSiteHost } from '@/lib/siteUrl';
+import { useUserRole } from '@/lib/useUserRole';
 
 interface Astronaut {
   id: string;
@@ -20,18 +22,21 @@ interface AstronautActionsProps {
 }
 
 export default function AstronautActions({ astronaut }: AstronautActionsProps) {
+  const { isPremiumOrAdmin } = useUserRole();
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [shareUrls, setShareUrls] = useState({ whatsapp: '', telegram: '', facebook: '' });
+  const [shareUrls, setShareUrls] = useState({ whatsapp: '', telegram: '', facebook: '', pinterest: '' });
   const cardRef = useRef<HTMLDivElement>(null);
   const siteHost = getSiteHost();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const url = window.location.href;
+      const pinterestApiKey = process.env.NEXT_PUBLIC_PINTEREST_API_KEY || '916a7781bd006d5cea3ac39c5087513e3ae89adc';
       setShareUrls({
         whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(`Kenali astronot "${astronaut.name}" (${astronaut.role} asal ${astronaut.country} di ${astronaut.craft}) di Meteorit Indonesia: ${url}`)}`,
         telegram: `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(`Profil Astronot: ${astronaut.name}`)}`,
-        facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`
+        facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+        pinterest: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(url)}&media=${encodeURIComponent(astronaut.imageUrl || '')}&description=${encodeURIComponent(astronaut.name)}&app_id=${pinterestApiKey}`
       });
     }
     return () => {
@@ -65,9 +70,20 @@ export default function AstronautActions({ astronaut }: AstronautActionsProps) {
       return;
     }
 
+    // Sembunyikan elemen actions bar dari PDF agar tidak ikut ter-print
+    const actionsBar = element.querySelector('.border-y');
+    const originalDisplay = actionsBar ? (actionsBar as HTMLElement).style.display : '';
+    if (actionsBar) {
+      (actionsBar as HTMLElement).style.setProperty('display', 'none', 'important');
+    }
+
     const styleEl = document.createElement('style');
     styleEl.id = 'pdf-force-black-text-astro';
     styleEl.innerHTML = `
+      #printable-astronaut-content {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+      }
       #printable-astronaut-content * {
         color: #000 !important;
         background-color: transparent !important;
@@ -77,9 +93,76 @@ export default function AstronautActions({ astronaut }: AstronautActionsProps) {
       #printable-astronaut-content h2,
       #printable-astronaut-content h3 {
         color: #111 !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+      }
+      #printable-astronaut-content p,
+      #printable-astronaut-content blockquote,
+      #printable-astronaut-content ul,
+      #printable-astronaut-content ol,
+      #printable-astronaut-content img,
+      #printable-astronaut-content figure,
+      #printable-astronaut-content table {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
       }
     `;
     document.head.appendChild(styleEl);
+
+    // === INJECT TILED WATERMARK ===
+    if (!isPremiumOrAdmin) {
+      const watermarkEl = document.createElement('div');
+      watermarkEl.id = 'pdf-watermark-meteorit';
+      watermarkEl.style.cssText = `
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        pointer-events: none;
+        z-index: 10;
+        opacity: 0.18;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><text x='20' y='90' font-size='11' font-weight='bold' font-family='sans-serif' fill='%2306b6d4' transform='rotate(-28 20 90)' opacity='0.8'>Meteorit.my.id</text></svg>");
+        background-repeat: repeat;
+      `;
+      element.style.position = 'relative';
+      element.appendChild(watermarkEl);
+    }
+
+    // === INJECT FOOTER LEGALITAS ===
+    // Kredit lisensi foto astronot
+    const licenseText = `Foto kru luar angkasa resmi. Agensi: ${astronaut.agency || 'NASA / Roscosmos / CNSA'}.`;
+    const footerEl = document.createElement('div');
+    footerEl.id = 'pdf-footer-meteorit';
+    footerEl.style.cssText = `
+      margin-top: 32px;
+      padding: 12px 0 4px;
+      border-top: 1.5px solid #e0e0e0;
+      text-align: center;
+      font-family: Arial, sans-serif;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    `;
+    footerEl.innerHTML = `
+      <p style="font-size: 9px; color: #666; margin: 0 0 4px; font-style: italic;">
+        ${licenseText}
+      </p>
+      <p style="font-size: 10px; color: #888; margin: 0; line-height: 1.6;">
+        Generated by <strong>Meteorit.my.id</strong> &nbsp;|&nbsp; Source: NASA Open API &amp; BMKG Indonesia
+      </p>
+      <p style="font-size: 9px; color: #aaa; margin: 4px 0 0;">
+        &copy; ${new Date().getFullYear()} Meteorit.my.id &mdash; Semua konten hanya untuk tujuan edukasi.
+      </p>
+    `;
+    element.appendChild(footerEl);
+
+    // === BYPASS CORS FOR IMAGES ===
+    const images = element.getElementsByTagName('img');
+    const originalSrcs = new Map<HTMLImageElement, string>();
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+      originalSrcs.set(img, img.src);
+      if (img.src && !img.src.startsWith('data:') && !img.src.startsWith(window.location.origin)) {
+        img.src = `/api/image-proxy?url=${encodeURIComponent(img.src)}`;
+      }
+    }
 
     try {
       const html2pdf = (await import('html2pdf.js')).default;
@@ -88,7 +171,8 @@ export default function AstronautActions({ astronaut }: AstronautActionsProps) {
         filename: `profil-astronot-${astronaut.id}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
+        pagebreak: { mode: 'css' }
       };
       await html2pdf().from(element).set(opt as any).save();
     } catch (error) {
@@ -97,6 +181,21 @@ export default function AstronautActions({ astronaut }: AstronautActionsProps) {
     } finally {
       const injected = document.getElementById('pdf-force-black-text-astro');
       if (injected) injected.remove();
+      const watermark = document.getElementById('pdf-watermark-meteorit');
+      if (watermark) watermark.remove();
+      const footer = document.getElementById('pdf-footer-meteorit');
+      if (footer) footer.remove();
+      element.style.position = '';
+      if (actionsBar) {
+        (actionsBar as HTMLElement).style.display = originalDisplay;
+      }
+
+      // Restore original image srcs
+      for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        const orig = originalSrcs.get(img);
+        if (orig) img.src = orig;
+      }
     }
   };
 
@@ -167,6 +266,9 @@ export default function AstronautActions({ astronaut }: AstronautActionsProps) {
           </a>
           <a href={shareUrls.facebook} target="_blank" rel="noopener noreferrer" className="bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 p-2 rounded-lg text-sm transition-all" title="Bagikan ke Facebook">
             📘 FB
+          </a>
+          <a href={shareUrls.pinterest} target="_blank" rel="noopener noreferrer" className="bg-red-600/20 hover:bg-red-600/40 text-red-400 p-2 rounded-lg text-sm transition-all flex items-center gap-1" title="Bagikan ke Pinterest">
+            <FaPinterest className="w-4 h-4" /> <span>PIN</span>
           </a>
           <button onClick={copyToClipboard} className="bg-slate-800 hover:bg-slate-700 text-gray-300 p-2 rounded-lg text-sm transition-all" title="Salin Tautan">
             🔗 Salin

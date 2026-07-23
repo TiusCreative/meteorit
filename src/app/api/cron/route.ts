@@ -2,41 +2,16 @@ import { NextResponse } from 'next/server';
 import { uploadToR2 } from '@/lib/r2Client';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { sendTelegramMessage } from '@/lib/telegram';
+import { sendBroadcastNotification } from '@/lib/notifications';
 import { getGlobalSettings } from '@/lib/settings';
 import { getAbsoluteUrl } from '@/lib/siteUrl';
+import { translateText } from '@/lib/translator';
+
+export const dynamic = 'force-dynamic';
+export const maxDuration = 80;
 
 // NASA API Configuration
-const NASA_API_KEY = process.env.NASA_API_KEY || 'hlogNogFWGEANcJcPnYwlxYJh3auqScaH75m8ktN';
-
-// AI Translation using Groq API
-async function translateText(text: string, systemPrompt = 'Terjemahkan teks berikut ke bahasa Indonesia dengan gaya penulisan sains populer yang menarik.'): Promise<string> {
-  try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY || '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'}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: text }
-        ],
-        temperature: 0.3
-      })
-    });
-
-    const result = await response.json();
-    if (result.choices && result.choices[0]?.message?.content) {
-      return result.choices[0].message.content.trim();
-    }
-    return text;
-  } catch (error) {
-    console.error('Groq Translation error:', error);
-    return text;
-  }
-}
+const NASA_API_KEY = process.env.NASA_API_KEY || '';
 
 async function rebuildR2MeteoritesCache() {
   try {
@@ -53,17 +28,13 @@ async function rebuildR2MeteoritesCache() {
   }
 }
 
+import { isValidCronRequest } from '@/lib/cronAuth';
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const secret = searchParams.get('secret');
   const target = searchParams.get('target'); // 'apod' | 'meteorites' | undefined (both)
-  const authHeader = request.headers.get('authorization');
 
-  // Verify the cron secret (supports query param or Vercel authorization header)
-  if (
-    secret !== (process.env.CRON_SECRET || 'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU=') &&
-    authHeader !== `Bearer ${process.env.CRON_SECRET || 'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU='}`
-  ) {
+  if (!isValidCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -140,6 +111,7 @@ export async function GET(request: Request) {
               console.error("Failed to cache NASA image to R2:", imgErr);
             }
 
+            const attribution = "\n\nSource: NASA Open Data APIs\nSumber Data: Pusat Data Publik Antariksa";
             formattedApod = {
               id: apodData.date,
               title: {
@@ -147,8 +119,8 @@ export async function GET(request: Request) {
                 id: translatedTitle
               },
               explanation: {
-                en: apodData.explanation,
-                id: translatedExplanation
+                en: apodData.explanation + attribution,
+                id: translatedExplanation + attribution
               },
               image_url: finalImageUrl,
               copyright: apodData.copyright || 'NASA Public Domain',
@@ -378,8 +350,9 @@ Tuliskan langsung dalam format markdown yang rapi tanpa kata pengantar tambahan.
         }
 
         const promptText = `A high-quality realistic close-up photo of the famous ${name} meteorite, classified as ${type}. Showing its unique characteristics: ${classDescription}. Detailed texture, dark space background, scientific display.`;
-        const promptSeed = encodeURIComponent(promptText);
-        const imageUrl = `https://image.pollinations.ai/prompt/${promptSeed}?width=600&height=400&nologo=true&seed=${met.id}`;
+        const imagePath = `data/meteorites/images/${met.id}.jpg`;
+        const { generateImageWithFallback } = await import('@/lib/imageGenerator');
+        const imageUrl = await generateImageWithFallback(promptText, imagePath);
 
         const metData = {
           id: met.id,
@@ -406,7 +379,7 @@ Tuliskan langsung dalam format markdown yang rapi tanpa kata pengantar tambahan.
           newMeteoritesCount++;
           latestNewMeteoriteName = name;
 
-          // Send auto-link to Telegram channel
+          // Send auto-link to Telegram channel, Facebook, and Web Push
           const postUrl = getAbsoluteUrl(`/ensiklopedia/${met.id}`);
           const channelMsg = `☄️ <b>Meteorit Baru Terdaftar di Ensiklopedia!</b>\n\n` +
             `<b>Nama:</b> ${name}\n` +
@@ -414,7 +387,14 @@ Tuliskan langsung dalam format markdown yang rapi tanpa kata pengantar tambahan.
             `<b>Massa:</b> ${mass}\n` +
             `<b>Tahun:</b> ${year}\n\n` +
             `🔗 Baca detail & analisis sains lengkapnya di sini:\n${postUrl}`;
-          await sendTelegramMessage(TELEGRAM_CHANNEL_ID, channelMsg);
+          
+          await sendBroadcastNotification({
+            title: `☄️ Meteorit Baru: ${name}`,
+            body: `Meteorit Baru Terdaftar di Ensiklopedia!\nNama: ${name}\nTipe / Kelas: ${type}\nMassa: ${mass}\nTahun: ${year}`,
+            telegramHtml: channelMsg,
+            link: `/ensiklopedia/${met.id}`,
+            imageUrl: metData.image_url
+          });
         }
 
         // Save to Firestore center backups

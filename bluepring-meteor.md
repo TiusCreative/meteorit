@@ -166,13 +166,13 @@ S3 clien key - https://5f29e48300ae379ebe15c20185d15ac8.r2.cloudflarestorage.com
 API KEY NASA - https://api.nasa.gov/
 api.data.gov - hlogNogFWGEANcJcPnYwlxYJh3auqScaH75m8ktN
 
-api key groq - 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
-api key openrouter - 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
-apikey mistral - 6h6bONIhwYoWGYSsazPWF9BTYux7YgTf
+api key groq - YOUR_GROQ_API_KEY
+api key openrouter - YOUR_OPENROUTER_API_KEY
+apikey mistral - YOUR_MISTRAL_API_KEY
 
 # Kredensial Midtrans
-NEXT_PUBLIC_MIDTRANS_CLIENT_KEY=Mid-client-W0vPic8NOjBtZxUa
-MIDTRANS_SERVER_KEY=Mid-server-GU5Ff23DEAiUyc16xmu2egkr
+NEXT_PUBLIC_MIDTRANS_CLIENT_KEY=YOUR_MIDTRANS_CLIENT_KEY
+MIDTRANS_SERVER_KEY=YOUR_MIDTRANS_SERVER_KEY
 
 CRON_SECRET=UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU=
 

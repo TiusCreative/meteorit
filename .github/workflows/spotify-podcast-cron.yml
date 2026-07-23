@@ -2,15 +2,21 @@ name: Spotify Podcast Publisher Cron
 
 on:
   schedule:
-    - cron: '0 5,17 * * *' # Berjalan setiap jam 05:00 dan 17:00 UTC (12:00 WIB dan 00:00 WIB)
+    - cron: '0 22,10 * * *' # Berjalan setiap jam 05:00 WIB (22:00 UTC) dan 17:00 WIB (10:00 UTC)
   workflow_dispatch: # Mengizinkan pemicuan manual dari dasbor GitHub
 
 jobs:
   publish-podcast:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Podcast Cron Endpoint
+      - name: Trigger Indonesian Podcast Cron Endpoint
         run: |
-          curl -X GET "https://meteorit.my.id/api/cron/podcast?secret=${{ secrets.CRON_SECRET }}" \
+          curl -X GET "https://meteorit.my.id/api/cron/podcast?lang=id&secret=${{ secrets.CRON_SECRET }}" \
+            -H "Accept: application/json" \
+            -f --retry 3 --retry-delay 5
+
+      - name: Trigger English Podcast Cron Endpoint
+        run: |
+          curl -X GET "https://meteorit.my.id/api/cron/podcast?lang=en&secret=${{ secrets.CRON_SECRET }}" \
             -H "Accept: application/json" \
             -f --retry 3 --retry-delay 5

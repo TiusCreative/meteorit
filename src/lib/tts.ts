@@ -44,9 +44,10 @@ export function splitTextIntoChunks(text: string, maxLength = 200): string[] {
 }
 
 /**
- * Converts text into an Indonesian MP3 Buffer using Google Translate TTS API.
+ * Converts text into an MP3 Buffer using Google Translate TTS API.
+ * Default language is Indonesian ('id'), supports 'en' for English.
  */
-export async function generateTtsMp3(text: string): Promise<Buffer> {
+export async function generateTtsMp3(text: string, lang = 'id'): Promise<Buffer> {
   const chunks = splitTextIntoChunks(text, 200);
   if (chunks.length === 0) {
     throw new Error("No pronounceable text provided");
@@ -59,7 +60,7 @@ export async function generateTtsMp3(text: string): Promise<Buffer> {
   const buffers: Buffer[] = [];
 
   for (const chunk of chunks) {
-    const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=id&client=tw-ob&q=${encodeURIComponent(chunk)}`;
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${encodeURIComponent(lang)}&client=tw-ob&q=${encodeURIComponent(chunk)}`;
     
     let success = false;
     let retries = 3;

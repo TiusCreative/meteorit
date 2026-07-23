@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { FaFacebookF, FaInstagram, FaTelegramPlane, FaWhatsapp, FaTwitter, FaYoutube, FaSpotify } from 'react-icons/fa'
+import { FaFacebookF, FaInstagram, FaTelegramPlane, FaWhatsapp, FaTwitter, FaYoutube, FaSpotify, FaPinterest } from 'react-icons/fa'
 import { dictionary, defaultLanguage, isSiteLanguage, LANGUAGE_STORAGE_KEY, SiteLanguage } from '@/lib/i18n'
 
 const socialLinks = [
@@ -47,6 +47,12 @@ const socialLinks = [
     href: 'https://open.spotify.com/show/033TS5YqepN9kNXRguuLZf',
     icon: FaSpotify,
     hoverColor: 'hover:text-emerald-500 dark:hover:text-emerald-400',
+  },
+  {
+    name: 'Pinterest',
+    href: 'https://pinterest.com/pin/create/button/?url=https%3A%2F%2Fmeteorit.my.id&media=https%3A%2F%2Fmeteorit.my.id%2Flogo-meteor-spotify.png&description=Meteorit%20Indonesia%20-%20Platform%20Edukasi%20Astronomi%20%26%20Benda%20Langit&app_id=916a7781bd006d5cea3ac39c5087513e3ae89adc',
+    icon: FaPinterest,
+    hoverColor: 'hover:text-red-500 dark:hover:text-red-400',
   },
 ]
 

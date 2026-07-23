@@ -3,22 +3,13 @@ import R2_CONFIG from '@/lib/cloudflareR2Config';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Fungsi untuk memperbaiki karakter '&' yang tidak valid dalam XML.
- * Mengubah '&' menjadi '&amp;' jika tidak diikuti entitas resmi.
- */
 function fixUnescapedAmpersands(xmlString: string): string {
-  // Regex ini mencari '&' yang TIDAK diikuti oleh entitas valid seperti amp;, lt;, gt;, quot;, apos;, atau &#...;
   return xmlString.replace(/&(?!(amp|lt|gt|quot|apos|#\d+);)/g, '&amp;');
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const requestedLang = (searchParams.get('lang') || 'id').toLowerCase();
-    const fileName = requestedLang === 'en' ? 'podcast-en.xml' : 'podcast.xml';
-
-    const r2Url = `${R2_CONFIG.publicUrl}/data/podcast/${fileName}`;
+    const r2Url = `${R2_CONFIG.publicUrl}/data/podcast/podcast-en.xml`;
     const res = await fetch(r2Url, { cache: 'no-store' });
 
     if (!res.ok) {
@@ -26,18 +17,16 @@ export async function GET(request: Request) {
     }
 
     let xml = await res.text();
-
-    // Perbaikan karakter ampersand sebelum dikirim ke client
     xml = fixUnescapedAmpersands(xml);
 
     return new NextResponse(xml, {
       headers: {
         'Content-Type': 'application/xml; charset=utf-8',
-        'Cache-Control': 'public, max-age=1800, s-maxage=1800', // Cache selama 30 menit
+        'Cache-Control': 'public, max-age=1800, s-maxage=1800',
       },
     });
   } catch (error) {
-    console.error('[Podcast.xml GET] Failed to fetch podcast.xml from R2, serving fallback:', error);
+    console.error('[Podcast-EN.xml GET] Failed to fetch podcast-en.xml from R2, serving fallback:', error);
 
     const logoUrl = 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev/logo-meteor-spotify.png';
     const fallbackXml = `<?xml version="1.0" encoding="UTF-8" ?>
@@ -46,13 +35,13 @@ export async function GET(request: Request) {
      xmlns:content="http://purl.org/rss/1.0/modules/content/"
      xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
-  <title>Meteorit Indonesia Podcast</title>
-  <description>Membahas astronomi, meteor, komet, benda langit, dan peristiwa alam unik bersama Meteorit Indonesia.</description>
+  <title>Meteorit Indonesia Podcast (English Edition)</title>
+  <description>Exploring astronomy, meteorites, comets, space science, and natural phenomena with Meteorit Indonesia.</description>
   <link>https://meteorit.my.id</link>
-  <language>id</language>
+  <language>en</language>
   <itunes:author>Meteorit Indonesia</itunes:author>
-  <itunes:subtitle>Sains Astronomi dan Edukasi Benda Langit</itunes:subtitle>
-  <itunes:summary>Membahas astronomi, meteor, komet, benda langit, dan peristiwa alam unik bersama Meteorit Indonesia.</itunes:summary>
+  <itunes:subtitle>Astronomy Science and Celestial Education</itunes:subtitle>
+  <itunes:summary>Exploring astronomy, meteorites, comets, space science, and natural phenomena with Meteorit Indonesia.</itunes:summary>
   <itunes:owner>
     <itunes:name>Meteorit Indonesia</itunes:name>
     <itunes:email>creativecortex168@gmail.com</itunes:email>
@@ -64,15 +53,15 @@ export async function GET(request: Request) {
   <itunes:explicit>no</itunes:explicit>
   <image>
     <url>${logoUrl}</url>
-    <title>Meteorit Indonesia Podcast</title>
+    <title>Meteorit Indonesia Podcast (English Edition)</title>
     <link>https://meteorit.my.id</link>
   </image>
   <item>
-    <title>Selamat Datang di Meteorit Indonesia Podcast</title>
-    <description>Perkenalan tentang platform pemantauan benda langit dan edukasi sains astronomi Indonesia.</description>
-    <itunes:summary>Perkenalan tentang platform pemantauan benda langit dan edukasi sains astronomi Indonesia.</itunes:summary>
+    <title>Welcome to Meteorit Indonesia Podcast</title>
+    <description>Introduction to space monitoring platform and astronomy science education.</description>
+    <itunes:summary>Introduction to space monitoring platform and astronomy science education.</itunes:summary>
     <pubDate>Wed, 22 Jul 2026 11:00:00 GMT</pubDate>
-    <guid isPermaLink="false">fallback-welcome-episode</guid>
+    <guid isPermaLink="false">fallback-welcome-episode-en</guid>
     <enclosure url="https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev/fallback.mp3" length="1024" type="audio/mpeg" />
     <itunes:duration>10</itunes:duration>
     <itunes:explicit>no</itunes:explicit>
