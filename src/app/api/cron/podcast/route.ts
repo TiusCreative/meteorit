@@ -210,8 +210,14 @@ export async function GET(request: Request) {
 
     if (lang === 'en') {
       try {
-        title = await translateText(title, 'Translate this text to natural English for a podcast title.', 'en');
-        cleanContent = await translateText(cleanContent, 'Translate this astronomy content into clear, natural English for a podcast script.', 'en');
+        const rawEnTitle = await translateText(title, 'Translate this title into clear natural English for a podcast episode. Return ONLY the translated title, no conversational intro, no quotes, no multiple options.', 'en');
+        title = rawEnTitle
+          .replace(/^["']|["']$/g, '')
+          .split('\n')[0]
+          .replace(/^Here's.*:\s*/i, '')
+          .trim();
+        
+        cleanContent = await translateText(cleanContent, 'Translate this astronomy content into clear, engaging English for a podcast script. Return ONLY the translated text, no conversational intro.', 'en');
       } catch (trErr) {
         console.warn("[Podcast Cron] Translate to EN fallback:", trErr);
       }
