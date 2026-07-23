@@ -48,6 +48,27 @@ function cleanContentForSpeech(text: string): string {
     .trim();
 }
 
+async function translateTextToEnglish(text: string): Promise<string> {
+  if (!text || text.trim() === '') return '';
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text)}`;
+    const response = await fetch(url, { cache: 'no-store' });
+    if (response.ok) {
+      const json = await response.json();
+      const sentences = json[0];
+      if (Array.isArray(sentences)) {
+        const translated = sentences.map((s: any) => s[0]).join('').trim();
+        if (translated && translated.length > 0) {
+          return translated;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Podcast Cron] Google GTX English translation failed:', err);
+  }
+  return text;
+}
+
 export async function GET(request: Request) {
   if (!isValidCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -210,14 +231,19 @@ export async function GET(request: Request) {
 
     if (lang === 'en') {
       try {
-        const rawEnTitle = await translateText(title, 'Translate this title into clear natural English for a podcast episode. Return ONLY the translated title, no conversational intro, no quotes, no multiple options.', 'en');
-        title = rawEnTitle
+        const gtxTitle = await translateTextToEnglish(title);
+        title = gtxTitle
           .replace(/^["']|["']$/g, '')
           .split('\n')[0]
           .replace(/^Here's.*:\s*/i, '')
           .trim();
         
-        cleanContent = await translateText(cleanContent, 'Translate this astronomy content into clear, engaging English for a podcast script. Return ONLY the translated text, no conversational intro.', 'en');
+        cleanContent = await translateTextToEnglish(cleanContent);
+        // Clean any leftover conversational prefixes if any
+        cleanContent = cleanContent
+          .replace(/^Here is the translated.*?:\s*/i, '')
+          .replace(/^The following is.*?:\s*/i, '')
+          .trim();
       } catch (trErr) {
         console.warn("[Podcast Cron] Translate to EN fallback:", trErr);
       }
@@ -357,7 +383,7 @@ export async function GET(request: Request) {
     const podcastXmlKey = 'data/podcast/podcast.xml';
     const podcastEnXmlKey = 'data/podcast/podcast-en.xml';
 
-    await uploadToR2(podcastXmlKey, generateRssXml(), 'application/xml; charset=utf-8');
+    await uploadToR2(podcastXmlKey, generateRssXml('id'), 'application/xml; charset=utf-8');
     await uploadToR2(podcastEnXmlKey, generateRssXml('en'), 'application/xml; charset=utf-8');
     console.log(`[Podcast Cron] Podcast RSS XML (Main & EN) berhasil diperbarui di R2`);
 
