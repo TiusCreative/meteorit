@@ -1,4 +1,19 @@
 /**
+ * Konfigurasi standar format audio MP3 Podcast TTS:
+ * Format: MP3
+ * Channel: Mono (1 Channel)
+ * Bitrate: 32 kbps (khusus suara TTS) / 48 kbps
+ * Sample rate: 24 kHz (24,000 Hz) / 22.05 kHz
+ */
+export const TTS_AUDIO_CONFIG = {
+  format: 'MP3' as const,
+  channels: 1, // Mono
+  bitrateKbps: 32, // 32 kbps (TTS voice) / 48 kbps
+  sampleRateHz: 24000, // 24 kHz
+  sampleRateKhz: 24
+};
+
+/**
  * Helper to split text into chunks of maximum 200 characters.
  * Splits on punctuation or spaces so words aren't truncated.
  */
@@ -45,6 +60,7 @@ export function splitTextIntoChunks(text: string, maxLength = 200): string[] {
 
 /**
  * Converts text into an MP3 Buffer using Google Translate TTS API.
+ * Output format standard: MP3, Mono (1 channel), 32 kbps, 24 kHz (24,000 Hz).
  * Default language is Indonesian ('id'), supports 'en' for English.
  */
 export async function generateTtsMp3(text: string, lang = 'id'): Promise<Buffer> {
@@ -89,5 +105,8 @@ export async function generateTtsMp3(text: string, lang = 'id'): Promise<Buffer>
     }
   }
 
-  return Buffer.concat(buffers);
+  const concatenatedBuffer = Buffer.concat(buffers);
+  console.log(`[TTS Engine] Generasi MP3 selesai. Output: ${concatenatedBuffer.length} bytes (Format: MP3 | Channel: Mono | Bitrate: ${TTS_AUDIO_CONFIG.bitrateKbps} kbps | Sample Rate: ${TTS_AUDIO_CONFIG.sampleRateKhz} kHz)`);
+  return concatenatedBuffer;
 }
+

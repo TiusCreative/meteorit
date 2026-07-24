@@ -295,17 +295,18 @@ export async function GET(request: Request) {
 
     episodesList = [newEpisode, ...episodesList];
 
-    // 7. Bersihkan berkas MP3 lama yang berusia lebih dari 24 jam untuk menghemat R2
-    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    // 7. Bersihkan berkas MP3 lama yang berusia lebih dari 300 hari untuk menghemat R2
+    const PODCAST_RETENTION_DAYS = 300;
+    const RETENTION_MS = PODCAST_RETENTION_DAYS * 24 * 60 * 60 * 1000;
     const nowMs = Date.now();
     for (const ep of episodesList) {
       const epAgeMs = nowMs - new Date(ep.pubDate).getTime();
-      if (epAgeMs > ONE_DAY_MS && !ep.deletedFromR2) {
+      if (epAgeMs > RETENTION_MS && !ep.deletedFromR2) {
         try {
           const oldMp3Key = `data/podcast/mp3s/${ep.id}.mp3`;
           await deleteFromR2(oldMp3Key);
           ep.deletedFromR2 = true;
-          console.log(`[Podcast Cron] Menghapus MP3 kedaluwarsa dari R2: ${oldMp3Key}`);
+          console.log(`[Podcast Cron] Menghapus MP3 kedaluwarsa (> 300 hari) dari R2: ${oldMp3Key}`);
         } catch (cleanupErr) {
           console.error(`[Podcast Cron] Gagal menghapus MP3 kedaluwarsa untuk episode ${ep.id}:`, cleanupErr);
         }
@@ -315,7 +316,7 @@ export async function GET(request: Request) {
     // Tulis kembali indeks episode terupdate ke R2
     await uploadToR2(episodesKey, JSON.stringify(episodesList, null, 2), 'application/json');
 
-    // 8. Membangun RSS Feed (podcast.xml dan podcast-en.xml)
+    // 8. Membangun RSS Feed (podcast.xml dan podcast-en.xml) - Tampilkan episode aktif 300 hari terakhir
     const generateRssXml = (langFilter?: 'id' | 'en') => {
       const isEnglish = langFilter === 'en';
       const channelTitle = isEnglish ? 'Meteorit Indonesia Podcast (English Edition)' : 'Meteorit Indonesia Podcast';
@@ -325,9 +326,10 @@ export async function GET(request: Request) {
       const channelLang = isEnglish ? 'en' : 'id';
       const selfLink = isEnglish ? '/podcast-en.xml' : '/podcast.xml';
 
-      const filteredEpisodes = langFilter 
+      const filteredEpisodes = (langFilter 
         ? episodesList.filter(ep => ep.language === langFilter || (!ep.language && langFilter === 'id'))
-        : episodesList;
+        : episodesList
+      ).filter(ep => !ep.deletedFromR2);
 
       let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" 
@@ -397,12 +399,13 @@ export async function GET(request: Request) {
       `🟢 <b>Status:</b> Sukses Diterbitkan\n` +
       `📌 <b>Judul:</b> ${title}\n` +
       `📂 <b>Sumber:</b> ${sourceType} (${sourceId})\n` +
+      `🎙 <b>Format MP3:</b> Mono, 32-48 kbps, 24 kHz\n` +
       `⏱ <b>Durasi:</b> ${durationStr} (${wordsCount} kata)\n` +
       `📦 <b>Ukuran:</b> ${fileMb} MB\n\n` +
       `🔗 <b>Audio R2:</b> <a href="${enclosureUrl}">Download MP3</a>\n` +
       `🔗 <b>RSS Feed:</b> <a href="${getAbsoluteUrl('/podcast.xml')}">podcast.xml</a>\n` +
       `🔗 <b>Spotify Show:</b> <a href="https://open.spotify.com/show/033TS5YqepN9kNXRguuLZf">Spotify Podcast</a>\n\n` +
-      `ℹ️ <i>Catatan: File MP3 akan otomatis dihapus dari R2 setelah 1 hari.</i>`;
+      `ℹ️ <i>Catatan: Berkas MP3 disimpan selama 300 hari di R2 dan otomatis dibersihkan setelah 300 hari untuk efisiensi penyimpanan R2.</i>`;
 
     await sendTelegramMessage(TELEGRAM_CHAT_ID, successMsg);
 
