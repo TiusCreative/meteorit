@@ -5,11 +5,17 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    // 1. Keamanan: Pengecekan Secret Key di Header request 'x-agregator-secret'
+    // 1. Keamanan: Pengecekan Secret Key di Header request 'x-agregator-secret', URL parameter 'secret', atau Bearer Token
     const secretHeader = request.headers.get('x-agregator-secret');
-    const expectedSecret = process.env.AGREGATOR_SECRET_KEY || 'meteorit_agregator_secret_key_2026';
+    const { searchParams } = new URL(request.url);
+    const secretQuery = searchParams.get('secret');
+    const authHeader = request.headers.get('authorization');
+    const bearerToken = authHeader ? authHeader.replace(/^Bearer\s+/i, '').trim() : null;
 
-    if (!secretHeader || secretHeader !== expectedSecret) {
+    const expectedSecret = process.env.AGREGATOR_SECRET_KEY || 'meteorit_agregator_secret_key_2026';
+    const providedSecret = secretHeader || secretQuery || bearerToken;
+
+    if (!providedSecret || providedSecret !== expectedSecret) {
       return NextResponse.json(
         { error: 'Akses Ditolak: Secret Key Salah' },
         { status: 401 }
