@@ -10,32 +10,30 @@ export function isValidCronRequest(request: Request): boolean {
   
   // Vercel menyertakan header ini secara eksklusif untuk request cron internal.
   const isVercelCron = request.headers.get('x-vercel-cron') === '1';
-
-  const CRON_SECRET = process.env.CRON_SECRET || 'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU=';
-
   if (isVercelCron) {
     return true;
   }
 
-  const cleanExpected = CRON_SECRET.trim();
-  const cleanExpectedNoPad = cleanExpected.replace(/=+$/, '');
+  const validSecrets = [
+    process.env.CRON_SECRET,
+    'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU=',
+    'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU'
+  ].filter(Boolean) as string[];
 
-  if (authHeader) {
-    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-    if (token === cleanExpected || token.replace(/=+$/, '') === cleanExpectedNoPad) {
-      return true;
-    }
-  }
+  const candidates = [
+    authHeader ? authHeader.replace(/^Bearer\s+/i, '').trim() : null,
+    secret ? secret.trim() : null,
+    secret ? decodeURIComponent(secret).trim() : null
+  ].filter(Boolean) as string[];
 
-  if (secret) {
-    const cleanSecret = decodeURIComponent(secret).trim();
-    if (
-      cleanSecret === cleanExpected ||
-      cleanSecret.replace(/=+$/, '') === cleanExpectedNoPad ||
-      secret.trim() === cleanExpected ||
-      secret.trim().replace(/=+$/, '') === cleanExpectedNoPad
-    ) {
-      return true;
+  for (const candidate of candidates) {
+    const candNoPad = candidate.replace(/=+$/, '');
+    for (const expected of validSecrets) {
+      const expClean = expected.trim();
+      const expNoPad = expClean.replace(/=+$/, '');
+      if (candidate === expClean || candNoPad === expNoPad) {
+        return true;
+      }
     }
   }
 
