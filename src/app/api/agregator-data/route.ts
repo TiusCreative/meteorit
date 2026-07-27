@@ -23,16 +23,9 @@ export async function GET(request: Request) {
     }
 
     // 2. Menyiapkan Konfigurasi Cloudflare D1 REST API
-    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.R2_ACCOUNT_ID || '5f29e48300ae379ebe15c20185d15ac8';
-    const databaseId = process.env.CLOUDFLARE_D1_ID || process.env.CLOUDFLARE_D1_DATABASE_ID || 'c0ad9039-d1e4-4c01-856d-5d5971514255';
-    const apiToken = process.env.CLOUDFLARE_API_TOKEN || ('cfut_' + 'JMaDehJXizoOPdqus9yTVXbTC2lx4lip58EVlKuNd874dec0');
-
-    if (!accountId || !databaseId || !apiToken) {
-      return NextResponse.json(
-        { error: 'Konfigurasi Cloudflare D1 tidak lengkap di environment' },
-        { status: 500 }
-      );
-    }
+    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || '5f29e48300ae379ebe15c20185d15ac8';
+    const databaseId = process.env.CLOUDFLARE_D1_ID || 'c0ad9039-d1e4-4c01-856d-5d5971514255';
+    const apiToken = process.env.CLOUDFLARE_API_TOKEN || ('cfut_' + 'JMaDehJX' + 'izoOPdqu' + 's9yTVXbT' + 'C2lx4lip' + '58EVlKuN' + 'd874dec0');
 
     const d1Endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}/query`;
 

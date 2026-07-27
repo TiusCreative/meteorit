@@ -3359,8 +3359,7 @@ export default function WeatherMiniApp() {
                         onClick={() => setActiveTab('disasterMap')}
                         className="w-full h-[110px] rounded-2xl bg-slate-950 border border-slate-800 shadow-inner relative overflow-hidden flex flex-col items-center justify-center group hover:border-red-500/50 hover:shadow-lg hover:shadow-red-500/5 transition-all duration-300"
                       >
-                        {/* Map backdrop static graphic */}
-                        <div className="absolute inset-0 bg-slate-900 border border-slate-800 opacity-60"></div>
+                        <div className="absolute inset-0 bg-slate-900 opacity-30 mix-blend-luminosity"></div>
                         
                         {/* concentric circles indicating active threat location */}
                         <div className="absolute inset-0 bg-gradient-to-br from-slate-950/80 to-slate-900/90 flex flex-col items-center justify-center p-2 z-10">

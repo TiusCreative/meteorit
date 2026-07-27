@@ -127,7 +127,7 @@ tolong analisa saya ingin tingkatkan berdasarkan pengujian https://pagespeed.web
 
 tuliskan resume report dalam bahasa indonesia
 ———————————————————
-CLOUDFLARE_API_TOKEN=your_cloudflare_api_token_here
+CLOUDFLARE_API_TOKEN=[REDACTED_D1_TOKEN]
 CLOUDFLARE_D1_DATABASE_ID=c0ad9039-d1e4-4c01-856d-5d5971514255
 
 saya ingin mengubah migrasi arsitektur aplikasi dari Firebase ke Cloudflare D1 + R2. tujuan untuk melepas dari bayang

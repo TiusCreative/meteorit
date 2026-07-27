@@ -70,12 +70,8 @@ export async function deleteFromR2(key: string): Promise<boolean> {
       Key: key
     }));
     return true;
-  } catch (error: any) {
-    if (error?.name === 'Unauthorized' || error?.message?.includes('Unauthorized') || error?.$metadata?.httpStatusCode === 401) {
-      console.error(`[R2 Auth Error] deleteFromR2 401 Unauthorized untuk key: ${key}.`);
-    } else {
-      console.error(`Error deleting ${key} from R2:`, error);
-    }
+  } catch (error) {
+    console.error(`Error deleting ${key} from R2:`, error);
     return false;
   }
 }
