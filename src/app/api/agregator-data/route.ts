@@ -29,9 +29,13 @@ export async function GET(request: Request) {
 
     const d1Endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}/query`;
 
-    // 3. Menjalankan Query ke Cloudflare D1: Total Artikel & 100 Artikel Terbaru
+    // 3. Menjalankan Query ke Cloudflare D1 (tanpa batasan default, bisa ?limit=N)
+    const { searchParams } = new URL(request.url);
+    const limitParam = searchParams.get('limit');
+    const limitSql = limitParam && limitParam !== 'all' ? `LIMIT ${parseInt(limitParam, 10)}` : '';
+
     const countSql = "SELECT COUNT(*) as total FROM articles WHERE status = 'Published'";
-    const articlesSql = "SELECT id, title, category, createdAt, date, image, r2_path FROM articles WHERE status = 'Published' ORDER BY createdAt DESC LIMIT 500";
+    const articlesSql = `SELECT id, title, category, createdAt, date, image, r2_path FROM articles WHERE status = 'Published' ORDER BY createdAt DESC ${limitSql}`;
 
     const [countResponse, articlesResponse] = await Promise.all([
       fetch(d1Endpoint, {
