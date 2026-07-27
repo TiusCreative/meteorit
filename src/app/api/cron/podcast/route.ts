@@ -450,9 +450,13 @@ export async function GET(request: Request) {
 
   } catch (err: any) {
     console.error('[Podcast Cron] Error:', err);
+    const errText = err instanceof Error ? err.message : String(err);
+    const errStack = err instanceof Error ? (err.stack || err.message) : String(err);
+
     // Kirim laporan gagal ke Telegram Admin
     const failMsg = `⚠️ <b>LAPORAN PODCAST SPOTIFY GAGAL</b>\n\n` +
-      `❌ <b>Error:</b> ${err instanceof Error ? err.message : String(err)}\n` +
+      `❌ <b>Error:</b> ${errText}\n` +
+      `🛠 <b>Detail:</b> ${errStack.substring(0, 300)}\n` +
       `🛠 <b>Status:</b> Failed`;
     try {
       await sendTelegramMessage(TELEGRAM_CHAT_ID, failMsg);
@@ -460,7 +464,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: false,
-      error: err instanceof Error ? err.message : String(err)
+      error: errText,
+      stack: errStack
     }, { status: 500 });
   }
 }
