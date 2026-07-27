@@ -1,0 +1,49 @@
+Created At: 2026-07-06T00:42:39Z
+Completed At: 2026-07-06T00:42:40Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 3903
+Total Bytes: 214381
+Showing lines 290 to 330
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+290:   const lower = url.toLowerCase();
+291:   if (lower.endsWith('.csv') || lower.endsWith('.tcw') || lower.endsWith('.json') || lower.endsWith('.xml') || lower.endsWith('.txt')) {
+292:     return false;
+293:   }
+294:   return true;
+295: }
+296: 
+297: function getWeatherLevel(xp: number): string {
+298:   if (xp < 50) return 'Pengamat Awan';
+299:   if (xp < 150) return 'Prakirawan Amatir';
+300:   if (xp < 300) return 'Ahli Cuaca';
+301:   return 'Meteorolog Senior';
+302: }
+303: 
+304: const localDict: Record<string, Record<string, string>> = {
+305:   id: {
+306:     tabWeather: "Cuaca",
+307:     tabForecast: "Prakiraan",
+308:     tabMap: "Peta Radar",
+309:     tabReport: "Laporan",
+310:     tabCalendar: "Rencana",
+311:     tabDisaster: "Kebencanaan",
+312:     searchPlaceholder: "Cari kota, daerah, atau koordinat (-6.2, 106.8)",
+313:     btnSearch: "Cari",
+314:     loadingStation: "Memuat data stasiun BMKG terdekat...",
+315:     hottestDay: "Hari terpanas:",
+316:     windiestDay: "Hari paling berangin:",
+317:     ensoTitle: "Status Iklim ENSO Terkini",
+318:     forecastTitle: "Prakiraan 7 Hari",
+319:     weeklyDetails: "Detail Mingguan →",
+320:     spaceWeatherTitle: "Cuaca Antariksa NOAA / USGS",
+321:     satelliteRisk: "Resiko Satelit:",
+322:     kpLabel: "Kp Index (Geomagnetik)",
+323:     kpScale: "Skala 0-9",
+324:     windLabel: "Angin Matahari",
+325:     windUnit: "km/detik",
+326:     auroraLabel: "Peluang Aurora",
+327:     auroraHigh: "Lintang Tinggi",
+328:     actMagnet: "Aktivitas Magnetosfer:",
+329:     actRec: "Pengaruh & Rekomendasi:",
+330:     stormClass: "Status Badai:",
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

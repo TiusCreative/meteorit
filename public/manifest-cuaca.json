@@ -1,0 +1,25 @@
+{
+  "name": "Cuaca & Langit Indonesia",
+  "short_name": "CuacaIndo",
+  "description": "Pantau cuaca real-time, prakiraan 7 hari, peringatan ekstrem, dan laporan komunitas langit Indonesia.",
+  "start_url": "/cuaca",
+  "scope": "/cuaca",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0284c7",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo-cuaca.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo-cuaca.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

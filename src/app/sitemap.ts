@@ -13,7 +13,6 @@ const routes = [
   '/monitoring',
   '/monitoring-epic',
   '/forum',
-  '/marketplace',
   '/tentang',
   '/visi-misi',
   '/kontak',

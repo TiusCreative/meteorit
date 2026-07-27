@@ -4,14 +4,25 @@ const nextConfig = {
     unoptimized: true,
   },
   productionBrowserSourceMaps: false,
+  async headers() {
+    return [
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ];
+  },
   webpack: (config, { dev }) => {
     if (!dev) {
       config.devtool = false;
     }
     return config;
   },
-  // Untuk PWA
-  // output: 'export', // Aktifkan jika ingin static export
 };
 
 module.exports = nextConfig;

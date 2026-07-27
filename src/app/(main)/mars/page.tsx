@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import SafeImage from '@/components/SafeImage';
-import AdDisplay from '@/components/AdDisplay';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { getAbsoluteUrl } from '@/lib/siteUrl';
+import MarsListClient from '@/components/MarsListClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,13 +25,14 @@ export const metadata: Metadata = {
   }
 };
 
-interface MarsPost {
+interface MarsArticle {
   id: string;
   title: string;
   excerpt: string;
   date: string;
   image: string;
   createdAt?: string;
+  translations?: any;
   mars_data?: {
     topic?: string;
     rover?: string;
@@ -42,96 +41,51 @@ interface MarsPost {
   };
 }
 
-async function loadMarsArticles(): Promise<MarsPost[]> {
-  const posts: MarsPost[] = [];
-
-  try {
-    const snapshot = await adminDb
-      .collection('articles')
-      .where('category', '==', 'Planet Mars')
-      .get();
-
-    snapshot.forEach((doc: any) => {
-      const data = doc.data();
-      if (data.status === 'Published') {
-        posts.push({
-          id: doc.id,
-          title: data.title || '',
-          excerpt: data.excerpt || '',
-          date: data.date || new Date(data.createdAt).toLocaleDateString('id-ID'),
-          image: data.image || '',
-          createdAt: data.createdAt || '',
-          mars_data: data.mars_data || {}
-        });
-      }
-    });
-  } catch (error) {
-    console.error('[Mars Page] Gagal mengambil artikel Mars:', error);
-  }
-
-  return posts.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-}
+const R2_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
 
 export default async function MarsPage() {
-  const posts = await loadMarsArticles();
+  let posts: MarsArticle[] = [];
 
-  return (
-    <main className="min-h-screen bg-slate-950 text-white py-16">
-      <div className="container mx-auto px-4 max-w-6xl">
-        <div className="text-center mb-12 space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-950/60 border border-red-800/40 text-xs font-semibold text-orange-300 uppercase tracking-wider">
-            Planet Merah
-          </div>
-          <h1 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-orange-300 via-red-500 to-amber-400 bg-clip-text text-transparent">
-            Artikel Planet Mars
-          </h1>
-          <p className="text-slate-400 text-sm md:text-base max-w-2xl mx-auto leading-relaxed">
-            Fakta unik, kabar rover NASA, cuaca ekstrem, geologi, dan masa depan manusia di Mars dalam bahasa yang ringan tapi tetap ilmiah.
-          </p>
-        </div>
+  // 1. Coba fetch dari R2
+  try {
+    const r2Res = await fetch(`${R2_URL}/data/blog/posts.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (r2Res.ok) {
+      const data = await r2Res.json();
+      posts = data.filter((p: any) => p.category === 'Planet Mars');
+    }
+  } catch (err) {
+    console.warn("[Mars List] Gagal fetch R2 cache, mencoba Firestore...", err);
+  }
 
-        <AdDisplay position="hero" />
+  // 2. Fallback ke Firestore
+  if (posts.length === 0) {
+    try {
+      const snapshot = await adminDb
+        .collection('articles')
+        .where('category', '==', 'Planet Mars')
+        .get();
 
-        {posts.length === 0 ? (
-          <div className="text-center py-20 bg-slate-900/30 border border-dashed border-red-950/60 rounded-2xl">
-            <span className="text-5xl block mb-4">🔴</span>
-            <p className="text-gray-300 font-bold text-lg mb-2">Belum ada artikel Planet Mars</p>
-            <p className="text-gray-500 text-sm">Gunakan admin console untuk memicu cron Planet Mars pertama.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {posts.map((post) => (
-              <article key={post.id} className="bg-slate-900/50 border border-red-950/40 rounded-2xl overflow-hidden shadow-xl hover:border-orange-500/40 transition-all flex flex-col">
-                <div className="h-48 bg-slate-900 overflow-hidden">
-                  <SafeImage
-                    src={post.image}
-                    alt={post.title}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                    fallback="https://images-assets.nasa.gov/image/PIA19821/PIA19821~orig.jpg"
-                  />
-                </div>
-                <div className="p-5 flex flex-col flex-1">
-                  <div className="text-xs text-orange-300 font-bold mb-2">
-                    {post.mars_data?.rover || 'NASA Mars Rover'} • {post.date}
-                  </div>
-                  <h2 className="text-lg font-bold text-orange-100 line-clamp-2 mb-3">{post.title}</h2>
-                  <p className="text-sm text-slate-400 line-clamp-3 leading-relaxed flex-1">{post.excerpt}</p>
-                  <Link
-                    href={`/mars/${post.id}`}
-                    className="mt-5 block text-center bg-red-900/40 hover:bg-red-800/60 border border-red-700/30 text-orange-200 py-2.5 rounded-xl text-sm font-bold transition-all"
-                  >
-                    Baca Artikel Mars
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
+      snapshot.forEach((doc: any) => {
+        const data = doc.data();
+        if (data.status === 'Published') {
+          posts.push({
+            id: doc.id,
+            title: data.title || '',
+            excerpt: data.excerpt || '',
+            date: data.date || new Date(data.createdAt).toLocaleDateString('id-ID'),
+            image: data.image || '/logo-mars.png',
+            createdAt: data.createdAt || '',
+            translations: data.translations || {},
+            mars_data: data.mars_data || {}
+          });
+        }
+      });
 
-        <div className="mt-10">
-          <AdDisplay position="footer" />
-        </div>
-      </div>
-    </main>
-  );
+      posts.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    } catch (err) {
+      console.error('Failed to fetch Mars articles from Firestore:', err);
+    }
+  }
+
+  return <MarsListClient initialPosts={posts} />;
 }

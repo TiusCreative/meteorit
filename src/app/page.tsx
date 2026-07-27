@@ -3,13 +3,19 @@ import HeroSection from '@/components/HeroSection'
 import StatsBanner from '@/components/StatsBanner'
 import EncyclopediaHighlight from '@/components/EncyclopediaHighlight'
 import SpaceMissionControl from '@/components/SpaceMissionControl'
+import ForumHighlights from '@/components/ForumHighlights'
 import CommunityFeature from '@/components/CommunityFeature'
 import DonationSection from '@/components/DonationSection'
 import BlogSection from '@/components/BlogSection'
 import MarsLandingSection from '@/components/MarsLandingSection'
+import GlossaryLandingSection from '@/components/GlossaryLandingSection'
+import FireballEonetSection from '@/components/FireballEonetSection'
 import AdDisplay from '@/components/AdDisplay'
 import Footer from '@/components/Footer'
 import { adminDb } from '@/lib/firebaseAdmin';
+import EarthTEWSWidget from '@/components/EarthTEWSWidget';
+import DisasterMapSection from '@/components/DisasterMapSection';
+
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +32,7 @@ interface BlogPost {
     sol?: number;
   };
   createdAt?: string;
+  translations?: Record<string, { title?: string; excerpt?: string; content?: string }>;
 }
 
 export default async function Home() {
@@ -81,7 +88,46 @@ export default async function Home() {
     };
   }
 
-  // 2. Fetch Blog Posts server-side
+  // 2. Fetch Fireball & EONET Posts (R2 First)
+  let fireballPosts: BlogPost[] = [];
+  let eonetPosts: BlogPost[] = [];
+  let r2PostsLoaded = false;
+  try {
+    const res = await fetch(`${r2PublicUrl}/data/blog/posts.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      fireballPosts = data.filter((p: any) => p.category === 'Bola Api & Fireball').slice(0, 4);
+      eonetPosts = data.filter((p: any) => p.category === 'Peristiwa Alam').slice(0, 4);
+      r2PostsLoaded = true;
+    }
+  } catch (err) {
+    console.warn('Failed to load fireball/eonet posts from R2, trying Firestore...', err);
+  }
+
+  if (!r2PostsLoaded) {
+    try {
+      const [fbSnap, eoSnap] = await Promise.all([
+        adminDb.collection('articles').where('category', '==', 'Bola Api & Fireball').get(),
+        adminDb.collection('articles').where('category', '==', 'Peristiwa Alam').get(),
+      ]);
+      fbSnap.forEach((doc: any) => {
+        const d = doc.data();
+        if (d.status === 'Published') fireballPosts.push({ id: doc.id, title: d.title || '', category: d.category || '', date: d.date || '', excerpt: d.excerpt || '', image: d.image || '', createdAt: d.createdAt || '', translations: d.translations || {} });
+      });
+      eoSnap.forEach((doc: any) => {
+        const d = doc.data();
+        if (d.status === 'Published') eonetPosts.push({ id: doc.id, title: d.title || '', category: d.category || '', date: d.date || '', excerpt: d.excerpt || '', image: d.image || '', createdAt: d.createdAt || '', translations: d.translations || {} });
+      });
+      fireballPosts.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      eonetPosts.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      fireballPosts = fireballPosts.slice(0, 4);
+      eonetPosts = eonetPosts.slice(0, 4);
+    } catch (err) {
+      console.warn('Failed to load fallback fireball/eonet posts from Firestore:', err);
+    }
+  }
+
+  // 3. Fetch Blog Posts server-side
   let blogPosts: BlogPost[] = [];
   let marsPosts: BlogPost[] = [];
   try {
@@ -89,10 +135,16 @@ export default async function Home() {
     if (res.ok) {
       const data = await res.json();
       if (data && data.length > 0) {
+        // Urutkan artikel secara kronologis dari terbaru ke terlama berdasarkan tanggal pembuatan
+        const sortedData = [...data].sort((a: any, b: any) => {
+          const timeA = new Date(a.createdAt || a.date || 0).getTime();
+          const timeB = new Date(b.createdAt || b.date || 0).getTime();
+          return timeB - timeA;
+        });
         // Exclude komet articles from general homepage feed
-        const onlyBlog = data.filter((p: any) => p.category !== 'Komet & Asteroid');
+        const onlyBlog = sortedData.filter((p: any) => p.category !== 'Komet & Asteroid');
         blogPosts = onlyBlog.slice(0, 3);
-        marsPosts = data.filter((p: any) => p.category === 'Planet Mars').slice(0, 3);
+        marsPosts = sortedData.filter((p: any) => p.category === 'Planet Mars').slice(0, 3);
       }
     }
   } catch (err) {
@@ -113,6 +165,7 @@ export default async function Home() {
             date: data.date || new Date(data.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
             excerpt: data.excerpt || data.content?.substring(0, 150) + '...',
             image: data.image || data.imageUrl || '',
+            translations: data.translations || {},
           });
         }
         if (data.status === 'Published' && data.category === 'Planet Mars' && marsPosts.length < 3) {
@@ -125,6 +178,7 @@ export default async function Home() {
             image: data.image || data.imageUrl || '',
             mars_data: data.mars_data || {},
             createdAt: data.createdAt || '',
+            translations: data.translations || {},
           });
         }
       });
@@ -152,6 +206,7 @@ export default async function Home() {
             image: data.image || '',
             mars_data: data.mars_data || {},
             createdAt: data.createdAt || '',
+            translations: data.translations || {},
           });
         }
       });
@@ -175,20 +230,25 @@ export default async function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
+    <main className="min-h-screen bg-white dark:bg-slate-950 text-slate-800 dark:text-white transition-colors duration-300">
       <Header />
       <HeroSection />
       <div className="container mx-auto px-4 max-w-6xl">
         <AdDisplay position="hero" />
       </div>
+      <EarthTEWSWidget />
+      <DisasterMapSection />
       <StatsBanner />
       <EncyclopediaHighlight initialData={apodData} />
       <SpaceMissionControl />
+      <ForumHighlights />
       <div className="container mx-auto px-4 max-w-6xl">
         <AdDisplay position="content" />
       </div>
       <CommunityFeature />
       <DonationSection />
+      <GlossaryLandingSection />
+      <FireballEonetSection fireballPosts={fireballPosts as any} eonetPosts={eonetPosts as any} />
       <MarsLandingSection posts={marsPosts} />
       <BlogSection initialPosts={blogPosts} />
       <div className="container mx-auto px-4 max-w-6xl">

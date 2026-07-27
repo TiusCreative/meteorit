@@ -23,27 +23,42 @@ interface ApodEntry {
   copyright: string;
 }
 
+const R2_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+
 export default async function ApodPage() {
-  const apods: ApodEntry[] = [];
+  let apods: ApodEntry[] = [];
 
+  // 1. Coba fetch dari R2
   try {
-    const snapshot = await adminDb.collection('apod_history')
-      .orderBy('id', 'desc')
-      .limit(100)
-      .get();
-
-    snapshot.forEach((doc: any) => {
-      const data = doc.data();
-      apods.push({
-        id: doc.id,
-        title: data.title || { en: '', id: '' },
-        explanation: data.explanation || { en: '', id: '' },
-        image_url: data.image_url || '',
-        copyright: data.copyright || 'NASA Public Domain'
-      });
-    });
+    const res = await fetch(`${R2_URL}/data/encyclopedia/history.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (res.ok) {
+      apods = await res.json();
+    }
   } catch (err) {
-    console.error("Gagal mengambil riwayat APOD dari Firestore:", err);
+    console.warn("[APOD List] Gagal mengambil riwayat APOD dari R2, mencoba Firestore...", err);
+  }
+
+  // 2. Fallback ke Firestore
+  if (apods.length === 0) {
+    try {
+      const snapshot = await adminDb.collection('apod_history')
+        .orderBy('id', 'desc')
+        .limit(100)
+        .get();
+
+      snapshot.forEach((doc: any) => {
+        const data = doc.data();
+        apods.push({
+          id: doc.id,
+          title: data.title || {},
+          explanation: data.explanation || {},
+          image_url: data.image_url || '',
+          copyright: data.copyright || 'NASA Public Domain'
+        });
+      });
+    } catch (err) {
+      console.error("Gagal mengambil riwayat APOD dari Firestore:", err);
+    }
   }
 
   // Fallback default item jika database kosong (misal: saat inisialisasi awal)

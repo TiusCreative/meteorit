@@ -1,0 +1,63 @@
+Created At: 2026-07-06T00:44:12Z
+Completed At: 2026-07-06T00:44:12Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4110
+Total Bytes: 228015
+Showing lines 3170 to 3245
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3170:                   </div>
+3171:                 )}
+3172:               </>
+3173:             )}
+3174:           </div>
+3175:         )}
+3176: 
+3177:         {/* TAB 2: FORECAST (PRAKIRAAN MINGGUAN) */}
+3178:         {activeTab === 'forecast' && (
+3179:           <div className="space-y-4">
+3180:             <h2 className="text-sm font-black text-blue-800 uppercase tracking-wider">Prakiraan Detail 7 Hari</h2>
+3181:             {forecast.length === 0 ? (
+3182:               <p className="text-gray-400 text-xs text-center py-8">Masukkan nama kota untuk memuat prakiraan.</p>
+3183:             ) : (
+3184:               <div className="space-y-2.5">
+3185:                 {forecast.map((day, idx) => (
+3186:                   <button
+3187:                     key={idx}
+3188:                     onClick={() => setSelectedForecastIndex(idx)}
+3189:                     className={`w-full text-left bg-white rounded-2xl p-4 border shadow-sm flex items-center gap-4 transition-all ${selectedForecastIndex === idx ? 'ring-2 ring-blue-600 border-blue-600 bg-blue-50/10' : 'border-gray-150 hover:bg-gray-50'}`}
+3190:                   >
+3191:                     <div className="w-12">
+3192:                       <p className="text-xs font-bold text-slate-700 leading-tight">{day.dayName}</p>
+3193:                       <p className="text-[9px] text-gray-400 mt-0.5">{day.date}</p>
+3194:                     </div>
+3195:                     <WeatherIcon code={day.icon} size={36} />
+3196:                     <div className="flex-1 min-w-0">
+3197: 
+<truncated 1793 bytes>
+             <p className="text-sm font-black text-white">{Math.round(forecast[selectedForecastIndex].low)}°C</p>
+3221:                     </div>
+3222:                     <div className="bg-white/5 rounded-xl p-2">
+3223:                       <p className="text-[9px] text-slate-400">Kec. Angin</p>
+3224:                       <p className="text-sm font-black text-white">{forecast[selectedForecastIndex].wind_speed} m/s</p>
+3225:                     </div>
+3226:                   </div>
+3227:                   <p className="text-xs text-slate-300 capitalize pt-1">
+3228:                     Prediksi Kondisi: {forecast[selectedForecastIndex].description}. {forecast[selectedForecastIndex].precip_prob > 0 ? `Terdapat peluang curah hujan sebesar ${forecast[selectedForecastIndex].precip_prob}%.` : 'Kondisi kering tanpa ada potensi hujan.'}
+3229:                   </p>
+3230:                 </div>
+3231:               </div>
+3232:             )}
+3233:           </div>
+3234:         )}
+3235: 
+3236:         {/* TAB 3: INTERACTIVE WEATHER MAP */}
+3237:         {activeTab === 'map' && (
+3238:           <div className="space-y-4">
+3239:             <h2 className="text-sm font-black text-blue-800 uppercase tracking-wider">Peta Cuaca Interaktif</h2>
+3240:             <div className="bg-white rounded-3xl border border-gray-150 overflow-hidden shadow-sm aspect-video w-full relative">
+3241:               {weather ? (
+3242:                 <iframe
+3243:                   title="Peta Radar Angin & Hujan"
+3244:                   src={`https://embed.windy.com/embed2.html?lat=${weather.lat}&lon=${weather.lon}&zoom=7&level=surface&overlay=rain&menu=&message=true&marker=true&calendar=now&pressure=true&type=map&location=coordinates&detail=true&metricWind=m%2Fs&metricTemp=%C2%B0C&radarRange=-1`}
+3245:                   className="w-full h-full border-none"
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

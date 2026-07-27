@@ -1,0 +1,27 @@
+Created At: 2026-07-06T00:54:29Z
+Completed At: 2026-07-06T00:54:29Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4080
+Total Bytes: 222161
+Showing lines 3700 to 3790
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3700:                   <p>
+3701:                     {language === 'id' || language === 'ms' ? 'Data presipitasi real-time diperoleh setiap 30 menit dari satelit GPM (Global Precipitation Measurement) Core Observatory. Laju presipitasi diintegrasikan ke sistem hidrologi GFMS (Global Flood Monitoring System) milik Universitas Maryland dan NASA untuk mensimulasikan limpasan air permukaan dan memprediksi luapan sungai penyebab banjir secara global.' :
+3702:                      language === 'zh' ? '实时降水数据每 30 分钟自 GPM（全球降水测量）核心观测卫星获取一次。降水率被整合到马里兰大学和 NASA 的 GFMS（全球洪水监测系统）水文系统中，以模拟地表径流并预测全球范围内导致洪水的河流泛滥。' :
+3703:                      language === 'ja' ? 'リアルタイム降水データは、GPM（全球降水観測計画）主衛星から30分ごとに取得されます。降水強度はメリーランド大学とNASAのGFMS（全球洪水監視システム）水文モデルに統合され、地表流出をシミュレートし、世界中の洪水原因となる河川溢水を予測します。' :
+3704:                      language === 'ru' ? 'Данные об осадках в реальном времени поступают каждые 30 минут со спутника GPM (Global Precipitation Measurement) Core Observatory. Скорость осадков интегрируется в гидрологическую модель GFMS (Global Flood Monitor
+<truncated 5922 bytes>
+ md:grid-cols-4 gap-2.5">
+3779:                   <div className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm">
+3780:                     <p className="text-[8px] text-gray-400 font-extrabold uppercase tracking-wider">{language === 'id' || language === 'ms' ? 'Status Hujan Harian' : language === 'zh' ? '日降水状况' : language === 'ja' ? '一日降水状況' : 'Daily Precipitation Status'}</p>
+3781:                     <p className="text-base font-black text-blue-600 mt-1">18.5 mm ({language === 'id' || language === 'ms' ? 'Rerata' : language === 'zh' ? '平均' : language === 'ja' ? '平均' : 'Avg'})</p>
+3782:                   </div>
+3783:                   <div className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm">
+3784:                     <p className="text-[8px] text-gray-400 font-extrabold uppercase tracking-wider">{language === 'id' || language === 'ms' ? 'Laju Maks (GPM)' : language === 'zh' ? '最大降水率 (GPM)' : language === 'ja' ? '最大降水レート (GPM)' : 'Max Rate (GPM)'}</p>
+3785:                     <p className="text-base font-black text-amber-600 mt-1">35.0 mm/jam</p>
+3786:                   </div>
+3787:                   <div className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm">
+3788:                     <p className="text-[8px] text-gray-400 font-extrabold uppercase tracking-wider">{language === 'id' || language === 'ms' ? 'Risiko Banjir (GFMS)' : language === 'zh' ? '洪水风险 (GFMS)' : language === 'ja' ? '洪水リスク (GFMS)' : 'Flood Risk (GFMS)'}</p>
+3789:                     <p className="text-base font-black text-red-500 mt-1">
+3790:                       {rainRegion === 'IDN' ? (language === 'id' || language === 'ms' ? '2 Area Severe' : '2 Severe Areas') : (language === 'id' || language === 'ms' ? '1 Area Extreme' : '1 Extreme Area')}
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

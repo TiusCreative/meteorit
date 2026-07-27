@@ -1,334 +1,433 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { auth } from '@/lib/firebaseConfig';
 import { onAuthStateChanged, User } from 'firebase/auth';
 
-type Tab = 'users' | 'admins';
+type TabType = 'all' | 'premium' | 'admin';
 
 interface UserProfile {
-  id: string;
+  uid: string;
+  email: string;
   displayName: string;
-  email: string;
-  role?: string;
-  createdAt?: string;
+  photoURL?: string;
+  role: string;
+  premiumExpiry?: string | null;
+  premiumGrantedAt?: string | null;
+  premiumGrantedByDonation?: number | null;
+  lastLogin?: string;
 }
 
-interface AdminEntry {
-  email: string;
-  addedAt?: string;
-  addedBy?: string;
+interface Pagination {
+  page: number;
+  limit: number;
+  totalCount: number;
+  totalPages: number;
 }
 
-export default function UserAdminManagement() {
-  const [activeTab, setActiveTab] = useState<Tab>('admins');
+const PREMIUM_DURATION_OPTIONS = [
+  { label: '30 Hari', days: 30 },
+  { label: '60 Hari', days: 60 },
+  { label: '90 Hari', days: 90 },
+  { label: '360 Hari', days: 360 },
+  { label: 'Unlimited', days: 0 },
+];
+
+const ROLE_BADGE: Record<string, string> = {
+  admin: 'bg-purple-100 text-purple-800 border border-purple-300',
+  premium: 'bg-amber-100 text-amber-800 border border-amber-300',
+  user: 'bg-slate-100 text-slate-600 border border-slate-300',
+};
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: '👑 Admin',
+  premium: '⭐ Premium',
+  user: '👤 Pengguna',
+};
+
+export default function UserManagementPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, totalCount: 0, totalPages: 1 });
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<TabType>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Admin list state
-  const [adminEmails, setAdminEmails] = useState<AdminEntry[]>([]);
-  const [newAdminEmail, setNewAdminEmail] = useState('');
-  const [isLoadingAdmins, setIsLoadingAdmins] = useState(true);
+  // Edit modal state
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [editRole, setEditRole] = useState<string>('user');
+  const [editPremiumDays, setEditPremiumDays] = useState<number>(30);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Users state
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, u => setCurrentUser(u));
     return () => unsub();
   }, []);
 
-  // ── Load admin list ──────────────────────────────────────────────────────
-  async function loadAdmins() {
-    setIsLoadingAdmins(true);
-    try {
-      const res = await fetch(`/api/admin/make-admin?t=${Date.now()}`, { cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        // Convert flat email list to AdminEntry array
-        const emails: string[] = data.adminEmails || [];
-        setAdminEmails(emails.map(e => ({ email: e })));
-      }
-    } catch (err) {
-      console.error('Gagal memuat daftar admin:', err);
-    } finally {
-      setIsLoadingAdmins(false);
-    }
-  }
+  // Debounce search input (500ms)
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setCurrentPage(1);
+    }, 500);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [searchQuery]);
 
-  // ── Load users list ──────────────────────────────────────────────────────
-  async function loadUsers() {
-    setIsLoadingUsers(true);
+  const loadUsers = useCallback(async () => {
+    if (!currentUser) return;
+    setIsLoading(true);
     try {
-      const res = await fetch('/api/admin/users');
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        limit: '20',
+        tab: activeTab,
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      });
+      const res = await fetch(`/api/admin/users?${params}`, {
+        headers: { 'x-admin-uid': currentUser.uid },
+        cache: 'no-store',
+      });
       if (res.ok) {
         const data = await res.json();
         setUsers(data.users || []);
+        setPagination(data.pagination || { page: 1, limit: 20, totalCount: 0, totalPages: 1 });
       } else {
-        setUsers([]);
+        console.error('Gagal memuat daftar pengguna.');
       }
     } catch (err) {
-      console.error('Gagal memuat list subscriber:', err);
-      setUsers([]);
+      console.error('Error loading users:', err);
     } finally {
-      setIsLoadingUsers(false);
+      setIsLoading(false);
     }
-  }
+  }, [currentUser, currentPage, activeTab, debouncedSearch]);
 
   useEffect(() => {
-    loadAdmins();
-  }, []);
+    if (currentUser) loadUsers();
+  }, [loadUsers, currentUser]);
 
-  useEffect(() => {
-    if (activeTab === 'users') loadUsers();
-  }, [activeTab]);
+  const handleEditClick = (user: UserProfile) => {
+    setEditingUser(user);
+    setEditRole(user.role || 'user');
+    setEditPremiumDays(30);
+  };
 
-  // ── Tambah Admin ─────────────────────────────────────────────────────────
-  const handleAddAdmin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAdminEmail.trim()) return;
-
-    const cleanEmail = newAdminEmail.trim().toLowerCase();
-
-    if (!confirm(`⚠️ KONFIRMASI\n\nAnda akan memberikan akses ADMIN penuh kepada:\n${cleanEmail}\n\nPemilik email ini akan dapat mengakses seluruh panel admin dan mengelola semua data.\n\nLanjutkan?`)) return;
-
+  const handleSaveRole = async () => {
+    if (!editingUser || !currentUser) return;
     setIsSaving(true);
     try {
-      const res = await fetch('/api/admin/make-admin', {
+      const body: any = { uid: editingUser.uid, role: editRole };
+      if (editRole === 'premium') body.premiumDays = editPremiumDays;
+
+      const res = await fetch('/api/admin/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: cleanEmail,
-          requestorEmail: currentUser?.email || '',
-        }),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-uid': currentUser.uid,
+        },
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (res.ok) {
-        setNewAdminEmail('');
-        await loadAdmins();
         alert(`✅ ${data.message}`);
+        setEditingUser(null);
+        loadUsers();
       } else {
-        alert(`❌ Gagal: ${data.error}`);
+        alert(`❌ Gagal: ${data.error || 'Terjadi kesalahan'}`);
       }
     } catch (err) {
       console.error(err);
-      alert('Gagal menambahkan admin. Coba lagi.');
+      alert('Error menyimpan perubahan.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  // ── Hapus Admin ──────────────────────────────────────────────────────────
-  const handleRemoveAdmin = async (emailToRemove: string) => {
-    if (emailToRemove.toLowerCase() === currentUser?.email?.toLowerCase()) {
-      alert('❌ Anda tidak dapat menghapus akses admin Anda sendiri!');
-      return;
-    }
-    if (!confirm(`Hapus ${emailToRemove} dari daftar admin?`)) return;
+  const isPremiumActive = (expiry: string | null | undefined) => {
+    if (!expiry) return false;
+    return new Date(expiry) > new Date();
+  };
 
-    setIsSaving(true);
-    try {
-      const res = await fetch('/api/admin/make-admin', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: emailToRemove,
-          requestorEmail: currentUser?.email || '',
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        await loadAdmins();
-        alert(`✅ ${data.message}`);
-      } else {
-        alert(`❌ ${data.error}`);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSaving(false);
-    }
+  const formatExpiry = (expiry: string | null | undefined) => {
+    if (!expiry) return '-';
+    const d = new Date(expiry);
+    const now = new Date();
+    if (d.getFullYear() > now.getFullYear() + 50) return '∞ Unlimited';
+    if (d < now) return `⚠️ Kedaluwarsa ${d.toLocaleDateString('id-ID')}`;
+    const diffDays = Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return `${diffDays} hari lagi (${d.toLocaleDateString('id-ID')})`;
   };
 
   return (
-    <div className="space-y-6 text-left">
-      <h1 className="text-3xl font-bold text-slate-800">Manajemen Pengguna</h1>
-
-      {/* Tabs */}
-      <div className="border-b border-slate-200">
-        <nav className="flex gap-1">
-          {[
-            { key: 'admins', label: '🛡️ Administrator', desc: 'Kelola akses admin' },
-            { key: 'users', label: '👥 Pengguna', desc: 'Daftar akun pengguna' },
-          ].map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key as Tab)}
-              className={`px-5 py-3 text-sm font-bold border-b-2 transition-colors ${
-                activeTab === tab.key
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
+    <div className="space-y-6 text-left relative">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-800">Manajemen Pengguna</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Kelola role, status premium, dan hak akses pengguna terdaftar.
+          </p>
+        </div>
+        <button
+          onClick={loadUsers}
+          className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 self-start md:self-auto"
+        >
+          🔄 Refresh
+        </button>
       </div>
 
-      {/* ── TAB: ADMIN MANAGEMENT ─────────────────────────────────────────── */}
-      {activeTab === 'admins' && (
-        <div className="space-y-6">
-          {/* Warning Banner */}
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex gap-3">
-            <span className="text-2xl shrink-0">⚠️</span>
-            <div>
-              <p className="font-bold text-red-800 text-sm">Peringatan Keamanan</p>
-              <p className="text-red-700 text-xs mt-1">
-                Email yang ditambahkan di sini akan mendapatkan akses penuh ke seluruh panel admin.
-                Pastikan hanya email terpercaya yang ditambahkan. Administrator dapat mengelola artikel,
-                pengguna, donasi, dan semua pengaturan sistem.
-              </p>
-            </div>
+      {/* Stats Banner */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: 'Total Pengguna', value: pagination.totalCount, color: 'blue', icon: '👥' },
+          { label: 'Premium Aktif', value: users.filter(u => u.role === 'premium' && isPremiumActive(u.premiumExpiry)).length, color: 'amber', icon: '⭐' },
+          { label: 'Administrator', value: users.filter(u => u.role === 'admin').length, color: 'purple', icon: '👑' },
+        ].map((stat) => (
+          <div key={stat.label} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+            <div className="text-2xl font-bold text-slate-800">{stat.icon} {stat.value}</div>
+            <div className="text-xs text-slate-500 mt-1">{stat.label}</div>
           </div>
+        ))}
+      </div>
 
-          {/* Add Admin Form */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-            <h2 className="text-lg font-bold text-slate-800 mb-1">Tambah Administrator Baru</h2>
-            <p className="text-slate-500 text-xs mb-5">
-              Masukkan email Google yang akan diberikan akses admin. Email ini harus sudah terdaftar dan akan bisa login via tombol &quot;Masuk Google&quot; di website.
-            </p>
-
-            <form onSubmit={handleAddAdmin} className="flex gap-3 max-w-lg">
-              <input
-                type="email"
-                placeholder="email@gmail.com"
-                value={newAdminEmail}
-                onChange={(e) => setNewAdminEmail(e.target.value)}
-                className="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 text-slate-800 text-sm"
-                required
-              />
+      {/* Tabs + Search */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
+          {/* Tab buttons */}
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+            {(['all', 'premium', 'admin'] as TabType[]).map((tab) => (
               <button
-                type="submit"
-                disabled={isSaving}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-5 rounded-xl text-sm transition-colors shrink-0 disabled:opacity-50"
+                key={tab}
+                onClick={() => { setActiveTab(tab); setCurrentPage(1); }}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  activeTab === tab
+                    ? 'bg-white shadow text-slate-800'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
               >
-                {isSaving ? '⏳...' : '➕ Tambah Admin'}
+                {tab === 'all' ? '👥 Semua' : tab === 'premium' ? '⭐ Premium' : '👑 Admin'}
               </button>
-            </form>
+            ))}
           </div>
 
-          {/* Admin List */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-              <h2 className="text-base font-bold text-slate-800">Daftar Administrator Aktif ({adminEmails.length})</h2>
-              <button onClick={loadAdmins} className="text-xs text-blue-600 hover:underline font-semibold">
-                🔄 Refresh
-              </button>
-            </div>
-
-            {isLoadingAdmins ? (
-              <div className="py-10 text-center text-slate-400 text-sm">Memuat daftar admin...</div>
-            ) : adminEmails.length === 0 ? (
-              <div className="py-10 text-center text-slate-400 text-sm">Belum ada admin terdaftar.</div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {adminEmails.map((admin) => (
-                  <div key={admin.email} className="flex items-center justify-between p-5 hover:bg-slate-50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-red-100 rounded-full flex items-center justify-center shrink-0">
-                        <span className="text-sm">🛡️</span>
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-800 text-sm font-mono">{admin.email}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          {admin.email.toLowerCase() === currentUser?.email?.toLowerCase()
-                            ? '🟢 Akun Anda (aktif sekarang)'
-                            : 'Administrator'}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleRemoveAdmin(admin.email)}
-                      disabled={isSaving || admin.email.toLowerCase() === currentUser?.email?.toLowerCase()}
-                      className="text-xs text-red-500 hover:text-red-700 font-bold border border-red-200 hover:border-red-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                      Hapus Akses
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Info cara menjadi admin */}
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
-            <h3 className="font-bold text-blue-800 text-sm mb-2">ℹ️ Cara Menjadi Admin</h3>
-            <ol className="text-blue-700 text-xs space-y-1 list-decimal list-inside">
-              <li>Admin menambahkan email Anda di halaman ini</li>
-              <li>Anda pergi ke website dan klik <strong>&quot;Masuk Google&quot;</strong></li>
-              <li>Login dengan akun Google yang emailnya sudah ditambahkan</li>
-              <li>Setelah login berhasil, link <strong>&quot;Dashboard&quot;</strong> akan muncul di header</li>
-              <li>Akses <code className="bg-blue-100 px-1 rounded">/admin/dashboard</code> — Anda sudah bisa masuk!</li>
-            </ol>
+          {/* Search with debounce */}
+          <div className="relative w-full md:w-72">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+            <input
+              type="text"
+              placeholder="Cari nama atau email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:border-blue-400 transition-colors"
+            />
           </div>
         </div>
-      )}
 
-      {/* ── TAB: USERS ────────────────────────────────────────────────────── */}
-      {activeTab === 'users' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-              <h2 className="text-base font-bold text-slate-800">Daftar Email Langganan ({users.length})</h2>
-              <button onClick={loadUsers} className="text-xs text-blue-600 hover:underline font-semibold">
-                🔄 Refresh
-              </button>
-            </div>
-
-            {isLoadingUsers ? (
-              <div className="py-10 text-center text-slate-400 text-sm">Memuat daftar pelanggan...</div>
-            ) : users.length === 0 ? (
-              <div className="py-10 text-center text-slate-400 text-sm">Belum ada email langganan terdaftar.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase">
-                      <th className="p-4">Email</th>
-                      <th className="p-4">Tanggal Langganan</th>
-                      <th className="p-4">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-sm">
-                    {users.map((sub: any) => (
-                      <tr key={sub.id} className="hover:bg-slate-50">
-                        <td className="p-4 font-semibold text-slate-800 font-mono">{sub.email}</td>
-                        <td className="p-4 text-slate-500">
-                          {sub.subscribedAt ? new Date(sub.subscribedAt).toLocaleString('id-ID', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          }) : '-'}
-                        </td>
-                        <td className="p-4">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                            sub.active !== false 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-slate-100 text-slate-600'
-                          }`}>
-                            {sub.active !== false ? '🟢 Aktif' : '⚪ Tidak Aktif'}
+        {/* Table */}
+        {isLoading ? (
+          <div className="py-16 text-center text-slate-400 text-sm">
+            <div className="text-3xl mb-3 animate-pulse">⏳</div>
+            Memuat daftar pengguna...
+          </div>
+        ) : users.length === 0 ? (
+          <div className="py-16 text-center text-slate-400 text-sm">
+            <div className="text-3xl mb-3">👤</div>
+            {searchQuery ? `Tidak ada pengguna yang cocok dengan pencarian "${searchQuery}"` : 'Belum ada pengguna terdaftar.'}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50 border-b border-slate-100">
+                <tr>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Pengguna</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Role</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Masa Premium</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Login Terakhir</th>
+                  <th className="px-5 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {users.map((user) => {
+                  const active = isPremiumActive(user.premiumExpiry);
+                  return (
+                    <tr key={user.uid} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full overflow-hidden border border-slate-200 bg-slate-100 flex-shrink-0">
+                            {user.photoURL ? (
+                              <img src={user.photoURL} alt={user.displayName} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-base">👤</div>
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-slate-800 leading-snug">{user.displayName || '(Tanpa Nama)'}</div>
+                            <div className="text-xs text-slate-400 leading-snug">{user.email}</div>
+                            <div className="text-[10px] text-slate-300 font-mono leading-snug">{user.uid.slice(0, 16)}...</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold ${ROLE_BADGE[user.role] || ROLE_BADGE.user}`}>
+                          {ROLE_LABEL[user.role] || user.role}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        {user.role === 'premium' || user.premiumExpiry ? (
+                          <span className={`text-xs font-semibold ${active ? 'text-green-700' : 'text-red-500'}`}>
+                            {formatExpiry(user.premiumExpiry)}
                           </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        ) : (
+                          <span className="text-xs text-slate-300">-</span>
+                        )}
+                        {user.premiumGrantedByDonation && (
+                          <div className="text-[10px] text-amber-500 mt-0.5">
+                            💰 Via Donasi Rp {user.premiumGrantedByDonation.toLocaleString('id-ID')}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 text-xs text-slate-500">
+                        {user.lastLogin
+                          ? new Date(user.lastLogin).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                          : '-'}
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        <button
+                          onClick={() => handleEditClick(user)}
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
+                        >
+                          ✏️ Edit Role
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100 bg-slate-50">
+                <span className="text-xs text-slate-500">
+                  {pagination.totalCount} pengguna — Halaman {pagination.page}/{pagination.totalPages}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(p => p - 1)}
+                    className="px-3 py-1.5 rounded-lg border text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                  >
+                    ← Sebelumnya
+                  </button>
+                  <button
+                    disabled={currentPage === pagination.totalPages}
+                    onClick={() => setCurrentPage(p => p + 1)}
+                    className="px-3 py-1.5 rounded-lg border text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                  >
+                    Selanjutnya →
+                  </button>
+                </div>
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Edit Role Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-slate-100">
+              <h2 className="text-lg font-bold text-slate-800">Edit Role Pengguna</h2>
+              <p className="text-sm text-slate-500 mt-1">Ubah peran dan masa aktif premium untuk pengguna ini.</p>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* User Info */}
+              <div className="flex items-center gap-3 bg-slate-50 rounded-xl p-3">
+                <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200 bg-slate-200 flex-shrink-0">
+                  {editingUser.photoURL ? (
+                    <img src={editingUser.photoURL} alt={editingUser.displayName} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-lg">👤</div>
+                  )}
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-slate-800">{editingUser.displayName || '(Tanpa Nama)'}</div>
+                  <div className="text-xs text-slate-500">{editingUser.email}</div>
+                </div>
+              </div>
+
+              {/* Role selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">Role</label>
+                <select
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition-colors"
+                >
+                  <option value="user">👤 Pengguna Biasa</option>
+                  <option value="premium">⭐ Premium</option>
+                  <option value="admin">👑 Administrator</option>
+                </select>
+              </div>
+
+              {/* Premium duration (only show when premium selected) */}
+              {editRole === 'premium' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">Durasi Premium</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {PREMIUM_DURATION_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.days}
+                        type="button"
+                        onClick={() => setEditPremiumDays(opt.days)}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
+                          editPremiumDays === opt.days
+                            ? 'border-amber-400 bg-amber-50 text-amber-800'
+                            : 'border-slate-300 bg-white text-slate-600 hover:border-amber-300'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-2">
+                    {editPremiumDays === 0
+                      ? 'Premium tanpa batas waktu.'
+                      : `Premium aktif selama ${editPremiumDays} hari dari sekarang.`}
+                  </p>
+                </div>
+              )}
+
+              {editRole === 'user' && editingUser.role !== 'user' && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">
+                  ⚠️ Mendowngrade ke Pengguna Biasa akan menghapus status premium yang aktif.
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 pt-0 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setEditingUser(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-all"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveRole}
+                disabled={isSaving}
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-sm font-bold text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isSaving ? '⏳ Menyimpan...' : '✅ Simpan Perubahan'}
+              </button>
+            </div>
           </div>
         </div>
       )}

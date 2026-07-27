@@ -1,30 +1,35 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import NeoTracker from '@/components/monitoring/NeoTracker';
 import FireballFeed from '@/components/monitoring/FireballFeed';
 import SpaceWeather from '@/components/monitoring/SpaceWeather';
 import MarsGallery from '@/components/monitoring/MarsGallery';
 import EpicEarth from '@/components/monitoring/EpicEarth';
+import { useSiteLanguage } from '@/lib/useSiteLanguage';
+import { monitoringDict } from '@/lib/monitoringTranslations';
 
 type TabId = 'neo' | 'fireball' | 'weather' | 'mars' | 'epic';
 
-const tabs: { id: TabId; label: string; icon: string; color: string }[] = [
-  { id: 'neo', label: 'Asteroid Tracker', icon: '🛸', color: 'cyan' },
-  { id: 'fireball', label: 'Laporan Bola Api', icon: '🔥', color: 'orange' },
-  { id: 'weather', label: 'Cuaca Antariksa', icon: '☀️', color: 'amber' },
-  { id: 'mars', label: 'Galeri Mars', icon: '🪐', color: 'rose' },
-  { id: 'epic', label: 'EPIC Bumi', icon: '🌎', color: 'emerald' },
-];
-
 export default function MonitoringClient() {
+  const language = useSiteLanguage();
+  const dict = useMemo(() => monitoringDict[language] || monitoringDict.id, [language]);
+
+  const tabs: { id: TabId; label: string; icon: string; color: string }[] = useMemo(() => [
+    { id: 'neo', label: dict.tabNeo, icon: '🛸', color: 'cyan' },
+    { id: 'fireball', label: dict.tabFireball, icon: '🔥', color: 'orange' },
+    { id: 'weather', label: dict.tabWeather, icon: '☀️', color: 'amber' },
+    { id: 'mars', label: dict.tabMars, icon: '🪐', color: 'rose' },
+    { id: 'epic', label: dict.tabEpic, icon: '🌎', color: 'emerald' },
+  ], [dict]);
+
   const [activeTab, setActiveTab] = useState<TabId>('neo');
   const [currentTime, setCurrentTime] = useState('');
 
   useEffect(() => {
     const update = () => {
       setCurrentTime(
-        new Date().toLocaleString('id-ID', {
+        new Date().toLocaleString(dict.weekdayLocale || 'id-ID', {
           weekday: 'long',
           year: 'numeric',
           month: 'long',
@@ -40,7 +45,7 @@ export default function MonitoringClient() {
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [dict.weekdayLocale]);
 
   const tabColorMap: Record<string, string> = {
     cyan: 'border-cyan-400 text-cyan-400 bg-cyan-400/10',
@@ -54,109 +59,6 @@ export default function MonitoringClient() {
 
   return (
     <div className="min-h-screen bg-slate-950">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap');
-
-        .monitoring-font { font-family: 'Outfit', sans-serif; }
-        .mono-font { font-family: 'JetBrains Mono', monospace; }
-
-        .dashboard-card {
-          background: rgba(15, 23, 42, 0.6);
-          backdrop-filter: blur(16px);
-          border: 1px solid rgba(34, 211, 238, 0.12);
-          border-radius: 20px;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .dashboard-card:hover {
-          border-color: rgba(34, 211, 238, 0.28);
-          box-shadow: 0 8px 32px -8px rgba(34, 211, 238, 0.12);
-          transform: translateY(-2px);
-        }
-        .hazard-card {
-          background: rgba(30, 10, 10, 0.6);
-          border-color: rgba(239, 68, 68, 0.25) !important;
-        }
-        .hazard-card:hover {
-          border-color: rgba(239, 68, 68, 0.5) !important;
-          box-shadow: 0 8px 32px -8px rgba(239, 68, 68, 0.2) !important;
-        }
-        .safe-card {
-          border-color: rgba(34, 211, 238, 0.15) !important;
-        }
-
-        @keyframes orbit {
-          from { transform: rotate(0deg) translateX(38px) rotate(0deg); }
-          to { transform: rotate(360deg) translateX(38px) rotate(-360deg); }
-        }
-        @keyframes orbitSlow {
-          from { transform: rotate(0deg) translateX(55px) rotate(0deg); }
-          to { transform: rotate(360deg) translateX(55px) rotate(-360deg); }
-        }
-        @keyframes scanline {
-          0% { transform: translateY(-100%); }
-          100% { transform: translateY(100vh); }
-        }
-        @keyframes pulse-red {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
-          50% { box-shadow: 0 0 0 12px rgba(239,68,68,0); }
-        }
-        @keyframes pulse-cyan {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(34,211,238,0.4); }
-          50% { box-shadow: 0 0 0 12px rgba(34,211,238,0); }
-        }
-        @keyframes shimmer {
-          0% { background-position: -200% center; }
-          100% { background-position: 200% center; }
-        }
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-6px); }
-        }
-
-        .orbit-dot {
-          position: absolute;
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          top: 50%;
-          left: 50%;
-          margin: -4px 0 0 -4px;
-        }
-        .orbit-dot-1 { animation: orbit 4s linear infinite; background: #ef4444; }
-        .orbit-dot-2 { animation: orbitSlow 7s linear infinite; background: #22d3ee; }
-        .orbit-dot-2-safe { animation: orbitSlow 7s linear infinite; background: #22d3ee; }
-
-        .beacon-red {
-          animation: pulse-red 1.5s ease-in-out infinite;
-        }
-        .beacon-cyan {
-          animation: pulse-cyan 2s ease-in-out infinite;
-        }
-        .float-anim {
-          animation: float 3s ease-in-out infinite;
-        }
-        
-        .tab-active-cyan { border-color: #22d3ee; color: #22d3ee; background: rgba(34,211,238,0.08); }
-        .tab-active-orange { border-color: #fb923c; color: #fb923c; background: rgba(251,146,60,0.08); }
-        .tab-active-amber { border-color: #f59e0b; color: #f59e0b; background: rgba(245,158,11,0.08); }
-        .tab-active-rose { border-color: #fb7185; color: #fb7185; background: rgba(251,113,133,0.08); }
-        .tab-active-emerald { border-color: #34d399; color: #34d399; background: rgba(52,211,153,0.08); }
-        
-        .scanline-overlay {
-          pointer-events: none;
-          position: fixed;
-          inset: 0;
-          background: repeating-linear-gradient(
-            0deg,
-            transparent,
-            transparent 2px,
-            rgba(0,0,0,0.03) 2px,
-            rgba(0,0,0,0.03) 4px
-          );
-          z-index: 0;
-        }
-      `}</style>
-
       {/* Scanline overlay for sci-fi effect */}
       <div className="scanline-overlay" aria-hidden="true" />
 
@@ -171,19 +73,19 @@ export default function MonitoringClient() {
         {/* Header */}
         <div className="border-b border-cyan-900/30 bg-slate-950/80 backdrop-blur-xl sticky top-16 z-40">
           <div className="container mx-auto px-4 py-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 text-left">
               <div>
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full bg-cyan-400 beacon-cyan" />
                   <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">
-                    Pusat Pemantauan Benda Langit
+                    {dict.title}
                   </h1>
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5 mono-font">
-                  Data real-time dari NASA API & JPL • Terupdate setiap jam
+                  {dict.subtitle}
                 </p>
               </div>
-              <div className="mono-font text-xs text-cyan-400/80 bg-cyan-950/30 border border-cyan-900/40 px-3 py-1.5 rounded-lg">
+              <div className="mono-font text-xs text-cyan-400/80 bg-cyan-950/30 border border-cyan-900/40 px-3 py-1.5 rounded-lg w-fit">
                 🕐 {currentTime || '—'}
               </div>
             </div>
@@ -192,7 +94,7 @@ export default function MonitoringClient() {
 
         {/* Tab Navigation */}
         <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-wrap gap-2 mb-8">
+          <div className="flex flex-wrap gap-2 mb-8 justify-start">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -214,18 +116,18 @@ export default function MonitoringClient() {
 
           {/* Tab Content */}
           <div key={activeTab} className="animate-in fade-in duration-300">
-            {activeTab === 'neo' && <NeoTracker />}
-            {activeTab === 'fireball' && <FireballFeed />}
-            {activeTab === 'weather' && <SpaceWeather />}
-            {activeTab === 'mars' && <MarsGallery />}
-            {activeTab === 'epic' && <EpicEarth />}
+            {activeTab === 'neo' && <NeoTracker language={language} />}
+            {activeTab === 'fireball' && <FireballFeed language={language} />}
+            {activeTab === 'weather' && <SpaceWeather language={language} />}
+            {activeTab === 'mars' && <MarsGallery language={language} />}
+            {activeTab === 'epic' && <EpicEarth language={language} />}
           </div>
         </div>
 
         {/* Footer note */}
         <div className="container mx-auto px-4 pb-8 text-center">
           <p className="text-xs text-slate-600 mono-font">
-            Data bersumber dari{' '}
+            {dict.datasource}{' '}
             <a href="https://api.nasa.gov" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-cyan-400 transition-colors">
               NASA Open APIs
             </a>{' '}

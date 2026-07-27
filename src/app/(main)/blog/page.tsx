@@ -18,6 +18,7 @@ interface BlogPost {
   date: string;
   excerpt: string;
   image: string;
+  translations?: any;
 }
 
 export default async function BlogPage() {
@@ -49,6 +50,7 @@ export default async function BlogPage() {
             date: data.date || new Date(data.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
             excerpt: data.excerpt || data.content?.substring(0, 150) + '...',
             image: data.image || data.imageUrl || '',
+            translations: data.translations || {},
           });
         }
       });

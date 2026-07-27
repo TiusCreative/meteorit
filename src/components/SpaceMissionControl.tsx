@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { landingText } from '@/lib/landingText';
+import { useSiteLanguage } from '@/lib/useSiteLanguage';
 
 // Dynamically import map to prevent SSR issues
 const ISSMap = dynamic(() => import('./ISSMap'), { ssr: false, loading: () => (
@@ -101,6 +103,8 @@ function useCountdown(targetDate: string | null) {
 }
 
 export default function SpaceMissionControl() {
+  const language = useSiteLanguage();
+  const t = landingText[language];
   const [astronauts, setAstronauts] = useState<Astronaut[]>([]);
   const [issPos, setIssPos] = useState<ISSPosition | null>(null);
   const [issPosHistory, setIssPosHistory] = useState<[number, number][]>([]);
@@ -156,7 +160,7 @@ export default function SpaceMissionControl() {
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 5000);
         const res = await fetch(
-          'https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=1&format=json&status=1,2,3',
+          'https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=1&format=json',
           { signal: ctrl.signal }
         );
         clearTimeout(timer);
@@ -222,26 +226,26 @@ export default function SpaceMissionControl() {
   }, {} as Record<string, Astronaut[]>);
 
   return (
-    <section className="py-16 bg-slate-950 border-t border-cyan-900/10">
+    <section className="py-16 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-cyan-900/10 transition-colors duration-300">
       <div className="container mx-auto px-4 max-w-6xl">
         <div className="text-center mb-12">
-          <span className="inline-flex items-center gap-2 text-xs font-bold text-green-400 uppercase tracking-widest mb-3 bg-green-500/10 px-4 py-1.5 rounded-full border border-green-500/20">
-            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block"></span>
-            Live Data Antariksa
+          <span className="inline-flex items-center gap-2 text-xs font-bold text-green-700 dark:text-green-400 uppercase tracking-widest mb-3 bg-green-500/10 px-4 py-1.5 rounded-full border border-green-500/20">
+            <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 animate-pulse inline-block"></span>
+            {t.liveSpaceData}
           </span>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-white">
-            🚀 Space Mission Control
+          <h2 className="text-3xl md:text-4xl font-extrabold text-slate-800 dark:text-white">
+            🚀 {t.missionControlTitle}
           </h2>
-          <p className="text-gray-400 mt-2 text-sm">Data real-time misi orbit Bumi dan stasiun ruang angkasa</p>
+          <p className="text-slate-650 dark:text-gray-400 mt-2 text-sm">{t.missionControlDesc}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
           {/* KOLOM 1: JADWAL ROKET */}
-          <div className="bg-slate-900/70 backdrop-blur border border-slate-700/50 rounded-2xl p-6 flex flex-col gap-4 hover:border-amber-500/30 transition-all duration-300 text-left">
+          <div className="bg-white dark:bg-slate-900/70 backdrop-blur border border-slate-200 dark:border-slate-700/50 rounded-2xl p-6 flex flex-col gap-4 shadow-sm hover:shadow-md hover:border-amber-500/30 transition-all duration-300 text-left">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-2xl">🚀</span>
-              <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider">Peluncuran Terdekat</h3>
+              <h3 className="text-sm font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">{t.upcomingLaunch}</h3>
             </div>
 
             {loading.launch ? (
@@ -253,71 +257,82 @@ export default function SpaceMissionControl() {
                 {/* Agency Badge */}
                 <div>
                   <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${agencyBadgeClass}`}>
-                    {launch.launch_service_provider?.name || 'Misi Sains'}
+                    {launch.launch_service_provider?.name || t.scientificMission}
                   </span>
                 </div>
 
                 {/* Mission Name */}
                 <div>
-                  <p className="text-white font-bold text-base leading-snug">{launch.name}</p>
-                  <p className="text-xs text-gray-500 mt-1">{launch.rocket?.configuration?.name}</p>
+                  <p className="text-slate-800 dark:text-white font-bold text-base leading-snug">{launch.name}</p>
+                  <p className="text-xs text-slate-500 dark:text-gray-500 mt-1">{launch.rocket?.configuration?.name}</p>
                 </div>
 
                 {/* Status */}
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
-                  <span className="text-xs text-green-400 font-semibold">{launch.status?.name || 'Terjadwal'}</span>
+                  <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 animate-pulse"></span>
+                  <span className="text-xs text-green-600 dark:text-green-400 font-semibold">
+                    {launch.status?.name === 'Go for Launch' || launch.status?.name === 'Go' ? t.goForLaunch : (launch.status?.name || t.loading)}
+                  </span>
                 </div>
 
                 {/* Countdown Timer */}
                 {countdown ? (
                   <div className="grid grid-cols-4 gap-2 mt-2">
                     {[
-                      { label: 'Hari', val: countdown.days },
-                      { label: 'Jam', val: countdown.hours },
-                      { label: 'Mnt', val: countdown.minutes },
-                      { label: 'Det', val: countdown.seconds },
+                      { label: t.countdownDays, val: countdown.days },
+                      { label: t.countdownHours, val: countdown.hours },
+                      { label: t.countdownMinutes, val: countdown.minutes },
+                      { label: t.countdownSeconds, val: countdown.seconds },
                     ].map(({ label, val }) => (
-                      <div key={label} className="bg-slate-800/80 rounded-xl p-2 text-center border border-slate-700/50">
-                        <p className="text-lg font-black text-amber-400 font-mono tabular-nums">
+                      <div key={label} className="bg-slate-50 dark:bg-slate-800/80 rounded-xl p-2 text-center border border-slate-200 dark:border-slate-700/50 shadow-sm">
+                        <p className="text-lg font-black text-amber-600 dark:text-amber-400 font-mono tabular-nums">
                           {String(val).padStart(2, '0')}
                         </p>
-                        <p className="text-[10px] text-gray-500 mt-0.5">{label}</p>
+                        <p className="text-[10px] text-slate-500 dark:text-gray-500 mt-0.5">{label}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="py-2 text-slate-500 text-xs italic">Menghitung mundur peluncuran...</div>
+                  <div className="py-2 text-slate-450 dark:text-slate-500 text-xs italic">{t.countingDown}</div>
                 )}
 
-                <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
-                  {launch.net ? new Date(launch.net).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB' : ''}
+                <p className="text-[11px] text-slate-500 dark:text-gray-500 mt-1 leading-relaxed">
+                  {launch.net ? new Date(launch.net).toLocaleDateString(
+                    language === 'en' ? 'en-US' :
+                    language === 'ja' ? 'ja-JP' :
+                    language === 'zh' ? 'zh-CN' :
+                    language === 'ms' ? 'ms-MY' :
+                    language === 'ru' ? 'ru-RU' :
+                    language === 'fr' ? 'fr-FR' :
+                    'id-ID',
+                    { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }
+                  ) + ' ' + (language === 'id' ? 'WIB' : 'local') : ''}
                 </p>
               </>
             ) : (
-              <p className="text-gray-500 text-sm flex-1 flex items-center">Data peluncuran tidak tersedia saat ini.</p>
+              <p className="text-slate-500 dark:text-gray-500 text-sm flex-1 flex items-center">{t.loading}</p>
             )}
 
             <a
               href="https://thespacedevs.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-auto text-[10px] text-gray-600 hover:text-gray-400 transition-colors"
+              className="mt-auto text-[10px] text-slate-400 hover:text-slate-650 dark:text-gray-600 dark:hover:text-gray-400 transition-colors"
             >
-              Sumber data: Launch Library API →
+              {t.launchDataSource}
             </a>
           </div>
 
           {/* KOLOM 2: LIVE ISS TRACKER */}
-          <div className="bg-slate-900/70 backdrop-blur border border-slate-700/50 rounded-2xl p-6 flex flex-col gap-4 hover:border-cyan-500/30 transition-all duration-300 text-left">
+          <div className="bg-white dark:bg-slate-900/70 backdrop-blur border border-slate-200 dark:border-slate-700/50 rounded-2xl p-6 flex flex-col gap-4 shadow-sm hover:shadow-md hover:border-cyan-500/30 transition-all duration-300 text-left">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-2xl">🛰️</span>
-              <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wider">Live ISS Tracker</h3>
-              {!loading.iss && <span className="ml-auto flex items-center gap-1 text-[10px] text-green-400"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block"></span>Live</span>}
+              <h3 className="text-sm font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider">{t.issTrackerTitle}</h3>
+              {!loading.iss && <span className="ml-auto flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400"><span className="w-1.5 h-1.5 rounded-full bg-green-500 dark:bg-green-400 animate-pulse inline-block"></span>{t.issActive}</span>}
             </div>
 
             {/* Map */}
-            <div className="rounded-xl overflow-hidden border border-slate-700/50 h-48 bg-slate-950 relative">
+            <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700/50 h-48 bg-gray-50 dark:bg-slate-950 relative">
               {loading.iss ? (
                 <div className="w-full h-full flex items-center justify-center">
                   <div className="w-8 h-8 border-4 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin"></div>
@@ -325,8 +340,8 @@ export default function SpaceMissionControl() {
               ) : issPos ? (
                 <ISSMap position={issPos} history={issPosHistory} />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm">
-                  Peta tidak tersedia
+                <div className="w-full h-full flex items-center justify-center text-slate-500 dark:text-gray-500 text-sm">
+                  {t.issMapUnavailable}
                 </div>
               )}
             </div>
@@ -334,25 +349,25 @@ export default function SpaceMissionControl() {
             {/* Koordinat */}
             {issPos && (
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-800/60 rounded-xl p-2.5 text-center border border-slate-700/40">
-                  <p className="text-[10px] text-gray-500 mb-0.5">Lintang</p>
-                  <p className="text-sm font-black text-cyan-300 font-mono">{issPos.latitude.toFixed(4)}°</p>
+                <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-2.5 text-center border border-slate-200 dark:border-slate-700/40">
+                  <p className="text-[10px] text-slate-500 dark:text-gray-550 mb-0.5">{t.latitude}</p>
+                  <p className="text-sm font-black text-cyan-600 dark:text-cyan-300 font-mono">{issPos.latitude.toFixed(4)}°</p>
                 </div>
-                <div className="bg-slate-800/60 rounded-xl p-2.5 text-center border border-slate-700/40">
-                  <p className="text-[10px] text-gray-500 mb-0.5">Bujur</p>
-                  <p className="text-sm font-black text-cyan-300 font-mono">{issPos.longitude.toFixed(4)}°</p>
+                <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-2.5 text-center border border-slate-200 dark:border-slate-700/40">
+                  <p className="text-[10px] text-slate-500 dark:text-gray-550 mb-0.5">{t.longitude}</p>
+                  <p className="text-sm font-black text-cyan-600 dark:text-cyan-300 font-mono">{issPos.longitude.toFixed(4)}°</p>
                 </div>
               </div>
             )}
 
-            <p className="text-[10px] text-gray-500 text-center">Diperbarui otomatis setiap 5 detik</p>
+            <p className="text-[10px] text-slate-500 dark:text-gray-500 text-center">{t.issUpdateInterval}</p>
           </div>
 
           {/* KOLOM 3: DATA ASTRONOT */}
-          <div className="bg-slate-900/70 backdrop-blur border border-slate-700/50 rounded-2xl p-6 flex flex-col gap-4 hover:border-purple-500/30 transition-all duration-300 text-left">
+          <div className="bg-white dark:bg-slate-900/70 backdrop-blur border border-slate-200 dark:border-slate-700/50 rounded-2xl p-6 flex flex-col gap-4 shadow-sm hover:shadow-md hover:border-purple-500/30 transition-all duration-300 text-left">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-2xl">👨‍🚀</span>
-              <h3 className="text-sm font-bold text-purple-400 uppercase tracking-wider">Kru di Orbit Saat Ini</h3>
+              <h3 className="text-sm font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">{t.activeAstronauts}</h3>
             </div>
 
             {loading.astro ? (
@@ -363,36 +378,36 @@ export default function SpaceMissionControl() {
               <>
                 {/* Angka Besar */}
                 <div className="text-center py-1">
-                  <p className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-purple-300 to-purple-600">
+                  <p className="text-6xl font-black bg-gradient-to-b from-purple-500 to-purple-800 dark:from-purple-300 dark:to-purple-600 bg-clip-text text-transparent">
                     {astronauts.length}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">astronot, kosmonot, dan taikonaut aktif</p>
+                  <p className="text-xs text-slate-500 dark:text-gray-400 mt-1">{t.astronautSub}</p>
                 </div>
 
                 {/* List per wahana */}
                 <div className="flex-grow overflow-y-auto space-y-2 max-h-36 pr-1 custom-scrollbar text-xs">
                   {Object.entries(byCraft).map(([craft, astros]) => (
-                    <div key={craft} className="bg-slate-800/60 rounded-xl p-2.5 border border-slate-700/40">
-                      <div className="flex items-center gap-1.5 mb-1.5 border-b border-slate-700/30 pb-1">
+                    <div key={craft} className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-2.5 border border-slate-200 dark:border-slate-700/40">
+                      <div className="flex items-center gap-1.5 mb-1.5 border-b border-slate-200 dark:border-slate-700/30 pb-1">
                         <span className="text-xs">{craft.toLowerCase().includes('tiangong') ? '🇨🇳' : '🛰️'}</span>
-                        <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">{craft}</p>
-                        <span className="ml-auto text-[10px] text-slate-500 font-bold">{astros.length} astronot</span>
+                        <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">{craft}</p>
+                        <span className="ml-auto text-[10px] text-slate-500 dark:text-slate-500 font-bold">{astros.length} {t.crewUnit}</span>
                       </div>
                       <div className="space-y-1">
                         {astros.map((astro) => {
                           const slug = astro.id || astro.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
                           return (
-                            <div key={astro.name} className="flex items-center justify-between gap-1 py-0.5 border-b border-slate-800/10 last:border-0">
+                            <div key={astro.name} className="flex items-center justify-between gap-1 py-0.5 border-b border-slate-100 dark:border-slate-800/10 last:border-0">
                               <div className="flex items-center gap-1">
-                                <span className="w-1 h-1 rounded-full bg-purple-400 flex-shrink-0"></span>
+                                <span className="w-1.5 h-1.5 rounded-full bg-purple-500 dark:bg-purple-400 flex-shrink-0"></span>
                                 <Link 
                                   href={`/astronot/${slug}`}
-                                  className="text-xs text-gray-300 hover:text-purple-400 hover:underline transition-colors leading-tight font-medium"
+                                  className="text-xs text-slate-700 dark:text-gray-300 hover:text-purple-650 dark:hover:text-purple-400 hover:underline transition-colors leading-tight font-medium"
                                 >
                                   {astro.name}
                                 </Link>
                               </div>
-                              <span className="text-[9px] text-slate-400 font-semibold flex-shrink-0">
+                              <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold flex-shrink-0">
                                 {astro.country ? `${astro.country}` : ''}
                               </span>
                             </div>
@@ -406,9 +421,9 @@ export default function SpaceMissionControl() {
                 <div className="mt-3">
                   <Link
                     href="/astronot"
-                    className="w-full text-center block bg-purple-950/60 hover:bg-purple-900 text-purple-300 border border-purple-800/30 hover:border-purple-600/50 py-2 rounded-xl text-xs font-bold transition-all duration-300"
+                    className="w-full text-center block bg-purple-100 dark:bg-purple-950/60 hover:bg-purple-200 dark:hover:bg-purple-900 text-purple-750 dark:text-purple-300 border border-purple-200 dark:border-purple-800/30 hover:border-purple-400/50 py-2 rounded-xl text-xs font-bold transition-all duration-300 shadow-sm"
                   >
-                    👨‍🚀 Lihat Semua Profil Astronot &rarr;
+                    {t.viewAllAstronauts}
                   </Link>
                 </div>
 
@@ -416,9 +431,9 @@ export default function SpaceMissionControl() {
                   href="https://api.open-notify.org/astros.json"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors mt-auto"
+                  className="text-[10px] text-slate-400 hover:text-slate-650 dark:text-gray-600 dark:hover:text-gray-400 transition-colors mt-auto"
                 >
-                  Sumber data: Dataset internal & Open Notify →
+                  {t.astronautDataSource}
                 </a>
               </>
             )}

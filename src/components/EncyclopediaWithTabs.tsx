@@ -16,6 +16,7 @@ interface Meteorite {
   description: string;
   translated_description: string;
   image_url: string;
+  translations?: Record<string, any>;
 }
 
 interface EncyclopediaWithTabsProps {

@@ -1,0 +1,7 @@
+# wrangler.toml
+name = "meteorit-indonesia"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "meteorit-db"
+database_id = "c0ad9039-d1e4-4c01-856d-5d5971514255"

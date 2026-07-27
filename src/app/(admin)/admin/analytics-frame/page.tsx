@@ -10,6 +10,9 @@ interface GoogleAnalyticsStats {
   pageViews30d: number;
 }
 
+const LOOKER_STUDIO_EMBED_URL = 'https://datastudio.google.com/embed/reporting/e0cea7f8-3de0-4652-b7dd-8d5f9c5110ef/page/SGS2F';
+const GA4_PROPERTY_ID = '543353784';
+
 export default function AnalyticsFramePage() {
   const [stats, setStats] = useState<GoogleAnalyticsStats | null>(null);
   const [message, setMessage] = useState('Memuat Google Analytics...');
@@ -35,45 +38,75 @@ export default function AnalyticsFramePage() {
     return () => clearInterval(interval);
   }, []);
 
-  if (!stats) {
-    return (
-      <main className="min-h-screen bg-slate-950 p-6 text-slate-100">
-        <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-5">
-          <p className="text-sm font-black text-amber-100">Google Analytics belum tampil</p>
-          <p className="mt-2 text-xs leading-relaxed text-amber-50/80">{message}</p>
-        </div>
-      </main>
-    );
-  }
-
   const cards = [
-    { label: 'Aktif Sekarang', value: stats.activeNow },
-    { label: 'Pengunjung 30 Hari', value: stats.activeUsers30d },
-    { label: 'Pengunjung Baru', value: stats.newUsers30d },
-    { label: 'Sesi 30 Hari', value: stats.sessions30d },
-    { label: 'Page View 30 Hari', value: stats.pageViews30d },
+    { label: 'Aktif Sekarang', value: stats?.activeNow ?? 0 },
+    { label: 'Pengunjung 30 Hari', value: stats?.activeUsers30d ?? 0 },
+    { label: 'Pengunjung Baru', value: stats?.newUsers30d ?? 0 },
+    { label: 'Sesi 30 Hari', value: stats?.sessions30d ?? 0 },
+    { label: 'Page View 30 Hari', value: stats?.pageViews30d ?? 0 },
   ];
 
   return (
-    <main className="min-h-screen bg-slate-950 p-6 text-slate-100">
-      <div className="mb-5 flex items-center justify-between gap-3">
+    <main className="min-h-screen space-y-6 text-slate-900">
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-widest text-cyan-300">Google Analytics</p>
-          <h1 className="text-xl font-black text-white">Pantauan Pengunjung</h1>
+          <p className="text-xs font-black uppercase tracking-widest text-cyan-600">Looker Studio / Google Analytics</p>
+          <h1 className="mt-1 text-2xl font-black text-slate-900">Pantauan Pengunjung</h1>
+          <p className="mt-1 text-xs text-slate-500">GA4 Property ID: {GA4_PROPERTY_ID}</p>
         </div>
-        <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-[11px] font-bold text-emerald-200">
-          Auto refresh 60 detik
+        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700">
+          GA4 auto refresh 60 detik
         </span>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {cards.map((card) => (
-          <div key={card.label} className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{card.label}</p>
-            <p className="mt-2 text-3xl font-black text-cyan-100">{card.value.toLocaleString('id-ID')}</p>
+          <div key={card.label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{card.label}</p>
+            <p className="mt-2 text-3xl font-black text-cyan-700">{card.value.toLocaleString('id-ID')}</p>
           </div>
         ))}
       </div>
+
+      {!stats && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <p className="text-sm font-black text-amber-900">Ringkasan GA4 internal belum tampil</p>
+          <p className="mt-2 text-xs leading-relaxed text-amber-800">{message}</p>
+          <p className="mt-2 text-xs leading-relaxed text-amber-800">
+            Iframe Looker Studio tetap tersedia di bawah. Untuk angka GA4 internal, pastikan service account Google diberi akses ke property {GA4_PROPERTY_ID}.
+          </p>
+        </div>
+      )}
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-lg font-black text-slate-900">Dashboard Looker Studio</h2>
+            <p className="text-xs text-slate-500">Embed laporan publik dari Google Looker Studio.</p>
+          </div>
+          <a
+            href={LOOKER_STUDIO_EMBED_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-bold text-blue-600 hover:text-blue-800"
+          >
+            Buka laporan di tab baru
+          </a>
+        </div>
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+          <iframe
+            title="Looker Studio Meteorit Indonesia"
+            width="600"
+            height="450"
+            src={LOOKER_STUDIO_EMBED_URL}
+            frameBorder="0"
+            style={{ border: 0 }}
+            allowFullScreen
+            sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+            className="h-[70vh] min-h-[450px] w-full"
+          />
+        </div>
+      </section>
     </main>
   );
 }

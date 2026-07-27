@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { getAbsoluteUrl } from "@/lib/siteUrl";
+import { grantPremiumByDonation } from "@/lib/premiumUtils";
 
 // Lazily initialize Midtrans to avoid build-time errors if env vars are missing
 function getSnapClient() {
@@ -97,6 +98,25 @@ export async function POST(request: Request) {
           },
           { merge: true }
         );
+
+        // Grant premium otomatis berdasarkan nominal donasi
+        if (email && email !== 'Tidak tersedia') {
+          try {
+            const premiumResult = await grantPremiumByDonation(email, amount);
+            if (premiumResult.granted) {
+              const premiumMsg = `⭐ <b>PREMIUM OTOMATIS DIBERIKAN</b>\n\n` +
+                `👤 <b>Email:</b> ${email}\n` +
+                `💰 <b>Donasi:</b> Rp ${amount.toLocaleString('id-ID')}\n` +
+                `⏳ <b>Durasi:</b> ${premiumResult.days} hari\n` +
+                `✅ <b>Pesan:</b> ${premiumResult.message}`;
+              await sendTelegramMessage(adminChatId, premiumMsg);
+            } else {
+              console.log(`[donations] Premium tidak diberikan: ${premiumResult.message}`);
+            }
+          } catch (premiumErr) {
+            console.error('[donations] Gagal grant premium:', premiumErr);
+          }
+        }
       }
 
       return NextResponse.json({ success: true, message: "Webhook processed" });

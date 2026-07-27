@@ -5,7 +5,8 @@ export type NotificationEventType =
   | 'tsunami_alert'
   | 'extreme_weather_alert'
   | 'daily_sky_summary'
-  | 'weekly_energy_summary';
+  | 'weekly_energy_summary'
+  | 'magma_volcano_alert';
 
 export interface NotificationEventState {
   signature?: string;

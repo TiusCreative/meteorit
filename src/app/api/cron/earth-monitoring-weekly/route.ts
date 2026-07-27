@@ -10,15 +10,12 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-function isAuthorized(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const secret = process.env.CRON_SECRET || '';
-  const authHeader = request.headers.get('authorization');
-  return searchParams.get('secret') === secret || authHeader === `Bearer ${secret}`;
-}
+import { isValidCronRequest } from '@/lib/cronAuth';
+
+import { sendBroadcastNotification } from '@/lib/notifications';
 
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
+  if (!isValidCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -39,9 +36,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: true, eventType: 'weekly_energy_summary', skipped: true, telegramSent: false });
   }
 
-  const channelId = process.env.TELEGRAM_CHANNEL_ID || '';
   const message = await buildWeeklyEnergyMessage();
-  const telegramSent = channelId ? await sendTelegramMessage(channelId, message) : false;
+  const broadcastRes = await sendBroadcastNotification({
+    title: '☀️ Update Energi Hijau Mingguan',
+    body: 'Cek ringkasan dan statistik mingguan potensi energi surya & angin regional.',
+    telegramHtml: message,
+    link: '/monitoring'
+  });
+  const telegramSent = broadcastRes.tgSuccess;
 
   await markNotificationSent('weekly_energy_summary', signature, telegramSent);
 

@@ -1,0 +1,49 @@
+Created At: 2026-07-06T00:38:28Z
+Completed At: 2026-07-06T00:38:28Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 3014
+Total Bytes: 164208
+Showing lines 2465 to 2600
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+2465:                 </div>
+2466:               </div>
+2467:             )}
+2468: 
+2469:             {/* Sub-tab 2: Titik Api (NASA FIRMS Hotspots) */}
+2470:             {disasterSubTab === 'hotspots' && (
+2471:               <div className="space-y-4">
+2472:                 {/* Control Panel */}
+2473:                 <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-3">
+2474:                   <div className="flex items-center gap-1.5 pb-2 border-b border-gray-100">
+2475:                     <span className="text-lg">🔥</span>
+2476:                     <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">{language === 'id' || language === 'ms' ? 'Sebaran Kebakaran Hutan (Hotspot) & Kontrol' : language === 'zh' ? '林火辐射 (热源) 分布与控制' : language === 'ja' ? '森林火災 (熱源) 分布と操作' : 'Wildfire (Hotspot) Distribution & Controls'}</h4>
+2477:                   </div>
+2478:                   
+2479:                   <div className="grid grid-cols-3 gap-2">
+2480:                     <div>
+2481:                       <label className="block text-[8px] font-extrabold text-slate-400 uppercase mb-1 tracking-wider">{language === 'id' || language === 'ms' ? 'Wilayah' : language === 'zh' ? '区域' : language === 'ja' ? '地域' : 'Region'}</label>
+2482:                       <select
+2483:                         value={hotspotCountry}
+2484:                         onChange={e => {
+2485:                           setHotspotCountry(e.target.value as a
+<truncated 9656 bytes>
+ 'ms' ? 'Titik Dengan Intensitas Radiasi Tertinggi' : language === 'zh' ? '最高辐射强度点' : language === 'ja' ? '最高放射強度地点' : 'Hottest Thermal Hotspot Point'}</p>
+2583:                           <div className="flex justify-between items-center text-[10px] text-slate-600">
+2584:                             <span>{language === 'id' || language === 'ms' ? 'Koordinat' : language === 'zh' ? '坐标' : language === 'ja' ? '座標' : 'Coordinates'}: <strong>{hotspotStats.maxFrpLat.toFixed(4)}&deg;S, {hotspotStats.maxFrpLon.toFixed(4)}&deg;E</strong></span>
+2585:                             <span>{language === 'id' || language === 'ms' ? 'Deteksi' : language === 'zh' ? '检测' : language === 'ja' ? '検出' : 'Detection'}: UTC {hotspotStats.maxFrpDate} {hotspotStats.maxFrpTime}</span>
+2586:                           </div>
+2587:                         </div>
+2588: 
+2589:                         {/* Download button */}
+2590:                         <div className="pt-2">
+2591:                           <button
+2592:                             onClick={downloadHotspotReport}
+2593:                             className="w-full py-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-1.5"
+2594:                           >
+2595:                             📥 {language === 'id' || language === 'ms' ? 'Unduh Laporan Kebencanaan Lengkap (.TXT)' : language === 'zh' ? '下载完整灾害报告 (.TXT)' : language === 'ja' ? '災害報告書をダウンロード (.TXT)' : 'Download Complete Disaster Report (.TXT)'}
+2596:                           </button>
+2597:                         </div>
+2598:                       </div>
+2599:                     )}
+2600: 
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

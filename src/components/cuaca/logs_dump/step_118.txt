@@ -1,0 +1,39 @@
+Created At: 2026-07-06T00:43:21Z
+Completed At: 2026-07-06T00:43:22Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4084
+Total Bytes: 226353
+Showing lines 2630 to 2660
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+2630:     setActivities(nextActs);
+2631:     localStorage.setItem('cuaca_activities', JSON.stringify(nextActs));
+2632:     setNewActivity({ time: '16:00', title: '', location: '' });
+2633:     awardPoints(20);
+2634:   };
+2635: 
+2636:   // Smart advice engine based on calendar events and weather
+2637:   const getCalendarAdvice = (act: ActivityEvent) => {
+2638:     if (!weather) return 'Muat data cuaca untuk mendapatkan saran aktivitas pintar.';
+2639:     const isMatchedLocation = weather.city.toLowerCase().includes(act.location.toLowerCase()) || act.location.toLowerCase().includes(weather.city.toLowerCase());
+2640:     
+2641:     if (!isMatchedLocation) return `Rencana di ${act.location}. (Prakiraan cuaca regional disarankan).`;
+2642:     
+2643:     const cond = weather.description.toLowerCase();
+2644:     if (cond.includes('hujan') || cond.includes('petir') || cond.includes('gerimis')) {
+2645:       return `🌧️ Saran: Jadwal '${act.title}' Anda terancam hujan lebat. Pindahkan ke dalam ruangan (indoor) agar tetap aman.`;
+2646:     }
+2647:     if (weather.temp > 35) {
+2648:       return `🔥 Saran: Suhu sangat panas (${Math.round(weather.temp)}°C). Siapkan air minum ekstra agar terhindar dari dehidrasi.`;
+2649:     }
+2650:     return `☀️ Saran: Cuaca di ${weather.city} sangat bagus (${weather.description}, ${Math.round(weather.temp)}°C). Waktu ideal untuk ${act.title.toLowerCase()}!`;
+2651:   };
+2652: 
+2653:   return (
+2654:     <div className="min-h-screen bg-gray-50 font-sans text-slate-800 pb-16">
+2655:       {/* BMKG clean white style Header */}
+2656:       <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-200">
+2657:         <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+2658:           <a href="/" className="flex items-center gap-2 hover:opacity-85 transition-opacity">
+2659:             <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shadow-sm">
+2660:               <img src="/logo-cuaca.png" alt="Logo Cuaca" className="w-full h-full object-cover" />
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

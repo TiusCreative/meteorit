@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { uploadToR2 } from '@/lib/r2Client';
 import { sendTelegramMessage } from '@/lib/telegram';
+import { sendBroadcastNotification } from '@/lib/notifications';
 import { buildAstronautDataset, FALLBACK_ASTRONAUTS, type AstronautProfile } from '@/lib/astronautData';
 import { getAbsoluteUrl, getSiteUrl } from '@/lib/siteUrl';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 80;
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
@@ -215,12 +217,10 @@ async function generateWithAI(prompt: string): Promise<string> {
   throw new Error('Semua AI provider gagal digunakan.');
 }
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const secret = searchParams.get('secret');
-  const authHeader = request.headers.get('authorization');
+import { isValidCronRequest } from '@/lib/cronAuth';
 
-  if (secret !== CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
+export async function GET(request: Request) {
+  if (!isValidCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -349,6 +349,7 @@ export async function GET(request: Request) {
       const photoPrompt = encodeURIComponent(`professional official portrait photo astronaut ${name} in space suit NASA realistic high quality`);
       const imageUrl = `https://image.pollinations.ai/prompt/${photoPrompt}?width=400&height=500&nologo=true&seed=${slug.length * 17}`;
 
+      const attribution = '\n\nSource: NASA Open Data APIs\nSumber Data: Pusat Data Publik Antariksa';
       const astronautDoc = {
         id: slug,
         name: profileData.fullname,
@@ -357,7 +358,7 @@ export async function GET(request: Request) {
         agency: profileData.agency,
         launchDate: profileData.launchDate,
         role: profileData.role,
-        biography: profileData.biography,
+        biography: profileData.biography + attribution,
         imageUrl,
         status: 'active',
         mission: `Misi aktif ${craft}`,
@@ -369,14 +370,20 @@ export async function GET(request: Request) {
       activeAstronauts.push(astronautDoc as AstronautProfile);
       processed.push({ name, slug, status: 'Generated & Saved' });
 
-      const channelId = process.env.TELEGRAM_CHANNEL_ID || '-1004429795655';
       const profileMsg =
         `👨‍🚀 <b>Profil Astronot Baru</b>\n\n` +
         `<b>${astronautDoc.name}</b>\n` +
         `${astronautDoc.role} • ${astronautDoc.agency} (${astronautDoc.country})\n` +
         `🛰 <b>Misi:</b> ${astronautDoc.craft}\n\n` +
         `🔗 ${getAbsoluteUrl(`/astronot/${astronautDoc.id}`)}`;
-      await sendTelegramMessage(channelId, profileMsg);
+      
+      await sendBroadcastNotification({
+        title: `👨‍🚀 Profil Astronot Baru: ${astronautDoc.name}`,
+        body: `Profil Astronot Baru:\n${astronautDoc.name}\n${astronautDoc.role} • ${astronautDoc.agency} (${astronautDoc.country})`,
+        telegramHtml: profileMsg,
+        link: `/astronot/${astronautDoc.id}`,
+        imageUrl: astronautDoc.imageUrl
+      });
     }
 
     const seen = new Set(activeAstronauts.map((astronaut) => astronaut.id));

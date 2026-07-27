@@ -1,0 +1,45 @@
+Created At: 2026-07-06T00:46:13Z
+Completed At: 2026-07-06T00:46:13Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4038
+Total Bytes: 223389
+Showing lines 3600 to 3675
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3600:                             {language === 'id' || language === 'ms' ? 'Rendah' : language === 'zh' ? '低置信度' : language === 'ja' ? '低信頼度' : 'Low'}: {hotspotStats.lowConf}
+3601:                           </div>
+3602:                         </div>
+3603:                         
+3604:                         {/* Hottest Point details */}
+3605:                         <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100/50 mt-2 space-y-1">
+3606:                           <p className="text-[8px] font-extrabold text-slate-400 uppercase tracking-wider">📍 {language === 'id' || language === 'ms' ? 'Titik Dengan Intensitas Radiasi Tertinggi' : language === 'zh' ? '最高辐射强度点' : language === 'ja' ? '最高放射強度地点' : 'Hottest Thermal Hotspot Point'}</p>
+3607:                           <div className="flex justify-between items-center text-[10px] text-slate-600">
+3608:                             <span>{language === 'id' || language === 'ms' ? 'Koordinat' : language === 'zh' ? '坐标' : language === 'ja' ? '座標' : 'Coordinates'}: <strong>{hotspotStats.maxFrpLat.toFixed(4)}&deg;S, {hotspotStats.maxFrpLon.toFixed(4)}&deg;E</strong></span>
+3609:                             <span>{language === 'id' || language === 'ms' ? 'Deteksi' : language === 'zh' ? '检测' : language === 'ja' ? '検出' : 'Detection'}: UTC {hotspotStats.maxFrpDate} {hotspotStats.maxFrpTime}</span>
+3610:                           </div>
+3611:                         </div>
+3612: 
+3613:                     
+<truncated 4007 bytes>
+ed(4)}&deg;, {fire.longitude.toFixed(4)}&deg;
+3655:                                 </p>
+3656:                                 <div className="flex items-center gap-1.5 mt-1 text-[9px] text-slate-500 flex-wrap">
+3657:                                   <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase shrink-0">
+3658:                                     {fire.satellite || 'VIIRS'}
+3659:                                   </span>
+3660:                                   <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase shrink-0 ${confBadge}`}>
+3661:                                     Conf: {confLabel}
+3662:                                   </span>
+3663:                                   <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase shrink-0">
+3664:                                     {fire.daynight === 'D' ? `☀️ ${language === 'id' || language === 'ms' ? 'Siang' : language === 'zh' ? '白天' : language === 'ja' ? '昼' : 'Day'}` : `🌙 ${language === 'id' || language === 'ms' ? 'Malam' : language === 'zh' ? '夜晚' : language === 'ja' ? '夜' : 'Night'}`}
+3665:                                   </span>
+3666:                                 </div>
+3667:                               </div>
+3668:                               <div className="text-right shrink-0">
+3669:                                 <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded text-[9px] font-black">
+3670:                                   {fire.frp.toFixed(1)} MW
+3671:                                 </span>
+3672:                                 <p className="text-[8px] text-gray-400 mt-1">UTC {fire.acq_date} {fire.acq_time}</p>
+3673:                               </div>
+3674:                             </button>
+3675:                           );
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

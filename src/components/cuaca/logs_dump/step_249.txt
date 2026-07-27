@@ -1,0 +1,60 @@
+Created At: 2026-07-06T00:54:33Z
+Completed At: 2026-07-06T00:54:33Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4080
+Total Bytes: 222161
+Showing lines 3510 to 3560
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3510:                     <div>
+3511:                       <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">{d.quakeScope}</label>
+3512:                       <select
+3513:                         value={quakeScope}
+3514:                         onChange={e => setQuakeScope(e.target.value)}
+3515:                         className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-gray-50 focus:outline-none"
+3516:                       >
+3517:                         <option value="indonesia">Indonesia</option>
+3518:                         <option value="all">{d.scopeAll}</option>
+3519:                       </select>
+3520:                     </div>
+3521:                   </div>
+3522:                   <button
+3523:                     onClick={fetchQuakes}
+3524:                     disabled={quakesLoading}
+3525:                     className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5"
+3526:                   >
+3527:                     {quakesLoading ? <RefreshCw size={12} className="animate-spin" /> : d.btnFilter}
+3528:                   </button>
+3529:                 </div>
+3530: 
+3531:                 {/* Stats strip */}
+3532:                 <div className="grid grid-cols-3 gap-2">
+3533:                   <div className="bg-white rounded-xl p-2.5 border border-gray-150 text-center">
+3534:                     <p className="text-[9px] text-gray-400 font-bold uppercase">{
+<truncated 104 bytes>
+kes.length}</p>
+3536:                   </div>
+3537:                   <div className="bg-white rounded-xl p-2.5 border border-gray-150 text-center">
+3538:                     <p className="text-[9px] text-gray-400 font-bold uppercase">{d.maxMag}</p>
+3539:                     <p className="text-lg font-black text-red-500 mt-0.5">
+3540:                       {quakes.length > 0 ? Math.max(...quakes.map(q => q.magnitude)).toFixed(1) : '-'}
+3541:                     </p>
+3542:                   </div>
+3543:                   <div className="bg-white rounded-xl p-2.5 border border-gray-150 text-center">
+3544:                     <p className="text-[9px] text-gray-400 font-bold uppercase">{d.tsunamiPotential}</p>
+3545:                     <p className="text-lg font-black text-amber-500 mt-0.5">
+3546:                       {quakes.filter(q => q.tsunami === 1 || q.tsunamiPotential?.toLowerCase().includes('tsunami')).length}
+3547:                     </p>
+3548:                   </div>
+3549:                 </div>
+3550:  
+3551:                 {/* Earthquake List */}
+3552:                 <div className="space-y-2">
+3553:                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">📋 {d.quakeListTitle}</p>
+3554:                   {quakesLoading ? (
+3555:                     <div className="text-center py-6"><RefreshCw size={20} className="animate-spin text-blue-500 mx-auto" /></div>
+3556:                   ) : quakes.length === 0 ? (
+3557:                     <p className="text-center text-xs text-gray-400 py-6">{d.noQuakes}</p>
+3558:                   ) : (
+3559:                     quakes.slice(0, 15).map((q: any) => {
+3560:                       const color = q.magnitude >= 5.0 ? 'border-red-500 bg-red-50/10' : q.magnitude >= 4.0 ? 'border-amber-500 bg-amber-50/10' : 'border-blue-500 bg-blue-50/10';
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

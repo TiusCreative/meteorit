@@ -1,0 +1,29 @@
+Created At: 2026-07-06T00:43:58Z
+Completed At: 2026-07-06T00:43:58Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4103
+Total Bytes: 227744
+Showing lines 270 to 290
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+270: }
+271: 
+272: // ─── Forecast Card ────────────────────────────────────────────────────────────
+273: function ForecastCard({ day, isSelected, onClick }: { day: ForecastDay; isSelected: boolean; onClick: () => void }) {
+274:   return (
+275:     <button
+276:       onClick={onClick}
+277:       className={`flex flex-col items-center bg-white rounded-2xl p-3 border shadow-sm min-w-[85px] snap-start transition-all ${isSelected ? 'ring-2 ring-blue-600 border-blue-600 bg-blue-50/30' : 'border-gray-100 hover:bg-gray-50'}`}
+278:     >
+279:       <p className="text-[10px] font-bold text-gray-500 mb-1">{day.dayName}</p>
+280:       <WeatherIcon code={day.icon} size={28} />
+281:       <p className="text-sm font-black text-gray-800">{Math.round(day.high)}°</p>
+282:       <p className="text-[10px] text-gray-400">{Math.round(day.low)}°</p>
+283:       {day.precip_prob > 0 && (
+284:         <p className="text-[9px] text-blue-500 font-semibold mt-1">{day.precip_prob}%💧</p>
+285:       )}
+286:     </button>
+287:   );
+288: }
+289: function isReadableLink(url: string): boolean {
+290:   if (!url || !url.startsWith('http')) return false;
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

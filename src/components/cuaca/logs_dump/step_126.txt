@@ -1,0 +1,59 @@
+Created At: 2026-07-06T00:43:33Z
+Completed At: 2026-07-06T00:43:33Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4093
+Total Bytes: 226840
+Showing lines 1935 to 1985
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1935:                     fill="url(#elnino-grad)"
+1936:                   />
+1937:                 );
+1938:               }
+1939:               if (d.anomaly < 0 || dataPoints[idx + 1].anomaly < 0) {
+1940:                 return (
+1941:                   <path 
+1942:                     key={`la-${idx}`}
+1943:                     d={`M ${x1} ${yZero} L ${x1} ${Math.max(yZero, y1)} L ${x2} ${Math.max(yZero, y2)} L ${x2} ${yZero} Z`}
+1944:                     fill="url(#lanina-grad)"
+1945:                   />
+1946:                 );
+1947:               }
+1948:               return null;
+1949:             })}
+1950: 
+1951:             <path d={linePath} fill="none" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" />
+1952:             
+1953:             {dataPoints.map((d, idx) => {
+1954:               const x = getX(idx);
+1955:               const y = getY(d.anomaly);
+1956:               const color = d.anomaly >= 0.5 ? '#ef4444' : d.anomaly <= -0.5 ? '#3b82f6' : '#94a3b8';
+1957:               return (
+1958:                 <circle 
+1959:                   key={idx} 
+1960:                   cx={x} 
+1961:                   cy={y} 
+1962:                   r="2" 
+1963:                   fill={color} 
+1964:                   stroke="#ffffff" 
+1965:                   strokeWidth="0.5" 
+1966:                 />
+1967:               );
+1968:             })}
+1969:             
+1970:             {dataPoints.map((d, idx) => {
+1971:               if (idx % 3 === 0 || idx === dataPoints.length - 1) {
+1972:                 const x = getX(idx);
+1973:                 const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][d.month - 1];
+1974:                 return (
+1975:                   <g key={`lbl-${idx}`}>
+1976:                     <text x={x} y={svgHeight - 4} textAnchor="middle" className="text-[7px] fill-slate-400 font-bold">
+1977:                       {monthShort} '{String(d.year).slice(-2)}
+1978:                     </text>
+1979:                   </g>
+1980:                 );
+1981:               }
+1982:               return null;
+1983:             })}
+1984:           </svg>
+1985:         </div>
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

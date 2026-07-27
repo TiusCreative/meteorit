@@ -50,12 +50,15 @@ export default function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onC
             </li>
             {[
               { href: '/admin/dashboard', icon: '📊', label: 'Dashboard' },
+              { href: '/admin/kirim-email', icon: '✉️', label: 'Kirim Email' },
               { href: '/admin/artikel', icon: '📝', label: 'Manajemen Artikel' },
               { href: '/admin/astronot', icon: '👨‍🚀', label: 'Daftar Astronot' },
               { href: '/admin/ensiklopedia', icon: '🌠', label: 'Ensiklopedia' },
+              { href: '/admin/glossarium', icon: '📚', label: 'Glossarium Sains' },
               { href: '/admin/forum', icon: '💬', label: 'Forum Komunitas' },
               { href: '/admin/donasi', icon: '💰', label: 'Donasi & Langganan' },
               { href: '/admin/iklan', icon: '📢', label: 'Manajemen Iklan' },
+              { href: '/admin/analytics-frame', icon: '📈', label: 'Looker Studio / Analytics' },
               { href: '/admin/pengaturan', icon: '⚙️', label: 'Pengaturan' },
               { href: '/admin/pengguna', icon: '👥', label: 'Manajemen Pengguna' },
             ].map((item) => (

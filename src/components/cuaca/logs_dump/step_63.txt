@@ -1,0 +1,97 @@
+Created At: 2026-07-06T00:39:40Z
+Completed At: 2026-07-06T00:39:41Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 3014
+Total Bytes: 164208
+Showing lines 763 to 950
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+763:   // SVG Chart Renderer for ENSO Niño 3.4 anomalies
+764:   const renderEnsoChart = (historyData: any[]) => {
+765:     if (!historyData || historyData.length === 0) return null;
+766:     
+767:     const dataPoints = historyData.slice(-24);
+768:     
+769:     const svgWidth = 500;
+770:     const svgHeight = 150;
+771:     const paddingLeft = 35;
+772:     const paddingRight = 15;
+773:     const paddingTop = 15;
+774:     const paddingBottom = 20;
+775:     
+776:     const chartWidth = svgWidth - paddingLeft - paddingRight;
+777:     const chartHeight = svgHeight - paddingTop - paddingBottom;
+778:     
+779:     let maxVal = 2.5;
+780:     let minVal = -2.5;
+781:     dataPoints.forEach(d => {
+782:       if (d.anomaly > maxVal) maxVal = d.anomaly;
+783:       if (d.anomaly < minVal) minVal = d.anomaly;
+784:     });
+785:     
+786:     const valRange = maxVal - minVal;
+787:     
+788:     const getX = (index: number) => {
+789:       return paddingLeft + (index / (dataPoints.length - 1)) * chartWidth;
+790:     };
+791:     
+792:     const getY = (val: number) => {
+793:       const ratio = (val - minVal) / valRange;
+794:       return paddingTop + chartHeight - ratio * chartHeight;
+795:     };
+796:     
+797:     const yZero = getY(0);
+798:     const yElNino = getY(0.5);
+799:     const yLaNina = getY(-0.5);
+800:     
+801:     let linePath = '';
+802:     dataPoints.forEach((d, idx) => {
+803:       const x = getX(idx);
+804:       const y = getY(d.anomaly);
+805:       if (idx === 0) {
+806:         linePath = `M ${x} ${y}`;
+807:       } else {
+8
+<truncated 5073 bytes>
+nt {
+910:     id: string;
+911:     title: string;
+912:     category: string;
+913:     date: string;
+914:     coordinates: [number, number] | null;
+915:     link: string;
+916:   }
+917:   const [disasters, setDisasters] = useState<DisasterEvent[]>([]);
+918:   const [disastersLoading, setDisastersLoading] = useState(false);
+919: 
+920:   // Additional Premium features
+921:   const [selectedForecastIndex, setSelectedForecastIndex] = useState<number>(0);
+922:   const [xpPoints, setXpPoints] = useState<number>(0);
+923:   const [activities, setActivities] = useState<ActivityEvent[]>([]);
+924:   const [newActivity, setNewActivity] = useState({ time: '16:00', title: '', location: '' });
+925: 
+926:   // Camera / AR refs
+927:   const videoRef = useRef<HTMLVideoElement>(null);
+928:   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+929:   const [cameraError, setCameraError] = useState('');
+930:   const [arActive, setArActive] = useState(false);
+931: 
+932:   // Speech recognition & Speech Synthesis
+933:   const recognitionRef = useRef<any>(null);
+934: 
+935:   // Load user data on mount (GP/XP points, schedule, URL params)
+936:   useEffect(() => {
+937:     if (typeof window !== 'undefined') {
+938:       const storedXp = localStorage.getItem('cuaca_xp_points');
+939:       if (storedXp) setXpPoints(parseInt(storedXp));
+940: 
+941:       const storedActs = localStorage.getItem('cuaca_activities');
+942:       if (storedActs) {
+943:         setActivities(JSON.parse(storedActs));
+944:       } else {
+945:         const defaultActs = [
+946:           { time: '06:00', title: 'Jogging pagi', location: 'Jakarta' },
+947:           { time: '16:00', title: 'Olahraga sore', location: 'Bandung' }
+948:         ];
+949:         setActivities(defaultActs);
+950:         localStorage.setItem('cuaca_activities', JSON.stringify(defaultActs));
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

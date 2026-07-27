@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { monitoringDict } from '@/lib/monitoringTranslations';
+import type { SiteLanguage } from '@/lib/i18n';
 
 interface NeoObject {
   id: string;
@@ -30,7 +32,8 @@ function OrbitSVG({ hazardous }: { hazardous: boolean }) {
   );
 }
 
-function NeoCard({ neo }: { neo: NeoObject }) {
+function NeoCard({ neo, language }: { neo: NeoObject; language: SiteLanguage }) {
+  const dict = monitoringDict[language] || monitoringDict.id;
   const isHazardous = neo.is_potentially_hazardous;
   const distKmMillions = (neo.miss_distance_km / 1_000_000).toFixed(3);
   const distLD = (neo.miss_distance_km / 384_400).toFixed(1);
@@ -38,7 +41,7 @@ function NeoCard({ neo }: { neo: NeoObject }) {
   const diamM = (neo.estimated_diameter_max_km * 1000).toFixed(0);
 
   return (
-    <div className={`dashboard-card p-4 flex gap-4 items-center ${isHazardous ? 'hazard-card' : 'safe-card'}`}>
+    <div className={`dashboard-card p-4 flex gap-4 items-center ${isHazardous ? 'hazard-card' : 'safe-card'} text-left`}>
       <OrbitSVG hazardous={isHazardous} />
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2 flex-wrap">
@@ -51,12 +54,12 @@ function NeoCard({ neo }: { neo: NeoObject }) {
               {isHazardous ? (
                 <>
                   <span className="w-1.5 h-1.5 rounded-full bg-red-400 beacon-red inline-block" />
-                  ⚠ Bahaya Melintas
+                  {dict.hazardPass}
                 </>
               ) : (
                 <>
                   <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block" />
-                  ✓ Melintas Aman
+                  {dict.safePassLabel}
                 </>
               )}
             </span>
@@ -67,21 +70,21 @@ function NeoCard({ neo }: { neo: NeoObject }) {
         </div>
         <div className="grid grid-cols-3 gap-3 mt-3">
           <div>
-            <p className="text-xs text-slate-500 mono-font">JARAK</p>
+            <p className="text-xs text-slate-500 mono-font">{dict.distance}</p>
             <p className={`text-sm font-bold mono-font ${isHazardous ? 'text-red-400' : 'text-cyan-400'}`}>
               {distKmMillions}
             </p>
-            <p className="text-xs text-slate-500">juta km ({distLD} LD)</p>
+            <p className="text-xs text-slate-500">{dict.millionKm.replace('{ld}', distLD)}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 mono-font">KECEPATAN</p>
+            <p className="text-xs text-slate-500 mono-font">{dict.velocity}</p>
             <p className="text-sm font-bold text-amber-400 mono-font">{velKmh}K</p>
-            <p className="text-xs text-slate-500">km/jam</p>
+            <p className="text-xs text-slate-500">{dict.kmh}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 mono-font">DIAMETER</p>
+            <p className="text-xs text-slate-500 mono-font">{dict.diameter}</p>
             <p className="text-sm font-bold text-purple-400 mono-font">~{diamM}</p>
-            <p className="text-xs text-slate-500">meter</p>
+            <p className="text-xs text-slate-500">{dict.meter}</p>
           </div>
         </div>
       </div>
@@ -89,7 +92,8 @@ function NeoCard({ neo }: { neo: NeoObject }) {
   );
 }
 
-export default function NeoTracker() {
+export default function NeoTracker({ language = 'id' }: { language?: SiteLanguage }) {
+  const dict = monitoringDict[language] || monitoringDict.id;
   const [data, setData] = useState<NeoObject[]>([]);
   const [count, setCount] = useState(0);
   const [hazardousCount, setHazardousCount] = useState(0);
@@ -102,30 +106,30 @@ export default function NeoTracker() {
       try {
         setLoading(true);
         const res = await fetch('/api/nasa/neo');
-        if (!res.ok) throw new Error('Gagal memuat data asteroid');
+        if (!res.ok) throw new Error(language === 'id' ? 'Gagal memuat data asteroid' : 'Failed to load asteroid data');
         const json = await res.json();
         setData(json.data || []);
         setCount(json.count || 0);
         setDate(json.date || '');
         setHazardousCount((json.data || []).filter((n: NeoObject) => n.is_potentially_hazardous).length);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error tidak diketahui');
+        setError(err instanceof Error ? err.message : 'Error');
       } finally {
         setLoading(false);
       }
     }
     fetchNeo();
-  }, []);
+  }, [language]);
 
   return (
     <div>
       {/* Header stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Total NEO Hari Ini', value: loading ? '...' : String(count), icon: '🛸', color: 'text-cyan-400' },
-          { label: 'Berpotensi Berbahaya', value: loading ? '...' : String(hazardousCount), icon: '⚠️', color: 'text-red-400' },
-          { label: 'Melintas Aman', value: loading ? '...' : String(count - hazardousCount), icon: '✅', color: 'text-emerald-400' },
-          { label: 'Tanggal Data', value: date || '—', icon: '📅', color: 'text-slate-300' },
+          { label: dict.totalNeo, value: loading ? '...' : String(count), icon: '🛸', color: 'text-cyan-400' },
+          { label: dict.potentiallyHazardous, value: loading ? '...' : String(hazardousCount), icon: '⚠️', color: 'text-red-400' },
+          { label: dict.safePass, value: loading ? '...' : String(count - hazardousCount), icon: '✅', color: 'text-emerald-400' },
+          { label: dict.dataDate, value: date || '—', icon: '📅', color: 'text-slate-300' },
         ].map((stat) => (
           <div key={stat.label} className="dashboard-card p-4 text-center">
             <div className="text-2xl mb-1">{stat.icon}</div>
@@ -137,14 +141,14 @@ export default function NeoTracker() {
 
       {/* Alert banner for hazardous */}
       {!loading && hazardousCount > 0 && (
-        <div className="mb-6 p-4 rounded-xl bg-red-950/40 border border-red-500/30 flex items-center gap-3">
+        <div className="mb-6 p-4 rounded-xl bg-red-950/40 border border-red-500/30 flex items-center gap-3 text-left">
           <span className="text-2xl flex-shrink-0 float-anim">🚨</span>
           <div>
             <p className="text-red-400 font-bold text-sm">
-              PERINGATAN: {hazardousCount} Asteroid Berpotensi Berbahaya Terdeteksi Hari Ini
+              {dict.alertTitle.replace('{n}', String(hazardousCount))}
             </p>
             <p className="text-xs text-red-300/70 mt-0.5">
-              Asteroid ini dikategorikan berbahaya oleh NASA karena ukuran (&gt;140m) dan jarak lintasnya (&lt;7,5 juta km dari Bumi). Tidak ada ancaman tabrakan yang diperkirakan saat ini.
+              {dict.alertDesc}
             </p>
           </div>
         </div>
@@ -154,7 +158,7 @@ export default function NeoTracker() {
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <div className="w-12 h-12 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-slate-400 text-sm mono-font">Mengambil data dari NASA NeoWs API...</p>
+            <p className="text-slate-400 text-sm mono-font">{dict.loadingNeo}</p>
           </div>
         </div>
       )}
@@ -168,17 +172,17 @@ export default function NeoTracker() {
       {!loading && !error && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {data.map((neo) => (
-            <NeoCard key={neo.id} neo={neo} />
+            <NeoCard key={neo.id} neo={neo} language={language} />
           ))}
           {data.length === 0 && (
             <div className="col-span-2 text-center py-12">
-              <p className="text-slate-500">Tidak ada data asteroid tersedia untuk hari ini.</p>
+              <p className="text-slate-500">{dict.noNeoData}</p>
             </div>
           )}
         </div>
       )}
 
-      <p className="text-xs text-slate-600 mt-4 text-right mono-font">
+      <p className="text-xs text-slate-650 mt-4 text-right mono-font">
         Sumber: NASA NeoWs API • LD = Lunar Distance (384,400 km)
       </p>
     </div>

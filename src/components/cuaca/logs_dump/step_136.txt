@@ -1,0 +1,54 @@
+Created At: 2026-07-06T00:43:53Z
+Completed At: 2026-07-06T00:43:53Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4103
+Total Bytes: 227744
+Showing lines 3015 to 3060
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3015:                         {enso.status}
+3016:                       </span>
+3017:                     </div>
+3018:                     <p className="text-[11px] text-slate-600 leading-relaxed">
+3019:                       {enso.status === 'El Niño' ? t.ensoDescElNino : enso.status === 'La Niña' ? t.ensoDescLaNina : (language === 'id' ? 'Indeks iklim samudra stabil (Netral).' : 'Oceanic climate index is stable (Neutral).')}
+3020:                     </p>
+3021:                     <div className="text-[9px] text-gray-400 flex justify-between pt-1">
+3022:                       <span>{language === 'id' || language === 'ms' ? 'Anomali Niño 3.4' : 'Niño 3.4 Anomaly'}: {enso.nino34_anomaly >= 0 ? '+' : ''}{enso.nino34_anomaly.toFixed(2)} °C ({enso.period})</span>
+3023:                       <span>{language === 'id' || language === 'ms' ? 'Sumber' : 'Source'}: NOAA CPC</span>
+3024:                     </div>
+3025:                   </div>
+3026:                 )}
+3027: 
+3028: 
+3029:                 {/* 7-Day Forecast preview */}
+3030:                 {forecast.length > 0 && (
+3031:                   <div className="space-y-2">
+3032:                     <div className="flex items-center justify-between">
+3033:                       <p className="text-xs font-bold text-slate-700">{t.forecastTitle}</p>
+3034:                       <button onClick={() => setActiveTab('forecast')} className="text-[10px] text-blue-600 font-semibold hover:underline">{t.weeklyDetails}</button>
+3035:                     </div>
+3036:                     <div className="flex gap-2 overflow-x-auto pb-1 snap-x">
+3037:                       {forecast.map((day, idx) => (
+3038:                         <ForecastCard
+3039:                           key={idx}
+3040:                           day={day}
+3041:                           isSelected={selectedForecastIndex === idx}
+3042:                           onClick={() => {
+3043:                             setSelectedForecastIndex(idx);
+3044:                             setActiveTab('forecast');
+3045:                           }}
+3046:                         />
+3047:                       ))}
+3048:                     </div>
+3049:                   </div>
+3050:                 )}
+3051: 
+3052:                 {/* Space Weather Dashboard Widget */}
+3053:                 {spaceWeather && (
+3054:                   <div className="bg-white rounded-3xl p-4 border border-gray-100 shadow-sm space-y-3 text-left">
+3055:                     <div className="flex items-center justify-between border-b pb-2 border-gray-100">
+3056:                       <div className="flex items-center gap-1.5">
+3057:                         <span className="text-base">🌌</span>
+3058:                         <p className="text-xs font-black text-slate-700 uppercase tracking-wider">{t.spaceWeatherTitle}</p>
+3059:                       </div>
+3060:                       <span className={`text-[9px] font-extrabold px-2.5 py-0.5 rounded-full ${
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

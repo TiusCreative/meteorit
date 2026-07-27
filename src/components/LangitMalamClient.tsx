@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useSiteLanguage } from '@/lib/useSiteLanguage';
+import { landingText } from '@/lib/landingText';
 
 const INDONESIAN_CITIES = [
   { name: 'Jakarta', lat: -6.2088, lon: 106.8456 },
@@ -31,12 +33,15 @@ interface Star {
 }
 
 export default function LangitMalamClient() {
+  const language = useSiteLanguage();
+  const t = landingText[language];
+
   const [selectedCity, setSelectedCity] = useState<{ name: string; lat: number; lon: number }>({ name: 'Jakarta', lat: -6.2088, lon: 106.8456 });
   const [useGps, setUseGps] = useState(false);
   const [gpsCoords, setGpsCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState('');
-  const [showMap, setShowMap] = useState(true);
+  const [showMap] = useState(true);
   const [activeCoords, setActiveCoords] = useState<{ lat: number; lon: number; name: string }>({ lat: -6.2088, lon: 106.8456, name: 'Jakarta' });
   const [stars, setStars] = useState<Star[]>([]);
   const [manualLat, setManualLat] = useState('');
@@ -61,7 +66,7 @@ export default function LangitMalamClient() {
     setGpsLoading(true);
     setGpsError('');
     if (!navigator.geolocation) {
-      setGpsError('Browser Anda tidak mendukung GPS.');
+      setGpsError(t.gpsNotSupported || 'Browser Anda tidak mendukung GPS.');
       setGpsLoading(false);
       return;
     }
@@ -71,10 +76,10 @@ export default function LangitMalamClient() {
         setGpsCoords(coords);
         setGpsLoading(false);
         setUseGps(true);
-        setActiveCoords({ lat: coords.lat, lon: coords.lon, name: 'Lokasi Anda' });
+        setActiveCoords({ lat: coords.lat, lon: coords.lon, name: language === 'id' ? 'Lokasi Anda' : 'Your Location' });
       },
-      (err) => {
-        setGpsError('Akses GPS ditolak atau tidak tersedia. Pilih kota secara manual.');
+      () => {
+        setGpsError(t.gpsErrorDenied || 'Akses GPS ditolak atau tidak tersedia. Pilih kota secara manual.');
         setGpsLoading(false);
       }
     );
@@ -87,18 +92,18 @@ export default function LangitMalamClient() {
     const lon = parseFloat(manualLon);
 
     if (isNaN(lat) || lat < -90 || lat > 90) {
-      setManualError('Latitude harus berupa angka antara -90 dan 90.');
+      setManualError(t.latError || 'Latitude harus berupa angka antara -90 dan 90.');
       return;
     }
     if (isNaN(lon) || lon < -180 || lon > 180) {
-      setManualError('Longitude harus berupa angka antara -180 dan 180.');
+      setManualError(t.lonError || 'Longitude harus berupa angka antara -180 dan 180.');
       return;
     }
 
     setUseGps(false);
     setGpsCoords(null);
     setSelectedCity({ name: '', lat: 0, lon: 0 }); // reset selected city
-    setActiveCoords({ lat, lon, name: `Koordinat Manual (${lat.toFixed(2)}, ${lon.toFixed(2)})` });
+    setActiveCoords({ lat, lon, name: language === 'id' ? `Koordinat Manual (${lat.toFixed(2)}, ${lon.toFixed(2)})` : `Manual Coordinates (${lat.toFixed(2)}, ${lon.toFixed(2)})` });
   };
 
   // Stellarium Web embed URL
@@ -110,8 +115,8 @@ export default function LangitMalamClient() {
     <div className="min-h-screen bg-slate-950">
       {/* Hero */}
       <div className="relative py-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-indigo-950/40 to-slate-950 z-0" />
-        <div className="absolute inset-0 bg-[url('/nebula.webp')] bg-cover bg-center opacity-20 z-0" />
+        <div className="absolute inset-0 bg-gradient-to-b from-indigo-950/40 to-slate-950 z-0 langit-malam-bg-gradient" />
+        <div className="absolute inset-0 bg-[url('/nebula.webp')] bg-cover bg-center opacity-20 z-0 langit-malam-nebula" />
 
         {/* Stars */}
         <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
@@ -134,13 +139,13 @@ export default function LangitMalamClient() {
 
         <div className="relative z-10 container mx-auto px-4 max-w-4xl text-center">
           <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/30 rounded-full px-4 py-1.5 mb-6 text-xs font-semibold text-indigo-400">
-            🌠 Peta Bintang Interaktif
+            {t.starMapBadge || '🌠 Peta Bintang Interaktif'}
           </div>
-          <h1 className="text-4xl md:text-6xl font-extrabold mb-4 text-white">
-            Langit Malam <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Indonesia</span>
+          <h1 className="text-4xl md:text-6xl font-extrabold mb-4 text-white langit-malam-title">
+            {t.starMapTitle || 'Langit Malam'} <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Indonesia</span>
           </h1>
           <p className="text-gray-300 text-base max-w-xl mx-auto mb-8">
-            Izinkan akses lokasi GPS atau pilih kota Anda untuk menggeser peta koordinat rasi bintang malam ini secara dinamis.
+            {t.starMapSubtitle || 'Izinkan akses lokasi GPS atau pilih kota Anda untuk menggeser peta koordinat rasi bintang malam ini secara dinamis.'}
           </p>
 
           {/* Selector Card */}
@@ -158,12 +163,12 @@ export default function LangitMalamClient() {
               {gpsLoading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></div>
-                  Mendeteksi Lokasi...
+                  {t.gpsDetecting || 'Mendeteksi Lokasi...'}
                 </>
               ) : useGps && gpsCoords ? (
-                <>✅ GPS Terdeteksi: {gpsCoords.lat.toFixed(2)}°, {gpsCoords.lon.toFixed(2)}°</>
+                <>✅ {t.gpsDetected || 'GPS Terdeteksi:'} {gpsCoords.lat.toFixed(2)}°, {gpsCoords.lon.toFixed(2)}°</>
               ) : (
-                <>📍 Gunakan Lokasi GPS Saya</>
+                <>{t.useGpsBtn || '📍 Gunakan Lokasi GPS Saya'}</>
               )}
             </button>
 
@@ -173,7 +178,7 @@ export default function LangitMalamClient() {
 
             <div className="flex items-center gap-3 mb-4">
               <div className="h-px flex-1 bg-slate-700"></div>
-              <span className="text-[10px] text-gray-500 font-semibold">ATAU PILIH KOTA</span>
+              <span className="text-[10px] text-gray-500 font-semibold">{t.orSelectCity || 'ATAU PILIH KOTA'}</span>
               <div className="h-px flex-1 bg-slate-700"></div>
             </div>
 
@@ -202,29 +207,29 @@ export default function LangitMalamClient() {
 
             <div className="flex items-center gap-3 my-4">
               <div className="h-px flex-1 bg-slate-700"></div>
-              <span className="text-[10px] text-gray-500 font-semibold">ATAU INPUT MANUAL</span>
+              <span className="text-[10px] text-gray-500 font-semibold">{t.orManualInput || 'ATAU INPUT MANUAL'}</span>
               <div className="h-px flex-1 bg-slate-700"></div>
             </div>
 
             <form onSubmit={handleManualApply} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] text-gray-400 font-bold mb-1 text-left uppercase">Latitude (Lintang)</label>
+                  <label className="block text-[10px] text-gray-400 font-bold mb-1 text-left uppercase">{t.latLabel || 'Latitude (Lintang)'}</label>
                   <input
                     type="text"
                     value={manualLat}
                     onChange={(e) => setManualLat(e.target.value)}
-                    placeholder="Contoh: -6.2088"
+                    placeholder={t.latPlaceholder || 'Contoh: -6.2088'}
                     className="w-full bg-slate-800/80 border border-slate-700/60 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500/80 transition-colors text-left"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-gray-400 font-bold mb-1 text-left uppercase">Longitude (Bujur)</label>
+                  <label className="block text-[10px] text-gray-400 font-bold mb-1 text-left uppercase">{t.lonLabel || 'Longitude (Bujur)'}</label>
                   <input
                     type="text"
                     value={manualLon}
                     onChange={(e) => setManualLon(e.target.value)}
-                    placeholder="Contoh: 106.8456"
+                    placeholder={t.lonPlaceholder || 'Contoh: 106.8456'}
                     className="w-full bg-slate-800/80 border border-slate-700/60 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500/80 transition-colors text-left"
                   />
                 </div>
@@ -236,7 +241,7 @@ export default function LangitMalamClient() {
                 type="submit"
                 className="w-full bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/30 hover:border-indigo-500/60 text-indigo-300 font-bold py-2 px-4 rounded-xl text-xs transition-all duration-300"
               >
-                Terapkan Koordinat Kustom
+                {t.applyCoordsBtn || 'Terapkan Koordinat Kustom'}
               </button>
             </form>
           </div>
@@ -251,10 +256,10 @@ export default function LangitMalamClient() {
               <div className="flex items-center gap-3">
                 <span className="text-xl">🌠</span>
                 <div className="text-left">
-                  <h2 className="font-bold text-white text-sm">Langit Malam di {activeCoords.name}</h2>
+                  <h2 className="font-bold text-white text-sm">{(t.nightSkyAt || 'Langit Malam di')} {activeCoords.name}</h2>
                   <p className="text-xs text-gray-500">
                     {activeCoords.lat.toFixed(4)}°, {activeCoords.lon.toFixed(4)}° •{' '}
-                    {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    {new Date().toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                   </p>
                 </div>
               </div>
@@ -264,7 +269,7 @@ export default function LangitMalamClient() {
                 rel="noopener noreferrer"
                 className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg font-bold transition-colors"
               >
-                Buka Layar Penuh ↗
+                {t.openFullScreen || 'Buka Layar Penuh ↗'}
               </a>
             </div>
             <div className="w-full" style={{ height: '70vh', minHeight: '500px' }}>
@@ -279,10 +284,11 @@ export default function LangitMalamClient() {
             </div>
             <div className="px-6 py-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2">
               <p className="text-xs text-gray-600">
-                Peta bintang disajikan oleh <a href="https://stellarium-web.org/" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300">Stellarium Web</a> — Planetarium Online Gratis
+                {t.starMapProvidedBy || 'Peta bintang disajikan oleh'}{' '}
+                <a href="https://stellarium-web.org/" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300">Stellarium Web</a> — Planetarium Online Gratis
               </p>
               <p className="text-xs text-gray-600">
-                🖱️ Klik &amp; seret untuk memutar langit • Scroll untuk zoom
+                {t.starMapInstructions || '🖱️ Klik & seret untuk memutar langit • Scroll untuk zoom'}
               </p>
             </div>
           </div>
@@ -293,9 +299,9 @@ export default function LangitMalamClient() {
       <div className="container mx-auto px-4 max-w-6xl pb-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
-            { icon: '⭐', title: 'Konstelasi Malam Ini', desc: 'Identifikasi rasi bintang yang terlihat dari kota Anda malam ini berdasarkan posisi dan waktu real-time.' },
-            { icon: '🌙', title: 'Fase Bulan', desc: 'Pantau fase bulan hari ini dan prediksi fase berikutnya untuk perencanaan observasi astronomi terbaik.' },
-            { icon: '🔭', title: 'Planet yang Terlihat', desc: 'Ketahui planet mana yang bisa diamati dengan mata telanjang atau teleskop dari lokasi Anda malam ini.' },
+            { icon: '⭐', title: t.constellationTitle || 'Konstelasi Malam Ini', desc: t.constellationDesc || 'Identifikasi rasi bintang yang terlihat dari kota Anda malam ini berdasarkan posisi dan waktu real-time.' },
+            { icon: '🌙', title: t.moonPhaseTitle || 'Fase Bulan', desc: t.moonPhaseDesc || 'Pantau fase bulan hari ini dan prediksi fase berikutnya untuk perencanaan observasi astronomi terbaik.' },
+            { icon: '🔭', title: t.visiblePlanetsTitle || 'Planet yang Terlihat', desc: t.visiblePlanetsDesc || 'Ketahui planet mana yang bisa diamati dengan mata telanjang atau teleskop dari lokasi Anda malam ini.' },
           ].map((card) => (
             <div key={card.title} className="bg-slate-900/40 border border-slate-700/40 rounded-2xl p-6 hover:border-indigo-500/30 transition-all duration-300 text-left">
               <span className="text-4xl block mb-4">{card.icon}</span>

@@ -16,8 +16,37 @@ async function getCollectionData(collectionName: string) {
   return data;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const file = searchParams.get('file');
+
+    if (file) {
+      // Security: ensure the file name is just a basename and ends with .json to prevent path traversal
+      if (!file.endsWith('.json') || file.includes('/') || file.includes('\\') || file.includes('..')) {
+        return NextResponse.json({ success: false, error: 'Nama berkas tidak valid.' }, { status: 400 });
+      }
+
+      // Fetch from R2
+      const res = await s3Client.send(new GetObjectCommand({
+        Bucket: R2_CONFIG.bucketName,
+        Key: `backups/${file}`
+      }));
+
+      if (!res.Body) {
+        return NextResponse.json({ success: false, error: 'Berkas cadangan kosong.' }, { status: 404 });
+      }
+
+      const bodyContents = await res.Body.transformToString();
+      return new Response(bodyContents, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Disposition': `attachment; filename="${file}"`
+        }
+      });
+
+    }
+
     // List backups in R2 folder backups/
     const response = await s3Client.send(new ListObjectsV2Command({
       Bucket: R2_CONFIG.bucketName,
@@ -35,11 +64,12 @@ export async function GET() {
 
     return NextResponse.json({ success: true, backups: files });
   } catch (error) {
-    console.error('Error listing backups:', error);
+    console.error('Error listing/downloading backups:', error);
     // Return empty list if bucket prefix doesn't exist yet
     return NextResponse.json({ success: true, backups: [] });
   }
 }
+
 
 export async function POST(request: Request) {
   try {

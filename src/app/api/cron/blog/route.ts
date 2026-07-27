@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
-import { uploadToR2 } from '@/lib/r2Client';
-import { adminDb } from '@/lib/firebaseAdmin';
+import { uploadToR2, fetchJsonFromR2 } from '@/lib/r2Client';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { getAbsoluteUrl, getSiteUrl } from '@/lib/siteUrl';
+import { buildArticleTranslations } from '@/lib/articleLocalization';
+import { sendBroadcastNotification } from '@/lib/notifications';
+import { rebuildRSSFeedHelper } from '@/lib/rss';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 80;
 
 const CATEGORIES = ['Panduan', 'Peristiwa', 'Sejarah', 'Edukasi', 'Trivia'];
 
@@ -24,26 +28,27 @@ async function generateArticleWithFallback(prompt: string): Promise<GeneratedArt
       name: 'Groq Utama',
       url: 'https://api.groq.com/openai/v1/chat/completions',
       key: process.env.GROQ_API_KEY,
-      model: 'llama-3.1-8b-instant'
+      model: 'llama-3.3-70b-versatile'
     },
     {
       name: 'Groq Backup',
       url: 'https://api.groq.com/openai/v1/chat/completions',
       key: process.env.GROQ_BACKUP_API_KEY,
-      model: 'llama-3.1-8b-instant'
+      model: 'llama-3.3-70b-versatile'
     },
     {
       name: 'OpenRouter Utama',
       url: 'https://openrouter.ai/api/v1/chat/completions',
       key: process.env.OPENROUTER_API_KEY,
-      model: 'meta-llama/llama-3.1-8b-instruct:free'
+      model: 'meta-llama/llama-3.3-70b-instruct:free'
     },
     {
       name: 'OpenRouter Backup',
       url: 'https://openrouter.ai/api/v1/chat/completions',
       key: process.env.OPENROUTER_BACKUP_API_KEY,
-      model: 'meta-llama/llama-3.1-8b-instruct:free'
+      model: 'meta-llama/llama-3.3-70b-instruct:free'
     }
+
   ];
 
   const errors: string[] = [];
@@ -79,10 +84,13 @@ async function generateArticleWithFallback(prompt: string): Promise<GeneratedArt
       const rawContent = aiData.choices?.[0]?.message?.content;
       if (!rawContent) throw new Error('Respons AI kosong.');
 
-      const articleJson = JSON.parse(rawContent);
+      const cleanedContent = rawContent.replace(/```json|```/g, '').trim();
+      const articleJson = JSON.parse(cleanedContent);
+
       if (!articleJson.title || !articleJson.excerpt || !articleJson.content) {
         throw new Error('JSON AI tidak lengkap.');
       }
+
 
       return {
         title: articleJson.title,
@@ -100,20 +108,15 @@ async function generateArticleWithFallback(prompt: string): Promise<GeneratedArt
   throw new Error(`Semua provider AI gagal. ${errors.join(' | ') || 'Tidak ada API key AI yang tersedia.'}`);
 }
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const secret = searchParams.get('secret');
-  const authHeader = request.headers.get('authorization');
+import { isValidCronRequest } from '@/lib/cronAuth';
 
-  // Verify the cron secret (supports query param or Vercel authorization header)
-  if (
-    secret !== (process.env.CRON_SECRET || 'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU=') &&
-    authHeader !== `Bearer ${process.env.CRON_SECRET || 'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU='}`
-  ) {
+export async function GET(request: Request) {
+  if (!isValidCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   // Pick category randomly or from query
+  const { searchParams } = new URL(request.url);
   const categoryParam = searchParams.get('category');
   const category = categoryParam && CATEGORIES.includes(categoryParam) 
     ? categoryParam 
@@ -139,14 +142,34 @@ Kembalikan HANYA string JSON murni tanpa membungkus dengan tag markdown json.`;
       year: 'numeric'
     });
 
-    const illustrationPrompt = encodeURIComponent(`astrophotography stars space background nebula meteorite deep space style for article ${articleJson.title}`);
-    const imageUrl = `https://image.pollinations.ai/prompt/${illustrationPrompt}?width=800&height=500&nologo=true`;
+    const illustrationPrompt = `astrophotography stars space background nebula meteorite deep space style for article ${articleJson.title}`;
+    const imagePath = `data/blog/images/${docId}.jpg`;
+    const { generateImageWithFallback } = await import('@/lib/imageGenerator');
+    const imageUrl = await generateImageWithFallback(illustrationPrompt, imagePath);
+
+    const attribution = "\n\nSource: NASA Open Data APIs\nSumber Data: Pusat Data Publik Antariksa";
+    const articleContent = articleJson.content + attribution;
+
+    // Auto-translate ke 4 bahasa (EN, MS, ZH, JA) saat artikel dibuat
+    console.log(`[Cron Blog] Memulai auto-translate untuk: ${articleJson.title}`);
+    let translations = {};
+    try {
+      translations = await buildArticleTranslations({
+        title: articleJson.title,
+        excerpt: articleJson.excerpt,
+        content: articleContent,
+      });
+      console.log(`[Cron Blog] ✅ Auto-translate selesai: ${Object.keys(translations).join(', ')}`);
+    } catch (translateErr) {
+      console.warn('[Cron Blog] ⚠️ Auto-translate gagal, artikel tetap disimpan tanpa terjemahan:', translateErr);
+    }
 
     const newArticle = {
       id: docId,
       title: articleJson.title,
       excerpt: articleJson.excerpt,
-      content: articleJson.content,
+      content: articleContent,
+      translations,
       category: category,
       date: dateFormatted,
       image: imageUrl,
@@ -156,34 +179,59 @@ Kembalikan HANYA string JSON murni tanpa membungkus dengan tag markdown json.`;
       createdAt: new Date().toISOString()
     };
 
-    // Save to Firestore
-    await adminDb.collection('articles').doc(docId).set(newArticle);
+    // 3. Save individual article JSON directly to R2 (no Firestore)
+    await uploadToR2(`data/blog/articles/${docId}.json`, JSON.stringify(newArticle, null, 2), 'application/json');
 
-    // Rebuild Blog index cache in R2
-    const allArticlesSnapshot = await adminDb.collection('articles').get();
+    // 4. Save metadata to Cloudflare D1
+    try {
+      const { queryD1 } = await import('@/lib/d1Client');
+      await queryD1(
+        `INSERT OR REPLACE INTO articles (
+          id, title, category, r2_path, createdAt, tags, image, excerpt, date, views, status, review_status, ai_provider
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        [
+          newArticle.id,
+          newArticle.title,
+          newArticle.category,
+          `data/blog/articles/${newArticle.id}.json`,
+          newArticle.createdAt,
+          'blog,astronomi,sains',
+          newArticle.image,
+          newArticle.excerpt,
+          newArticle.date,
+          newArticle.views,
+          newArticle.status,
+          'Terverifikasi', // Blog articles default to verified or verified review_status
+          newArticle.ai_provider
+        ]
+      );
+      console.log(`[Cron Blog] Metadata successfully stored in Cloudflare D1 for: ${docId}`);
+    } catch (d1Err) {
+      console.error('[Cron Blog] Gagal menyimpan metadata ke Cloudflare D1:', d1Err);
+    }
 
-    const articlesList: any[] = [];
-    allArticlesSnapshot.forEach((doc: any) => {
-      const data = doc.data();
-      if (data.status === 'Published') {
-        articlesList.push(data);
-      }
-    });
 
-    // Sort in-memory by createdAt descending
-    articlesList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    // 4. Update posts.json index in R2 (prepend new article)
+    const existingPosts = await fetchJsonFromR2<any[]>('data/blog/posts.json') || [];
+    const updatedPosts = [newArticle, ...existingPosts.filter((p: any) => p.id !== docId)];
+    updatedPosts.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    await uploadToR2('data/blog/posts.json', JSON.stringify(updatedPosts, null, 2), 'application/json');
 
-    // Save JSON array index list to Cloudflare R2
-    await uploadToR2('data/blog/posts.json', JSON.stringify(articlesList, null, 2), 'application/json');
+    // 5. Rebuild RSS Feed from R2
+    await rebuildRSSFeedHelper();
 
-    // Get total statistics for report
-    const totalArticles = articlesList.length;
-    const totalMeteorites = await adminDb.collection('meteorites').get().then((snap: any) => snap.size);
+    // Get total statistics from R2 cache
+    const totalArticles = updatedPosts.length;
+    // Keep meteorites count from Firestore (still used for backup data)
+    let totalMeteorites = 0;
+    try {
+      const { adminDb } = await import('@/lib/firebaseAdmin');
+      totalMeteorites = await adminDb.collection('meteorites').get().then((snap: any) => snap.size);
+    } catch { /* best effort */ }
 
     const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '5429818332';
     const TELEGRAM_CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID || '-1004429795655';
 
-    // 1. Send link otomatis ke channel
     const articleUrl = getAbsoluteUrl(`/blog/${docId}`);
     const channelMsg = `📝 <b>Artikel Sains Baru Terbit!</b>\n\n` +
       `📌 <b>${newArticle.title}</b>\n` +
@@ -191,7 +239,14 @@ Kembalikan HANYA string JSON murni tanpa membungkus dengan tag markdown json.`;
       `📚 Kategori: ${newArticle.category}\n` +
       `📅 Tanggal: ${newArticle.date}\n\n` +
       `🔗 Baca selengkapnya di sini:\n${articleUrl}`;
-    await sendTelegramMessage(TELEGRAM_CHANNEL_ID, channelMsg);
+
+    await sendBroadcastNotification({
+      title: `📝 Artikel Baru: ${newArticle.title}`,
+      body: `Artikel Sains Baru Terbit!\n${newArticle.title}\n${newArticle.excerpt}`,
+      telegramHtml: channelMsg,
+      link: `/blog/${docId}`,
+      imageUrl: newArticle.image
+    });
 
     // 2. Send report harian ke Chat ID Admin
     const successMsg = `📢 <b>LAPORAN CRON JOB BLOG ARTIKEL AI</b>\n\n` +

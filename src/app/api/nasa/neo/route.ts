@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { fetchNasaJsonCached } from '@/lib/nasaApiCache';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const daysParam = searchParams.get('days');
-    const days = daysParam ? parseInt(daysParam, 10) : 1;
+    const days = Math.min(7, Math.max(1, daysParam ? parseInt(daysParam, 10) : 1));
 
     const apiKey = process.env.NASA_API_KEY || 'DEMO_KEY';
     const today = new Date();
@@ -30,16 +31,11 @@ export async function GET(request: Request) {
       endDateStr = endDate.toISOString().split('T')[0];
     }
 
-    const res = await fetch(
+    const data = await fetchNasaJsonCached<any>(
+      `neo-${todayStr}-${endDateStr}`,
       `https://api.nasa.gov/neo/rest/v1/feed?start_date=${todayStr}&end_date=${endDateStr}&api_key=${apiKey}`,
-      { next: { revalidate: 3600 } }
+      60 * 60 * 1000
     );
-
-    if (!res.ok) {
-      throw new Error(`NASA NeoWs API returned status ${res.status}`);
-    }
-
-    const data = await res.json();
     
     let nearEarthObjects: any[] = [];
     if (data.near_earth_objects) {
@@ -77,6 +73,10 @@ export async function GET(request: Request) {
       count: neos.length,
       date: todayStr,
       data: neos,
+    }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=21600',
+      },
     });
   } catch (error) {
     console.error('[API NASA NEO] Error:', error);

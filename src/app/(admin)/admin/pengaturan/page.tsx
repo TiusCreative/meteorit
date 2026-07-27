@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { auth } from '@/lib/firebaseConfig';
+
 
 interface BackupFile {
   key: string;
@@ -26,6 +28,8 @@ export default function PengaturanAdmin() {
   const [backups, setBackups] = useState<BackupFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isBackupProcessing, setIsBackupProcessing] = useState(false);
+  const [isSyncingD1, setIsSyncingD1] = useState(false);
+
 
   async function loadData() {
     setIsLoading(true);
@@ -119,6 +123,33 @@ export default function PengaturanAdmin() {
       setIsBackupProcessing(false);
     }
   };
+
+  const handleSyncD1 = async () => {
+    setIsSyncingD1(true);
+    try {
+      const currentUser = auth.currentUser;
+      const adminUid = currentUser?.uid || '';
+      
+      const res = await fetch('/api/admin/sync-d1', {
+        method: 'POST',
+        headers: {
+          'x-admin-uid': adminUid
+        }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(`Sukses! Sinkronisasi Cloudflare D1 selesai.\n\n- Total: ${data.stats.total}\n- Berhasil: ${data.stats.synced}\n- Gagal: ${data.stats.failed}\n\nSemua metadata berhasil dipindahkan ke Cloudflare D1.`);
+      } else {
+        alert(`Gagal sinkronisasi D1: ${data.error || 'Terjadi kesalahan'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Terjadi kesalahan koneksi saat memicu sinkronisasi manual D1.');
+    } finally {
+      setIsSyncingD1(false);
+    }
+  };
+
 
   const handleRestoreBackup = async (fileName: string) => {
     if (!confirm(`Apakah Anda yakin ingin melakukan restore dari berkas "${fileName}"? Tindakan ini akan mengganti semua koleksi Firestore saat ini.`)) return;
@@ -246,6 +277,18 @@ export default function PengaturanAdmin() {
               </button>
             </div>
 
+            <div className="flex flex-col gap-2 pt-3 border-t border-slate-100">
+              <p className="text-xs font-bold text-slate-500">Cloudflare D1 Database</p>
+              <button 
+                onClick={handleSyncD1}
+                disabled={isSyncingD1}
+                className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-xl text-xs transition-colors"
+              >
+                {isSyncingD1 ? '⏳ Menyinkronkan D1...' : '🗄️ Inisialisasi & Sinkron Firebase ke D1'}
+              </button>
+            </div>
+
+
             <div>
               <h3 className="text-sm font-bold text-slate-700 mb-3">Daftar Backup Tersedia</h3>
               <div className="space-y-2 max-h-56 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-slate-50">
@@ -259,6 +302,13 @@ export default function PengaturanAdmin() {
                         <span className="text-[10px] text-slate-400">Ukuran: {(b.size / 1024).toFixed(2)} KB | Modifikasi: {new Date(b.lastModified).toLocaleDateString()}</span>
                       </div>
                       <div className="flex gap-2">
+                        <a 
+                          href={`/api/admin/backup?file=${encodeURIComponent(b.name)}`}
+                          download
+                          className="text-green-600 hover:text-green-900 font-bold"
+                        >
+                          Unduh
+                        </a>
                         <button 
                           onClick={() => handleRestoreBackup(b.name)}
                           disabled={isBackupProcessing}
@@ -274,6 +324,7 @@ export default function PengaturanAdmin() {
                           Hapus
                         </button>
                       </div>
+
                     </div>
                   ))
                 )}

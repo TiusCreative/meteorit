@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/apod",
+      "schedule": "0 6 * * *"
+    },
+    {
       "path": "/api/cron/blog",
       "schedule": "0 1 * * *"
     },
@@ -11,6 +15,18 @@
     {
       "path": "/api/cron/komet",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/fireball",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/eonet",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/glossary",
+      "schedule": "0 20 * * *"
     },
     {
       "path": "/api/cron",
@@ -26,7 +42,7 @@
     },
     {
       "path": "/api/cron/earth-monitoring",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 9 * * *"
     },
     {
       "path": "/api/cron/earth-monitoring-daily",
@@ -35,6 +51,10 @@
     {
       "path": "/api/cron/earth-monitoring-weekly",
       "schedule": "0 3 * * 6"
+    },
+    {
+      "path": "/api/cron/cleanup-telegram-reports",
+      "schedule": "0 0 * * *"
     }
   ]
 }

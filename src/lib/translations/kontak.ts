@@ -1,0 +1,241 @@
+import type { SiteLanguage } from '../i18n';
+
+export type ContatTranslation = {
+  pageTitle: string;
+  metaDescription: string;
+  badge: string;
+  title: string;
+  subtitle: string;
+  nameLabel: string;
+  namePlaceholder: string;
+  emailLabel: string;
+  emailPlaceholder: string;
+  subjectLabel: string;
+  subjectPlaceholder: string;
+  messageLabel: string;
+  messagePlaceholder: string;
+  submit: string;
+  submitting: string;
+  successTitle: string;
+  successMsg: string;
+  errorMsg: string;
+  emailTitle: string;
+  emailDesc: string;
+  telegramTitle: string;
+  telegramDesc: string;
+  locationTitle: string;
+  locationDesc: string;
+  responseTitle: string;
+  responseDesc: string;
+  alertValidation: string;
+};
+
+const kontakTextBase = {
+  id: {
+    pageTitle: 'Hubungi Kami - Meteorit Indonesia',
+    metaDescription: 'Hubungi tim Meteorit Indonesia untuk pertanyaan, laporan temuan meteorit, kolaborasi ilmiah, atau dukungan teknis.',
+    badge: '📬 Kami Siap Membantu',
+    title: 'Hubungi Kami',
+    subtitle: 'Punya pertanyaan, laporan temuan meteorit, atau ingin berkolaborasi? Tim kami siap membantu.',
+    nameLabel: 'Nama Lengkap',
+    namePlaceholder: 'Masukkan nama lengkap Anda',
+    emailLabel: 'Alamat Email',
+    emailPlaceholder: 'nama@domain.com',
+    subjectLabel: 'Subjek',
+    subjectPlaceholder: 'Topik pesan Anda',
+    messageLabel: 'Pesan',
+    messagePlaceholder: 'Tuliskan pesan Anda di sini...',
+    submit: '🚀 Kirim Pesan',
+    submitting: 'Mengirim...',
+    successTitle: 'Pesan Terkirim!',
+    successMsg: 'Terima kasih telah menghubungi kami. Kami akan segera merespons pesan Anda.',
+    errorMsg: 'Gagal mengirim pesan. Silakan coba lagi.',
+    emailTitle: '📧 Email',
+    emailDesc: 'info@meteorit.my.id',
+    telegramTitle: '💬 Telegram',
+    telegramDesc: 'Bergabung di grup komunitas kami',
+    locationTitle: '📍 Lokasi',
+    locationDesc: 'Perum Puri Cikarang Hijau, Bekasi, Jawa Barat 17530, Indonesia',
+    responseTitle: '⏱ Waktu Respons',
+    responseDesc: 'Dalam 24 jam kerja',
+    alertValidation: 'Semua kolom formulir wajib diisi.',
+  },
+  en: {
+    pageTitle: 'Contact Us - Meteorit Indonesia',
+    metaDescription: 'Contact the Meteorit Indonesia team for questions, meteorite find reports, scientific collaboration, or technical support.',
+    badge: '📬 We\'re Here to Help',
+    title: 'Contact Us',
+    subtitle: 'Have questions, a meteorite find report, or want to collaborate? Our team is ready to assist you.',
+    nameLabel: 'Full Name',
+    namePlaceholder: 'Enter your full name',
+    emailLabel: 'Email Address',
+    emailPlaceholder: 'name@domain.com',
+    subjectLabel: 'Subject',
+    subjectPlaceholder: 'Topic of your message',
+    messageLabel: 'Message',
+    messagePlaceholder: 'Write your message here...',
+    submit: '🚀 Send Message',
+    submitting: 'Sending...',
+    successTitle: 'Message Sent!',
+    successMsg: 'Thank you for reaching out. We\'ll respond to your message as soon as possible.',
+    errorMsg: 'Failed to send message. Please try again.',
+    emailTitle: '📧 Email',
+    emailDesc: 'info@meteorit.my.id',
+    telegramTitle: '💬 Telegram',
+    telegramDesc: 'Join our community group',
+    locationTitle: '📍 Location',
+    locationDesc: 'Perum Puri Cikarang Hijau, Bekasi, West Java 17530, Indonesia',
+    responseTitle: '⏱ Response Time',
+    responseDesc: 'Within 24 business hours',
+    alertValidation: 'All form fields are required.',
+  },
+  ms: {
+    pageTitle: 'Hubungi Kami - Meteorit Indonesia',
+    metaDescription: 'Hubungi pasukan Meteorit Indonesia untuk pertanyaan, laporan temuan meteorit, kerjasama saintifik, atau sokongan teknikal.',
+    badge: '📬 Kami Sedia Membantu',
+    title: 'Hubungi Kami',
+    subtitle: 'Ada soalan, laporan temuan meteorit, atau mahu berkolaborasi? Pasukan kami sedia membantu.',
+    nameLabel: 'Nama Penuh',
+    namePlaceholder: 'Masukkan nama penuh anda',
+    emailLabel: 'Alamat Email',
+    emailPlaceholder: 'nama@domain.com',
+    subjectLabel: 'Subjek',
+    subjectPlaceholder: 'Topik mesej anda',
+    messageLabel: 'Mesej',
+    messagePlaceholder: 'Tulis mesej anda di sini...',
+    submit: '🚀 Hantar Mesej',
+    submitting: 'Menghantar...',
+    successTitle: 'Mesej Dihantar!',
+    successMsg: 'Terima kasih kerana menghubungi kami. Kami akan segera membalas mesej anda.',
+    errorMsg: 'Gagal menghantar mesej. Sila cuba lagi.',
+    emailTitle: '📧 Email',
+    emailDesc: 'info@meteorit.my.id',
+    telegramTitle: '💬 Telegram',
+    telegramDesc: 'Sertai kumpulan komuniti kami',
+    locationTitle: '📍 Lokasi',
+    locationDesc: 'Perum Puri Cikarang Hijau, Bekasi, Jawa Barat 17530, Indonesia',
+    responseTitle: '⏱ Masa Respons',
+    responseDesc: 'Dalam 24 jam bekerja',
+    alertValidation: 'Semua ruangan borang wajib diisi.',
+  },
+  zh: {
+    pageTitle: '联系我们 - Meteorit Indonesia',
+    metaDescription: '联系 Meteorit Indonesia 团队，提出问题、报告陨石发现、科学合作或技术支持。',
+    badge: '📬 我们随时为您服务',
+    title: '联系我们',
+    subtitle: '有疑问、陨石发现报告或想合作？我们的团队随时为您提供帮助。',
+    nameLabel: '全名',
+    namePlaceholder: '请输入您的全名',
+    emailLabel: '电子邮箱',
+    emailPlaceholder: 'name@domain.com',
+    subjectLabel: '主题',
+    subjectPlaceholder: '您的消息主题',
+    messageLabel: '留言',
+    messagePlaceholder: '在此写下您的留言...',
+    submit: '🚀 发送消息',
+    submitting: '发送中...',
+    successTitle: '消息已发送！',
+    successMsg: '感谢您的联系。我们将尽快回复您的消息。',
+    errorMsg: '发送失败，请重试。',
+    emailTitle: '📧 邮箱',
+    emailDesc: 'info@meteorit.my.id',
+    telegramTitle: '💬 Telegram',
+    telegramDesc: '加入我们的社区群组',
+    locationTitle: '📍 地址',
+    locationDesc: 'Perum Puri Cikarang Hijau, 勿加泗, 西爪哇 17530, 印度尼西亚',
+    responseTitle: '⏱ 响应时间',
+    responseDesc: '24个工作小时内',
+    alertValidation: '所有表单字段均为必填项。',
+  },
+  ja: {
+    pageTitle: 'お問い合わせ - Meteorit Indonesia',
+    metaDescription: 'Meteorit Indonesia チームへの質問、隕石発見の報告、科学的コラボレーション、または技術サポートのお問い合わせ。',
+    badge: '📬 お気軽にご連絡ください',
+    title: 'お問い合わせ',
+    subtitle: 'ご質問、隕石の発見報告、またはコラボレーションのご希望がありましたら、お気軽にどうぞ。',
+    nameLabel: '氏名',
+    namePlaceholder: 'お名前を入力してください',
+    emailLabel: 'メールアドレス',
+    emailPlaceholder: 'name@domain.com',
+    subjectLabel: '件名',
+    subjectPlaceholder: 'メッセージの件名',
+    messageLabel: 'メッセージ',
+    messagePlaceholder: 'ここにメッセージを入力してください...',
+    submit: '🚀 メッセージを送信',
+    submitting: '送信中...',
+    successTitle: 'メッセージを送信しました！',
+    successMsg: 'ご連絡ありがとうございます。できるだけ早くご返答いたします。',
+    errorMsg: 'メッセージの送信に失敗しました。もう一度お試しください。',
+    emailTitle: '📧 メール',
+    emailDesc: 'info@meteorit.my.id',
+    telegramTitle: '💬 Telegram',
+    telegramDesc: 'コミュニティグループに参加する',
+    locationTitle: '📍 場所',
+    locationDesc: 'Perum Puri Cikarang Hijau, ブカシ, 西ジャワ 17530, インドネシア',
+    responseTitle: '⏱ 応答時間',
+    responseDesc: '24営業時間以内',
+    alertValidation: 'すべての入力項目が必須です。',
+  },
+};
+
+export const kontakText: Record<SiteLanguage, ContatTranslation> = {
+  ...kontakTextBase,
+  ru: {
+  "pageTitle": "Свяжитесь с нами - Meteorit Indonesia",
+  "metaDescription": "Обратитесь к команде Meteorit Indonesia по вопросам, сообщениям о находках метеоритов, научному сотрудничеству или технической поддержке.",
+  "badge": "📬 Мы здесь, чтобы помочь",
+  "title": "Свяжитесь с нами",
+  "subtitle": "У вас есть вопросы, сообщение о находке метеорита или вы хотите сотрудничать? Наша команда готова помочь вам.",
+  "nameLabel": "Полное имя",
+  "namePlaceholder": "Введите ваше полное имя",
+  "emailLabel": "Адрес электронной почты",
+  "emailPlaceholder": "name@domain.com",
+  "subjectLabel": "Тема",
+  "subjectPlaceholder": "Тема вашего сообщения",
+  "messageLabel": "Сообщение",
+  "messagePlaceholder": "Напишите ваше сообщение здесь...",
+  "submit": "🚀 Отправить сообщение",
+  "submitting": "Отправка...",
+  "successTitle": "Сообщение отправлено!",
+  "successMsg": "Спасибо за обращение. Мы ответим на ваше сообщение как можно скорее.",
+  "errorMsg": "Не удалось отправить сообщение. Пожалуйста, попробуйте снова.",
+  "emailTitle": "📧 Электронная почта",
+  "emailDesc": "info@meteorit.my.id",
+  "telegramTitle": "💬 Telegram",
+  "telegramDesc": "Присоединяйтесь к нашей группе сообщества",
+  "locationTitle": "📍 Место нахождения",
+  "locationDesc": "Perum Puri Cikarang Hijau, Bekasi, West Java 17530, Indonesia",
+  "responseTitle": "⏱ Время ответа",
+  "responseDesc": "В течение 24 рабочих часов",
+  "alertValidation": "Все поля формы обязательны для заполнения."
+},
+  fr: {
+  "pageTitle": "Contactez-nous - Meteorit Indonésie",
+  "metaDescription": "Contactez l'équipe de Meteorit Indonésie pour des questions, des rapports de découverte de météorites, une collaboration scientifique ou un support technique.",
+  "badge": "📬 Nous sommes là pour vous aider",
+  "title": "Contactez-nous",
+  "subtitle": "Avez-vous des questions, un rapport de découverte de météorite ou souhaitez-vous collaborer ? Notre équipe est prête à vous aider.",
+  "nameLabel": "Nom complet",
+  "namePlaceholder": "Entrez votre nom complet",
+  "emailLabel": "Adresse e-mail",
+  "emailPlaceholder": "nom@domaine.com",
+  "subjectLabel": "Sujet",
+  "subjectPlaceholder": "Objet de votre message",
+  "messageLabel": "Message",
+  "messagePlaceholder": "Écrivez votre message ici...",
+  "submit": "🚀 Envoyer le message",
+  "submitting": "Envoi en cours...",
+  "successTitle": "Message envoyé !",
+  "successMsg": "Merci de nous avoir contactés. Nous répondrons à votre message dès que possible.",
+  "errorMsg": "Échec de l'envoi du message. Veuillez réessayer.",
+  "emailTitle": "📧 E-mail",
+  "emailDesc": "info@meteorit.my.id",
+  "telegramTitle": "💬 Telegram",
+  "telegramDesc": "Rejoignez notre groupe communautaire",
+  "locationTitle": "📍 Emplacement",
+  "locationDesc": "Perum Puri Cikarang Hijau, Bekasi, Java occidentale 17530, Indonésie",
+  "responseTitle": "⏱ Délai de réponse",
+  "responseDesc": "Dans les 24 heures ouvrables",
+  "alertValidation": "Tous les champs du formulaire sont obligatoires."
+}
+};

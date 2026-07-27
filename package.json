@@ -18,10 +18,14 @@
     "firebase-admin": "^12.2.0",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.14.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.21.0",
+    "maplibre-gl": "^5.24.0",
     "midtrans-client": "^1.1.0",
     "next": "14.2.4",
+    "next-themes": "^0.3.0",
     "nodemailer": "^6.9.16",
     "react": "^18",
     "react-dom": "^18",
@@ -29,8 +33,10 @@
     "react-icons": "^5.2.1",
     "react-query": "^3.39.3",
     "resend": "^6.14.0",
+    "sharp": "^0.35.3",
     "swr": "^2.2.5",
-    "undici": "^8.5.0"
+    "undici": "^8.5.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.1",
@@ -74,7 +80,7 @@
     "url": "https://github.com/your-repo/meteorit-indonesia/issues"
   },
   "engines": {
-    "node": "20.x",
+    "node": "22.x",
     "npm": ">=9.0.0"
   },
   "lint-staged": {

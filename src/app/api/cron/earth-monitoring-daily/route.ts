@@ -10,15 +10,12 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-function isAuthorized(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const secret = process.env.CRON_SECRET || '';
-  const authHeader = request.headers.get('authorization');
-  return searchParams.get('secret') === secret || authHeader === `Bearer ${secret}`;
-}
+import { isValidCronRequest } from '@/lib/cronAuth';
+
+import { sendBroadcastNotification } from '@/lib/notifications';
 
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
+  if (!isValidCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -38,9 +35,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: true, eventType: 'daily_sky_summary', skipped: true, telegramSent: false });
   }
 
-  const channelId = process.env.TELEGRAM_CHANNEL_ID || '';
   const message = await buildDailySkyMessage();
-  const telegramSent = channelId ? await sendTelegramMessage(channelId, message) : false;
+  const broadcastRes = await sendBroadcastNotification({
+    title: '🌌 Rekomendasi Langit Malam Ini',
+    body: 'Cek prediksi langit malam ini untuk observasi bintang terbaik di Indonesia.',
+    telegramHtml: message,
+    link: '/langit-malam'
+  });
+  const telegramSent = broadcastRes.tgSuccess;
 
   await markNotificationSent('daily_sky_summary', signature, telegramSent);
 

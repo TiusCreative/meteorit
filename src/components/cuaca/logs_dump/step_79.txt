@@ -1,0 +1,49 @@
+Created At: 2026-07-06T00:40:53Z
+Completed At: 2026-07-06T00:40:54Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 3014
+Total Bytes: 164208
+Showing lines 990 to 1030
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+990:       });
+991:     } catch (e) {
+992:       console.error('Failed to trigger Telegram Warning message:', e);
+993:     }
+994:   };
+995: 
+996:   // ── Fetch from our API ──
+997:   const fetchWeather = useCallback(async (query: string) => {
+998:     if (!query.trim()) return;
+999:     setLoading(true);
+1000:     setError('');
+1001:     try {
+1002:       const url = query.includes(',')
+1003:         ? `/api/nasa/openweather?lat=${encodeURIComponent(query.split(',')[0].trim())}&lon=${encodeURIComponent(query.split(',')[1].trim())}`
+1004:         : `/api/nasa/openweather?q=${encodeURIComponent(query)}`;
+1005: 
+1006:       const res = await fetch(url);
+1007:       if (!res.ok) throw new Error('Kota tidak ditemukan');
+1008:       const payload = await res.json();
+1009:       if (!payload.success || !payload.data) {
+1010:         throw new Error(payload.error || 'Gagal mengambil data cuaca.');
+1011:       }
+1012:       const weatherData = payload.data;
+1013:       setWeather(weatherData);
+1014: 
+1015:       // Trigger automatic extreme alerts if conditions match
+1016:       if (weatherData.temp > 36 || weatherData.wind_speed > 10 || weatherData.humidity > 90) {
+1017:         let details = `Terdeteksi di ${weatherData.city}: `;
+1018:         if (weatherData.temp > 36) details += `Suhu ekstrem ${weatherData.temp}°C. `;
+1019:         if (weatherData.wind_speed > 10) details += `Angin kencang ${weatherData.wind_speed} m/s. `;
+1020:         if (weatherData.humidity > 90) details += `Kelembapan sangat tinggi ${weatherData.humidity}%. `;
+1021:         
+1022:         triggerTelegramWarning(weatherData.city, details, 'extreme');
+1023:       }
+1024: 
+1025:       // Add points for checking weather
+1026:       awardPoints(10);
+1027: 
+1028:       // Fetch 7-day forecast from Open-Meteo
+1029:       const lat = weatherData.lat;
+1030:       const lon = weatherData.lon;
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

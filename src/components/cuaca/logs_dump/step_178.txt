@@ -1,0 +1,42 @@
+Created At: 2026-07-06T00:45:21Z
+Completed At: 2026-07-06T00:45:21Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4130
+Total Bytes: 227654
+Showing lines 3585 to 3700
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3585:             {/* Sub-tab 2: Titik Api (NASA FIRMS Hotspots) */}
+3586:             {disasterSubTab === 'hotspots' && (
+3587:               <div className="space-y-4">
+3588:                 {/* Control Panel */}
+3589:                 <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-3">
+3590:                   <div className="flex items-center gap-1.5 pb-2 border-b border-gray-100">
+3591:                     <span className="text-lg">🔥</span>
+3592:                     <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">{language === 'id' || language === 'ms' ? 'Sebaran Kebakaran Hutan (Hotspot) & Kontrol' : language === 'zh' ? '林火辐射 (热源) 分布与控制' : language === 'ja' ? '森林火災 (熱源) 分布と操作' : 'Wildfire (Hotspot) Distribution & Controls'}</h4>
+3593:                   </div>
+3594:                   
+3595:                   <div className="grid grid-cols-3 gap-2">
+3596:                     <div>
+3597:                       <label className="block text-[8px] font-extrabold text-slate-400 uppercase mb-1 tracking-wider">{language === 'id' || language === 'ms' ? 'Wilayah' : language === 'zh' ? '区域' : language === 'ja' ? '地域' : 'Region'}</label>
+3598:                       <select
+3599:                         value={hotspotCountry}
+3600:                         onChange={e => {
+3601:                           setHotspotCountry(e.target.value as any);
+3602:                           setHotspots([]); // Clear so loading animation 
+<truncated 8290 bytes>
+'ms' ? 'Tinggi' : language === 'zh' ? '高置信度' : language === 'ja' ? '高信頼度' : 'High'}: {hotspotStats.highConf}
+3687:                           </div>
+3688:                           <div className="bg-amber-50 text-amber-700 p-2 rounded-xl border border-amber-100 font-bold">
+3689:                             {language === 'id' || language === 'ms' ? 'Nominal' : language === 'zh' ? '中置信度' : language === 'ja' ? '中信頼度' : 'Nominal'}: {hotspotStats.nominalConf}
+3690:                           </div>
+3691:                           <div className="bg-blue-50 text-blue-700 p-2 rounded-xl border border-blue-100 font-bold">
+3692:                             {language === 'id' || language === 'ms' ? 'Rendah' : language === 'zh' ? '低置信度' : language === 'ja' ? '低信頼度' : 'Low'}: {hotspotStats.lowConf}
+3693:                           </div>
+3694:                         </div>
+3695:                         
+3696:                         {/* Hottest Point details */}
+3697:                         <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100/50 mt-2 space-y-1">
+3698:                           <p className="text-[8px] font-extrabold text-slate-400 uppercase tracking-wider">📍 {language === 'id' || language === 'ms' ? 'Titik Dengan Intensitas Radiasi Tertinggi' : language === 'zh' ? '最高辐射强度点' : language === 'ja' ? '最高放射強度地点' : 'Hottest Thermal Hotspot Point'}</p>
+3699:                           <div className="flex justify-between items-center text-[10px] text-slate-600">
+3700:                             <span>{language === 'id' || language === 'ms' ? 'Koordinat' : language === 'zh' ? '坐标' : language === 'ja' ? '座標' : 'Coordinates'}: <strong>{hotspotStats.maxFrpLat.toFixed(4)}&deg;S, {hotspotStats.maxFrpLon.toFixed(4)}&deg;E</strong></span>
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

@@ -1,0 +1,121 @@
+Created At: 2026-07-06T00:38:05Z
+Completed At: 2026-07-06T00:38:06Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 3014
+Total Bytes: 164208
+Showing lines 1 to 800
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: "use client";
+2: 
+3: import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+4: import { useSiteLanguage } from '@/lib/useSiteLanguage';
+5: import {
+6:   Wind, Droplets, Thermometer, Eye, Sun, Cloud, CloudRain,
+7:   CloudSnow, Zap, Search, MapPin, RefreshCw, AlertTriangle,
+8:   Camera, Mic, MicOff, Share2, ChevronRight, ArrowLeft,
+9:   Navigation, Gauge, Sunset, Sunrise, Info, X, Map, Calendar,
+10:   Volume2, TrendingUp, Award, Clock, Home
+11: } from 'lucide-react';
+12: import EarthMonitoringMap from './EarthMonitoringMap';
+13: 
+14: // ─── Types ───────────────────────────────────────────────────────────────────
+15: interface WeatherData {
+16:   city: string;
+17:   country: string;
+18:   lat: number;
+19:   lon: number;
+20:   temp: number;
+21:   feels_like: number;
+22:   humidity: number;
+23:   description: string;
+24:   icon: string;
+25:   wind_speed: number;
+26:   wind_deg: number;
+27:   clouds: number;
+28:   visibility: number;
+29:   pressure: number;
+30:   sunrise: number;
+31:   sunset: number;
+32:   uvi?: number;
+33: }
+34: 
+35: interface ForecastDay {
+36:   date: string;
+37:   dayName: string;
+38:   high: number;
+39:   low: number;
+40:   description: string;
+41:   icon: string;
+42:   precip_prob: number;
+43:   wind_speed: number;
+44: }
+45: 
+46: interface CommunityReport {
+47:   city: string;
+48:   condition: string;
+49:   note: string;
+50:   timestamp: string;
+51:   
+<truncated 31154 bytes>
+        else lowConf++;
+741:         } else {
+742:           nominalConf++;
+743:         }
+744:       }
+745:     });
+746: 
+747:     return {
+748:       count,
+749:       avgFrp,
+750:       maxFrp: maxFrpItem.frp,
+751:       maxFrpLat: maxFrpItem.latitude,
+752:       maxFrpLon: maxFrpItem.longitude,
+753:       maxFrpDate: maxFrpItem.acq_date,
+754:       maxFrpTime: maxFrpItem.acq_time,
+755:       dayCount,
+756:       nightCount,
+757:       highConf,
+758:       nominalConf,
+759:       lowConf
+760:     };
+761:   }, [hotspots]);
+762: 
+763:   // SVG Chart Renderer for ENSO Niño 3.4 anomalies
+764:   const renderEnsoChart = (historyData: any[]) => {
+765:     if (!historyData || historyData.length === 0) return null;
+766:     
+767:     const dataPoints = historyData.slice(-24);
+768:     
+769:     const svgWidth = 500;
+770:     const svgHeight = 150;
+771:     const paddingLeft = 35;
+772:     const paddingRight = 15;
+773:     const paddingTop = 15;
+774:     const paddingBottom = 20;
+775:     
+776:     const chartWidth = svgWidth - paddingLeft - paddingRight;
+777:     const chartHeight = svgHeight - paddingTop - paddingBottom;
+778:     
+779:     let maxVal = 2.5;
+780:     let minVal = -2.5;
+781:     dataPoints.forEach(d => {
+782:       if (d.anomaly > maxVal) maxVal = d.anomaly;
+783:       if (d.anomaly < minVal) minVal = d.anomaly;
+784:     });
+785:     
+786:     const valRange = maxVal - minVal;
+787:     
+788:     const getX = (index: number) => {
+789:       return paddingLeft + (index / (dataPoints.length - 1)) * chartWidth;
+790:     };
+791:     
+792:     const getY = (val: number) => {
+793:       const ratio = (val - minVal) / valRange;
+794:       return paddingTop + chartHeight - ratio * chartHeight;
+795:     };
+796:     
+797:     const yZero = getY(0);
+798:     const yElNino = getY(0.5);
+799:     const yLaNina = getY(-0.5);
+800:     
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

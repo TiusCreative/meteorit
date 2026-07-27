@@ -30,10 +30,15 @@ export default function AdminLayout({
       setUser(currentUser);
 
       try {
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists() && userDoc.data()?.role === 'admin') {
-          setIsAdmin(true);
+        const idToken = await currentUser.getIdToken();
+        const res = await fetch(`/api/admin/verify?t=${Date.now()}`, {
+          headers: {
+            'Authorization': `Bearer ${idToken}`
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setIsAdmin(data.isAdmin || false);
         } else {
           setIsAdmin(false);
         }

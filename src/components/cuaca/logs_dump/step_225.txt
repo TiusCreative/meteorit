@@ -1,0 +1,39 @@
+Created At: 2026-07-06T00:48:07Z
+Completed At: 2026-07-06T00:48:07Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4128
+Total Bytes: 222567
+Showing lines 3770 to 3800
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3770:                           <p className="text-center text-[10px] text-gray-400 font-semibold py-2 bg-gray-50 rounded-xl border border-gray-150">
+3771:                             {d.showingHotspots.replace('{total}', hotspots.length.toString())}
+3772:                           </p>
+3773:                         )}
+3774:                       </div>
+3775:                     </div>
+3776:                   </>
+3777:                 )}
+3778:               </div>
+3779:             {/* Sub-tab 3: Curah Hujan & Banjir (NASA GPM & GFMS) */}
+3780:             {disasterSubTab === 'rain' && (
+3781:               <div className="space-y-4">
+3782:                 {/* Control Panel */}
+3783:                 <div className="bg-white rounded-3xl p-5 border border-gray-150 shadow-sm space-y-3">
+3784:                   <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+3785:                     <div className="flex items-center gap-1.5">
+3786:                       <span className="text-lg">🌧️</span>
+3787:                       <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">{language === 'id' || language === 'ms' ? 'Presipitasi GPM & Risiko Banjir GFMS' : language === 'zh' ? 'GPM 降水与 GFMS 洪水风险' : language === 'ja' ? 'GPM 降水量＆ GFMS 洪水リスク' : 'GPM Precipitation & GFMS Flood Risks'}</h4>
+3788:                     </div>
+3789:                     <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[8px] font-extrabold uppercase animate-pulse">
+3790:                       Active Map Layer
+3791:                     </span>
+3792:                   </div>
+3793: 
+3794:                   <div className="grid grid-cols-2 gap-2">
+3795:                     <div>
+3796:                       <label className="block text-[8px] font-extrabold text-slate-400 uppercase mb-1 tracking-wider">{language === 'id' || language === 'ms' ? 'Wilayah Pemantauan' : language === 'zh' ? '监测区域' : language === 'ja' ? '監視地域' : 'Monitoring Region'}</label>
+3797:                       <select
+3798:                         value={rainRegion}
+3799:                         onChange={e => {
+3800:                           const val = e.target.value as 'IDN' | 'world';
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

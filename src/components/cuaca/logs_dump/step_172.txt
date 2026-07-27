@@ -1,0 +1,54 @@
+Created At: 2026-07-06T00:45:09Z
+Completed At: 2026-07-06T00:45:10Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4130
+Total Bytes: 228805
+Showing lines 3451 to 3570
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3451:         {activeTab === 'disaster' && (
+3452:           <div className="space-y-4 text-left">
+3453:             {/* Sub-tabs */}
+3454:             <div className="flex gap-1 overflow-x-auto pb-1 border-b border-gray-150">
+3455:               {[
+3456:                 { key: 'quake', label: d.tabQuake },
+3457:                 { key: 'hotspots', label: d.tabHotspots },
+3458:                 { key: 'rain', label: d.tabRain },
+3459:                 { key: 'volcano', label: d.tabVolcano },
+3460:                 { key: 'enso', label: d.tabEnso },
+3461:               ].map(sub => (
+3462:                 <button
+3463:                   key={sub.key}
+3464:                   onClick={() => setDisasterSubTab(sub.key as any)}
+3465:                   className={`px-3 py-1.5 rounded-full text-[10px] font-black shrink-0 transition-all ${
+3466:                     disasterSubTab === sub.key
+3467:                       ? 'bg-blue-600 text-white'
+3468:                       : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
+3469:                   }`}
+3470:                 >
+3471:                   {sub.label}
+3472:                 </button>
+3473:               ))}
+3474:             </div>
+3475: 
+3476:             {/* Map rendering for Quake, Hotspots, Rain GPM, and Volcanoes */}
+3477:             {(disasterSubTab === 'quake' || disasterSubTab === 'hotspots' || disasterSubTab === 'rain' || disasterSubTab === 'volcano') && (
+3478:               <div className="space-y-2">
+3479:                 <p className="text-[10px] font-
+<truncated 5456 bytes>
+size={20} className="animate-spin text-blue-500 mx-auto" /></div>
+3556:                   ) : quakes.length === 0 ? (
+3557:                     <p className="text-center text-xs text-gray-400 py-6">{language === 'id' || language === 'ms' ? 'Tidak ada gempa terdeteksi dengan kriteria ini.' : language === 'zh' ? '未检测到符合该标准的地震。' : language === 'ja' ? 'この条件に該当する地震は検出されませんでした。' : 'No earthquakes detected with these criteria.'}</p>
+3558:                   ) : (
+3559:                     quakes.slice(0, 15).map((q: any) => {
+3560:                       const color = q.magnitude >= 5.0 ? 'border-red-500 bg-red-50/10' : q.magnitude >= 4.0 ? 'border-amber-500 bg-amber-50/10' : 'border-blue-500 bg-blue-50/10';
+3561:                       return (
+3562:                         <div key={q.id} className={`p-3 rounded-2xl border shadow-sm ${color} flex items-start gap-3`}>
+3563:                           <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center shrink-0">
+3564:                             <span className="text-xs font-black text-white">{q.magnitude.toFixed(1)}</span>
+3565:                           </div>
+3566:                           <div className="min-w-0 flex-1">
+3567:                             <h4 className="text-xs font-black text-slate-800 truncate">{q.place || q.region}</h4>
+3568:                             <p className="text-[10px] text-slate-500 mt-0.5">
+3569:                               {language === 'id' || language === 'ms' ? 'Kedalaman' : language === 'zh' ? '深度' : language === 'ja' ? '深さ' : 'Depth'}: {q.depth} km &bull; {q.time ? new Date(q.time).toLocaleString(language === 'id' ? 'id-ID' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }) : q.dateTime || '-'}
+3570:                             </p>
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

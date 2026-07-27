@@ -1,0 +1,65 @@
+Created At: 2026-07-06T00:38:51Z
+Completed At: 2026-07-06T00:38:51Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 3014
+Total Bytes: 164208
+Showing lines 2260 to 2370
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+2260:           <div className="space-y-4">
+2261:             <h2 className="text-sm font-black text-blue-800 uppercase tracking-wider">Integrasi Kalender & Rencana Aktivitas</h2>
+2262:             
+2263:             <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-3 text-left">
+2264:               <p className="text-xs font-bold text-slate-700">Rencanakan Jadwal Anda</p>
+2265:               <form onSubmit={addCalendarEvent} className="space-y-2">
+2266:                 <div className="grid grid-cols-2 gap-2">
+2267:                   <input
+2268:                     type="text"
+2269:                     placeholder="Nama kegiatan (contoh: Main bola)"
+2270:                     value={newActivity.title}
+2271:                     onChange={e => setNewActivity(p => ({ ...p, title: e.target.value }))}
+2272:                     className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400"
+2273:                     required
+2274:                   />
+2275:                   <input
+2276:                     type="text"
+2277:                     placeholder="Kota lokasi"
+2278:                     value={newActivity.location}
+2279:                     onChange={e => setNewActivity(p => ({ ...p, location: e.target.value }))}
+2280:                     className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400"
+2281:                     required
+2282:             
+<truncated 3034 bytes>
+p-1 overflow-x-auto pb-1 border-b border-gray-150">
+2339:               {[
+2340:                 { key: 'quake', label: d.tabQuake },
+2341:                 { key: 'hotspots', label: d.tabHotspots },
+2342:                 { key: 'rain', label: d.tabRain },
+2343:                 { key: 'volcano', label: d.tabVolcano },
+2344:                 { key: 'enso', label: d.tabEnso },
+2345:               ].map(sub => (
+2346:                 <button
+2347:                   key={sub.key}
+2348:                   onClick={() => setDisasterSubTab(sub.key as any)}
+2349:                   className={`px-3 py-1.5 rounded-full text-[10px] font-black shrink-0 transition-all ${
+2350:                     disasterSubTab === sub.key
+2351:                       ? 'bg-blue-600 text-white'
+2352:                       : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
+2353:                   }`}
+2354:                 >
+2355:                   {sub.label}
+2356:                 </button>
+2357:               ))}
+2358:             </div>
+2359: 
+2360:             {/* Map rendering for Quake, Hotspots, Rain GPM, and Volcanoes */}
+2361:             {(disasterSubTab === 'quake' || disasterSubTab === 'hotspots' || disasterSubTab === 'rain' || disasterSubTab === 'volcano') && (
+2362:               <div className="space-y-2">
+2363:                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{d.mapTitle}</p>
+2364:                 <EarthMonitoringMap
+2365:                   type={disasterSubTab === 'rain' ? 'rain' : (disasterSubTab === 'hotspots' ? 'hotspots' : (disasterSubTab === 'volcano' ? 'volcano' : 'quake'))}
+2366:                   quakeData={quakes}
+2367:                   hotspotData={hotspots}
+2368:                   volcanoData={magma.vona}
+2369:                   centerLatLng={mapCenter}
+2370:                 />
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

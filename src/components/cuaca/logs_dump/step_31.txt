@@ -1,0 +1,64 @@
+Created At: 2026-07-06T00:38:39Z
+Completed At: 2026-07-06T00:38:39Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 3014
+Total Bytes: 164208
+Showing lines 2900 to 3014
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+2900:                     {enso.forecasts && enso.forecasts.length > 0 && (
+2901:                       <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-3 text-xs">
+2902:                         <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">🔮 Prakiraan Transisi Musiman (NOAA CPC)</p>
+2903:                         <div className="grid grid-cols-1 gap-2">
+2904:                           {enso.forecasts.map((f: any, idx: number) => {
+2905:                             const isElNino = f.dominant === 'El Niño';
+2906:                             const isLaNina = f.dominant === 'La Niña';
+2907:                             const color = isElNino 
+2908:                               ? 'text-red-700 bg-red-50/50 border-red-100' 
+2909:                               : isLaNina 
+2910:                                 ? 'text-blue-700 bg-blue-50/50 border-blue-100' 
+2911:                                 : 'text-green-700 bg-green-50/50 border-green-100';
+2912:                             const prob = isElNino ? f.elNino : isLaNina ? f.laNina : f.neutral;
+2913:                             
+2914:                             return (
+2915:                               <div key={idx} className={`p-2.5 rounded-xl border flex items-center justify-between text-[10px] ${color}`}>
+2916:                                 <span className="font-extrabold">{f.period}</span>
+2917:                                 <div className="text-right">
+2918:                              
+<truncated 5066 bytes>
+                    </span>
+2980:                                 <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold border ${statusColor}`}>
+2981:                                   {h.oniStatus}
+2982:                                 </span>
+2983:                               </div>
+2984:                             </div>
+2985:                           );
+2986:                         })}
+2987:                       </div>
+2988:                     </div>
+2989: 
+2990:                     {/* Explanations */}
+2991:                     <div className="bg-white rounded-3xl p-5 border border-gray-150 shadow-sm space-y-2">
+2992:                       <h4 className="text-xs font-bold text-slate-700">Penjelasan Indeks ONI</h4>
+2993:                       <p className="text-[10px] text-slate-500 leading-relaxed text-justify">
+2994:                         <strong>Oceanic Niño Index (ONI)</strong> adalah instrumen utama NOAA untuk mengidentifikasi keberadaan El Niño (anomali positif &ge; +0.5°C) dan La Niña (anomali negatif &le; -0.5°C) berdasarkan rata-rata bergerak 3 bulanan dari suhu laut Pasifik tropis (Niño 3.4).
+2995:                       </p>
+2996:                     </div>
+2997: 
+2998:                     <div className="text-[9px] text-gray-400 flex justify-between pt-1">
+2999:                       <span>Periode Terkini: {enso.period}</span>
+3000:                       <span>Sumber data: NOAA CPC</span>
+3001:                     </div>
+3002:                   </div>
+3003:                 ) : (
+3004:                   <div className="text-center py-8"><RefreshCw size={24} className="animate-spin text-blue-500 mx-auto" /></div>
+3005:                 )}
+3006:               </div>
+3007:             )}
+3008:           </div>
+3009:         )}
+3010:       </main>
+3011:     </div>
+3012:   );
+3013: }
+3014: 
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

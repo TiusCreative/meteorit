@@ -3,7 +3,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { EpicImage } from '@/app/api/nasa/epic/route';
 
-export default function EpicEarth() {
+import { monitoringDict } from '@/lib/monitoringTranslations';
+import type { SiteLanguage } from '@/lib/i18n';
+
+export default function EpicEarth({ language = 'id' }: { language?: SiteLanguage }) {
+  const dict = monitoringDict[language] || monitoringDict.id;
   const [images, setImages] = useState<EpicImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -12,27 +16,32 @@ export default function EpicEarth() {
   const [playbackSpeed, setPlaybackSpeed] = useState(400); // ms per frame
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const isId = language === 'id';
+  const isMs = language === 'ms';
+  const isZh = language === 'zh';
+  const isJa = language === 'ja';
+
   useEffect(() => {
     async function fetchEpic() {
       try {
         setLoading(true);
         const res = await fetch('/api/nasa/epic');
-        if (!res.ok) throw new Error('Gagal memuat foto EPIC');
+        if (!res.ok) throw new Error(language === 'id' ? 'Gagal memuat foto EPIC' : 'Failed to load EPIC photos');
         const json = await res.json();
         
         if (json.success && json.data?.length > 0) {
           setImages(json.data);
         } else {
-          throw new Error(json.error || 'Tidak ada data foto Bumi terbaru');
+          throw new Error(json.error || (language === 'id' ? 'Tidak ada data foto Bumi terbaru' : 'No recent Earth photos available'));
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error tidak diketahui');
+        setError(err instanceof Error ? err.message : 'Error');
       } finally {
         setLoading(false);
       }
     }
     fetchEpic();
-  }, []);
+  }, [language]);
 
   // Handle Play/Pause Auto-rotation
   useEffect(() => {
@@ -54,7 +63,9 @@ export default function EpicEarth() {
       <div className="flex items-center justify-center py-24">
         <div className="text-center">
           <div className="w-12 h-12 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-400 text-sm mono-font">Menghubungkan ke satelit DSCOVR...</p>
+          <p className="text-slate-400 text-sm mono-font">
+            {isId ? 'Menghubungkan ke satelit DSCOVR...' : isMs ? 'Menghubungkan ke satelit DSCOVR...' : isZh ? '正在连接到 DSCOVR 卫星...' : isJa ? 'DSCOVR衛星に接続中...' : 'Connecting to DSCOVR satellite...'}
+          </p>
         </div>
       </div>
     );
@@ -74,23 +85,32 @@ export default function EpicEarth() {
   // Calculate distance from J2000 positions
   const calculateDistance = (pos: { x: number; y: number; z: number }) => {
     const dist = Math.sqrt(pos.x * pos.x + pos.y * pos.y + pos.z * pos.z);
-    return dist.toLocaleString('id-ID', { maximumFractionDigits: 0 }) + ' km';
+    return dist.toLocaleString(dict.weekdayLocale || 'id-ID', { maximumFractionDigits: 0 }) + ' km';
   };
 
   return (
     <div className="space-y-6">
       {/* Overview Banner */}
-      <div className="dashboard-card p-5 flex flex-col md:flex-row md:items-center gap-4">
-        <div className="text-4xl float-anim">🌎</div>
-        <div className="flex-1">
-          <h2 className="text-white font-bold text-lg">Foto Bumi Full-Disk EPIC (DSCOVR)</h2>
-          <p className="text-slate-400 text-xs mt-1">
-            Melihat Bumi dari Titik Lagrange L1 (1.5 Juta Kilometer dari Bumi) menggunakan kamera EPIC milik NASA.
-            Gunakan tombol putar untuk melihat visualisasi rotasi Bumi 24 jam terakhir.
+      <div className="dashboard-card p-5 flex flex-col md:flex-row md:items-center gap-4 text-left">
+        <div className="text-4xl float-anim mx-auto md:mx-0">🌎</div>
+        <div className="flex-grow flex-shrink">
+          <h2 className="text-white font-bold text-lg">{dict.epicEarthPhoto}</h2>
+          <p className="text-slate-405 dark:text-slate-400 text-xs mt-1 leading-relaxed">
+            {isId 
+              ? 'Melihat Bumi dari Titik Lagrange L1 (1.5 Juta Kilometer dari Bumi) menggunakan kamera EPIC milik NASA. Gunakan tombol putar untuk melihat visualisasi rotasi Bumi 24 jam terakhir.'
+              : isMs
+              ? 'Melihat Bumi daripada Titik Lagrange L1 (1.5 Juta Kilometer daripada Bumi) menggunakan kamera EPIC milik NASA. Gunakan butang putar untuk melihat visualisasi putaran Bumi 24 jam terakhir.'
+              : isZh
+              ? '使用 NASA 的 EPIC 相机从拉格朗日点 L1（距离地球150万公里）查看地球。使用播放按钮查看过去24小时地球自转的视觉效果。'
+              : isJa
+              ? 'NASAのEPICカメラを使用して、ラグランジュ点L1（地球から150万キロメートル離れた場所）から地球を監視します。再生ボタンを押すと、過去24日間の地球自転のアニメーションが表示されます。'
+              : 'View Earth from Lagrange Point L1 (1.5 Million Kilometers from Earth) using NASA\'s EPIC camera. Use the play button to view rotation visualization of Earth over the last 24 hours.'}
           </p>
         </div>
-        <div className="flex-shrink-0 text-right md:border-l md:border-cyan-900/30 md:pl-6">
-          <p className="text-xs text-slate-500 uppercase tracking-widest mono-font">Status Satelit</p>
+        <div className="flex-shrink-0 text-right md:border-l md:border-cyan-900/30 md:pl-6 shrink-0 mx-auto md:mx-0">
+          <p className="text-xs text-slate-500 uppercase tracking-widest mono-font">
+            {isId ? 'Status Satelit' : isMs ? 'Status Satelit' : isZh ? '卫星状态' : isJa ? '衛星ステータス' : 'Satellite Status'}
+          </p>
           <div className="flex items-center gap-2 mt-1 justify-end">
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
             <p className="text-sm font-bold text-cyan-400 mono-font">ONLINE (L1)</p>
@@ -117,7 +137,7 @@ export default function EpicEarth() {
           </div>
 
           {/* Main Image Container */}
-          <div className="relative w-80 h-80 md:w-96 md:h-96 rounded-full overflow-hidden border border-cyan-400/20 shadow-[0_0_50px_rgba(34,211,238,0.15)] bg-black">
+          <div className="relative w-80 h-80 md:w-[380px] md:h-[380px] rounded-full overflow-hidden border border-cyan-400/20 shadow-[0_0_50px_rgba(34,211,238,0.15)] bg-black">
             {/* Scanning Scanline */}
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-500/10 to-transparent w-full h-1/2 opacity-25 animate-pulse" style={{ animationDuration: '3s' }} />
             
@@ -142,11 +162,11 @@ export default function EpicEarth() {
           </div>
 
           {/* Player Controls */}
-          <div className="w-full mt-6 space-y-4">
+          <div className="w-full mt-6 space-y-4 text-left">
             {/* Timeline Progress */}
             <div className="space-y-1">
               <div className="flex justify-between text-[11px] text-slate-400 mono-font">
-                <span>Frame {currentIndex + 1} dari {images.length}</span>
+                <span>{isId ? 'Frame' : isMs ? 'Frame' : isZh ? '帧' : isJa ? 'フレーム' : 'Frame'} {currentIndex + 1} {isId ? 'dari' : isMs ? 'daripada' : isZh ? '的' : isJa ? '/' : 'of'} {images.length}</span>
                 <span>{current.date} UTC</span>
               </div>
               <div className="h-1 bg-slate-900 rounded-full overflow-hidden flex">
@@ -166,7 +186,7 @@ export default function EpicEarth() {
             </div>
 
             {/* Main Buttons */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
@@ -180,13 +200,15 @@ export default function EpicEarth() {
                 </button>
                 <button
                   onClick={() => setIsPlaying(!isPlaying)}
-                  className={`px-6 py-1.5 border text-xs font-bold rounded-lg transition-all mono-font flex items-center gap-2 ${
+                  className={`px-5 py-1.5 border text-xs font-bold rounded-lg transition-all mono-font flex items-center gap-2 ${
                     isPlaying
-                      ? 'border-cyan-400 text-cyan-400 bg-cyan-400/10'
+                      ? 'border-cyan-400 text-cyan-400 bg-cyan-400/10 shadow-lg shadow-cyan-500/5'
                       : 'border-slate-700 hover:border-slate-500 text-slate-200'
                   }`}
                 >
-                  {isPlaying ? '⏸ PAUSE ROTASI' : '▶ PUTAR ROTASI'}
+                  {isPlaying 
+                    ? `⏸ ${isId ? 'PAUSE ROTASI' : isMs ? 'PAUSE ROTASI' : isZh ? '暂停旋转' : isJa ? '回転一時停止' : 'PAUSE ROTATION'}` 
+                    : `▶ ${isId ? 'PUTAR ROTASI' : isMs ? 'PUTAR ROTASI' : isZh ? '播放旋转' : isJa ? '回転再生' : 'PLAY ROTATION'}`}
                 </button>
                 <button
                   onClick={() => {
@@ -225,30 +247,38 @@ export default function EpicEarth() {
         </div>
 
         {/* Right: Telemetry Details */}
-        <div className="lg:col-span-5 flex flex-col justify-between space-y-6">
+        <div className="lg:col-span-5 flex flex-col justify-between space-y-6 text-left">
           {/* Metadata Card */}
           <div className="dashboard-card p-5 space-y-4 flex-1">
             <div className="border-b border-cyan-900/30 pb-3 flex justify-between items-center">
-              <span className="text-white font-bold text-sm tracking-wider">📡 TELEMETRI DSCOVR</span>
-              <span className="text-[10px] mono-font text-cyan-400/80 bg-cyan-950/30 border border-cyan-900/40 px-2 py-0.5 rounded">
+              <span className="text-white font-bold text-sm tracking-wider">
+                {isId ? '📡 TELEMETRI DSCOVR' : isMs ? '📡 TELEMETRI DSCOVR' : isZh ? '📡 DSCOVR 遥测' : isJa ? '📡 DSCOVR テレメトリ' : '📡 DSCOVR TELEMETRY'}
+              </span>
+              <span className="text-[10px] mono-font text-cyan-400/80 bg-cyan-950/30 border border-cyan-900/40 px-2 py-0.5 rounded max-w-[140px] truncate">
                 EPIC: {current.identifier}
               </span>
             </div>
 
             <div className="space-y-4 text-xs">
               <div>
-                <p className="text-slate-500 uppercase tracking-widest text-[10px]">Instrumen</p>
+                <p className="text-slate-550 dark:text-slate-550 uppercase tracking-widest text-[10px]">
+                  {isId ? 'Instrumen' : isMs ? 'Instrumen' : isZh ? '仪器' : isJa ? '測定機器' : 'Instrument'}
+                </p>
                 <p className="text-slate-200 font-bold mt-0.5">Earth Polychromatic Imaging Camera (EPIC)</p>
               </div>
 
               <div>
-                <p className="text-slate-500 uppercase tracking-widest text-[10px]">Waktu Pengambilan Gambar</p>
+                <p className="text-slate-550 dark:text-slate-550 uppercase tracking-widest text-[10px]">
+                  {isId ? 'Waktu Pengambilan Gambar' : isMs ? 'Masa Pengambilan Gambar' : isZh ? '拍摄时间' : isJa ? '撮影時刻' : 'Capture Time'}
+                </p>
                 <p className="text-slate-200 font-bold mt-0.5">{current.date} UTC</p>
               </div>
 
               <div>
-                <p className="text-slate-500 uppercase tracking-widest text-[10px]">Keterangan Foto</p>
-                <p className="text-slate-300 mt-0.5 italic leading-relaxed">{current.caption}</p>
+                <p className="text-slate-550 dark:text-slate-550 uppercase tracking-widest text-[10px]">
+                  {isId ? 'Keterangan Foto' : isMs ? 'Keterangan Foto' : isZh ? '图片说明' : isJa ? 'キャプション' : 'Caption'}
+                </p>
+                <p className="text-slate-350 dark:text-slate-300 mt-0.5 italic leading-relaxed">{current.caption}</p>
               </div>
 
               <div className="border-t border-cyan-900/10 pt-3">
@@ -271,13 +301,17 @@ export default function EpicEarth() {
 
               <div className="border-t border-cyan-900/10 pt-3 grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-slate-500 uppercase tracking-widest text-[10px]">Jarak ke Bumi</p>
+                  <p className="text-slate-550 dark:text-slate-550 uppercase tracking-widest text-[10px]">
+                    {isId ? 'Jarak ke Bumi' : isMs ? 'Jarak ke Bumi' : isZh ? '距地球距离' : isJa ? '地球までの距離' : 'Distance to Earth'}
+                  </p>
                   <p className="text-cyan-400 font-bold text-sm mono-font mt-0.5">
                     {calculateDistance(current.coords.dscovr_position)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-slate-500 uppercase tracking-widest text-[10px]">Jarak ke Bulan</p>
+                  <p className="text-slate-550 dark:text-slate-550 uppercase tracking-widest text-[10px]">
+                    {isId ? 'Jarak ke Bulan' : isMs ? 'Jarak ke Bulan' : isZh ? '距月球距离' : isJa ? '月までの距離' : 'Distance to Moon'}
+                  </p>
                   <p className="text-amber-400 font-bold text-sm mono-font mt-0.5">
                     {calculateDistance(current.coords.lunar_position)}
                   </p>
@@ -288,9 +322,19 @@ export default function EpicEarth() {
 
           {/* Quick info specs */}
           <div className="dashboard-card p-4 space-y-2">
-            <h4 className="text-white font-bold text-xs">ℹ️ Mengenai DSCOVR</h4>
-            <p className="text-slate-400 text-[11px] leading-relaxed">
-              Deep Space Climate Observatory (DSCOVR) adalah satelit cuaca antariksa Amerika Serikat yang diluncurkan pada 11 Februari 2015. Satelit ini terus memantau angin matahari dan memberikan visualisasi bumi secara real-time.
+            <h4 className="text-white font-bold text-xs">
+              ℹ️ {isId ? 'Mengenai DSCOVR' : isMs ? 'Mengenai DSCOVR' : isZh ? '关于 DSCOVR' : isJa ? 'DSCOVRについて' : 'About DSCOVR'}
+            </h4>
+            <p className="text-slate-405 dark:text-slate-450 text-[11px] leading-relaxed">
+              {isId 
+                ? 'Deep Space Climate Observatory (DSCOVR) adalah satelit cuaca antariksa Amerika Serikat yang diluncurkan pada 11 Februari 2015. Satelit ini terus memantau angin matahari dan memberikan visualisasi bumi secara real-time.'
+                : isMs
+                ? 'Deep Space Climate Observatory (DSCOVR) ialah satelit cuaca angkasa lepas Amerika Syarikat yang dilancarkan pada 11 Februari 2015. Satelit ini terus memantau angin suria dan memberikan visualisasi bumi secara masa nyata.'
+                : isZh
+                ? '深空气候观测台 (DSCOVR) 是美国于 2015 年 2 月 11 日发射的空间天气卫星。该卫星持续监测太阳风并提供地球的实时可视化。'
+                : isJa
+                ? '深宇宙気候観測衛星 (DSCOVR) は、2015年2月11日に打ち上げられたアメリカの宇宙天気観測衛星です。太陽風を継続的に観測し、リアルタイムの地球画像を配信しています。'
+                : 'The Deep Space Climate Observatory (DSCOVR) is a space weather satellite launched on February 11, 2015. It constantly monitors solar wind and provides real-time Earth imaging.'}
             </p>
           </div>
         </div>

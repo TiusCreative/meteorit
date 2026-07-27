@@ -1,0 +1,59 @@
+Created At: 2026-07-06T00:39:24Z
+Completed At: 2026-07-06T00:39:24Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 3014
+Total Bytes: 164208
+Showing lines 950 to 1000
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+950:         localStorage.setItem('cuaca_activities', JSON.stringify(defaultActs));
+951:       }
+952: 
+953:       // Read URL search params to set tab & sub-tab automatically
+954:       const params = new URLSearchParams(window.location.search);
+955:       const tabParam = params.get('tab');
+956:       const subParam = params.get('sub');
+957:       if (tabParam === 'disaster') {
+958:         setActiveTab('disaster');
+959:         if (subParam && ['quake', 'hotspots', 'rain', 'volcano', 'enso'].includes(subParam)) {
+960:           setDisasterSubTab(subParam as any);
+961:         }
+962:       }
+963:     }
+964: 
+965:     async function fetchEnso() {
+966:       try {
+967:         const res = await fetch('/api/cuaca/enso');
+968:         if (res.ok) {
+969:           const payload = await res.json();
+970:           if (payload.success) setEnso(payload.data);
+971:         }
+972:       } catch (err) {
+973:         console.error('Failed to fetch ENSO for Weather PWA:', err);
+974:       }
+975:     }
+976:     fetchEnso();
+977:   }, []);
+978: 
+979: 
+980:   const triggerTelegramWarning = async (location: string, details: string, severity: 'warning' | 'extreme') => {
+981:     try {
+982:       await fetch('/api/cuaca/send-telegram-warning', {
+983:         method: 'POST',
+984:         headers: { 'Content-Type': 'application/json' },
+985:         body: JSON.stringify({
+986:           location,
+987:           details,
+988:           severity
+989:         })
+990:       });
+991:     } catch (e) {
+992:       console.error('Failed to trigger Telegram Warning message:', e);
+993:     }
+994:   };
+995: 
+996:   // ── Fetch from our API ──
+997:   const fetchWeather = useCallback(async (query: string) => {
+998:     if (!query.trim()) return;
+999:     setLoading(true);
+1000:     setError('');
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { fetchNasaJsonCached } from '@/lib/nasaApiCache';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,17 +23,11 @@ export async function GET() {
   try {
     const apiKey = process.env.NASA_API_KEY || 'DEMO_KEY';
     
-    // Fetch latest natural color images
-    const res = await fetch(
+    const data = await fetchNasaJsonCached<any[]>(
+      'epic-natural-latest',
       `https://api.nasa.gov/EPIC/api/natural?api_key=${apiKey}`,
-      { next: { revalidate: 43200 } } // Cache 12 hours
+      12 * 60 * 60 * 1000
     );
-
-    if (!res.ok) {
-      throw new Error(`NASA EPIC API returned status ${res.status}`);
-    }
-
-    const data = await res.json();
 
     if (!Array.isArray(data)) {
       throw new Error('Invalid response structure from NASA EPIC API');
@@ -82,6 +77,10 @@ export async function GET() {
       success: true,
       count: items.length,
       data: items,
+    }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=43200, stale-while-revalidate=86400',
+      },
     });
   } catch (error) {
     console.error('[API NASA EPIC] Error:', error);

@@ -1,0 +1,49 @@
+Created At: 2026-07-06T00:43:31Z
+Completed At: 2026-07-06T00:43:31Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4093
+Total Bytes: 226840
+Showing lines 1895 to 1935
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1895:     return (
+1896:       <div className="bg-white rounded-3xl p-4 border border-gray-150 shadow-sm space-y-3">
+1897:         <div className="flex justify-between items-center">
+1898:           <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">📈 Grafik Indeks Niño 3.4 (24 Bulan Terakhir)</p>
+1899:           <span className="text-[8px] text-gray-400 font-semibold">Anomali (°C)</span>
+1900:         </div>
+1901:         
+1902:         <div className="relative w-full overflow-x-auto">
+1903:           <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full min-w-[400px] h-auto">
+1904:             <defs>
+1905:               <linearGradient id="elnino-grad" x1="0" y1="0" x2="0" y2="1">
+1906:                 <stop offset="0%" stopColor="#ef4444" stopOpacity="0.3" />
+1907:                 <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
+1908:               </linearGradient>
+1909:               <linearGradient id="lanina-grad" x1="0" y1="0" x2="0" y2="1">
+1910:                 <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.0" />
+1911:                 <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.3" />
+1912:               </linearGradient>
+1913:             </defs>
+1914:             
+1915:             <line x1={paddingLeft} y1={yZero} x2={svgWidth - paddingRight} y2={yZero} stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2 2" />
+1916:             <line x1={paddingLeft} y1={yElNino} x2={svgWidth - paddingRight} y2={yElNino} stroke="#fecaca" strokeWidth="0.8" />
+1917:             <line x1={paddingLeft} y1={yLaNina} x2={svgWidth - paddingRight} y2={yLaNina} stroke="#dbeafe" strokeWidth="0.8" />
+1918:             
+1919:             <text x={paddingLeft - 5} y={yElNino + 3} textAnchor="end" className="text-[7px] fill-red-500 font-bold">+0.5°C</text>
+1920:             <text x={paddingLeft - 5} y={yZero + 3} textAnchor="end" className="text-[7px] fill-slate-400 font-bold">0.0°C</text>
+1921:             <text x={paddingLeft - 5} y={yLaNina + 3} textAnchor="end" className="text-[7px] fill-blue-500 font-bold">-0.5°C</text>
+1922:             
+1923:             {dataPoints.map((d, idx) => {
+1924:               if (idx === dataPoints.length - 1) return null;
+1925:               const x1 = getX(idx);
+1926:               const y1 = getY(d.anomaly);
+1927:               const x2 = getX(idx + 1);
+1928:               const y2 = getY(dataPoints[idx + 1].anomaly);
+1929:               
+1930:               if (d.anomaly > 0 || dataPoints[idx + 1].anomaly > 0) {
+1931:                 return (
+1932:                   <path 
+1933:                     key={`el-${idx}`}
+1934:                     d={`M ${x1} ${yZero} L ${x1} ${Math.min(yZero, y1)} L ${x2} ${Math.min(yZero, y2)} L ${x2} ${yZero} Z`}
+1935:                     fill="url(#elnino-grad)"
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

@@ -1,0 +1,43 @@
+Created At: 2026-07-06T00:46:15Z
+Completed At: 2026-07-06T00:46:15Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4038
+Total Bytes: 223389
+Showing lines 3676 to 3710
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3676:                         })}
+3677:                         {hotspots.length > 50 && (
+3678:                           <p className="text-center text-[10px] text-gray-400 font-semibold py-2 bg-gray-50 rounded-xl border border-gray-150">
+3679:                             {language === 'id' || language === 'ms' ? `Melihat 50 dari ${hotspots.length} titik api. Gunakan unduhan laporan untuk melihat daftar lengkap.` : language === 'zh' ? `显示 ${hotspots.length} 个火点中的前 50 个。下载完整报告以查看全部。` : language === 'ja' ? `${hotspots.length} 地点中 50 地点表示中。完全なリストを見るにはレポートをダウンロードしてください。` : `Showing 50 of ${hotspots.length} hotspots. Download the report to see the complete list.`}
+3680:                           </p>
+3681:                         )}
+3682:                       </div>
+3683:                     </div>
+3684:                   </>
+3685:                 )}
+3686:               </div>
+3687:             )}
+3688: 
+3689:             {/* Sub-tab 3: Curah Hujan & Banjir (NASA GPM & GFMS) */}
+3690:             {disasterSubTab === 'rain' && (
+3691:               <div className="space-y-4">
+3692:                 {/* Control Panel */}
+3693:                 <div className="bg-white rounded-3xl p-5 border border-gray-150 shadow-sm space-y-3">
+3694:                   <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+3695:                     <div className="flex items-center gap-1.5">
+3696:                       <span className="text-lg">🌧️</span>
+3697:                       <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">{language === 'id' || language === 'ms' ? 'Presipitasi GPM & Risiko Banjir GFMS' : language === 'zh' ? 'GPM 降水与 GFMS 洪水风险' : language === 'ja' ? 'GPM 降水量＆ GFMS 洪水リスク' : 'GPM Precipitation & GFMS Flood Risks'}</h4>
+3698:                     </div>
+3699:                     <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[8px] font-extrabold uppercase animate-pulse">
+3700:                       Active Map Layer
+3701:                     </span>
+3702:                   </div>
+3703: 
+3704:                   <div className="grid grid-cols-2 gap-2">
+3705:                     <div>
+3706:                       <label className="block text-[8px] font-extrabold text-slate-400 uppercase mb-1 tracking-wider">{language === 'id' || language === 'ms' ? 'Wilayah Pemantauan' : language === 'zh' ? '监测区域' : language === 'ja' ? '監視地域' : 'Monitoring Region'}</label>
+3707:                       <select
+3708:                         value={rainRegion}
+3709:                         onChange={e => {
+3710:                           const val = e.target.value as 'IDN' | 'world';
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

@@ -12,11 +12,13 @@ jobs:
       - name: Trigger Indonesian Podcast Cron Endpoint
         run: |
           curl -X GET "https://meteorit.my.id/api/cron/podcast?lang=id&secret=${{ secrets.CRON_SECRET }}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Accept: application/json" \
             -f --retry 3 --retry-delay 5
 
       - name: Trigger English Podcast Cron Endpoint
         run: |
           curl -X GET "https://meteorit.my.id/api/cron/podcast?lang=en&secret=${{ secrets.CRON_SECRET }}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Accept: application/json" \
             -f --retry 3 --retry-delay 5

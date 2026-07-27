@@ -1,0 +1,65 @@
+Created At: 2026-07-06T00:44:40Z
+Completed At: 2026-07-06T00:44:41Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4130
+Total Bytes: 228778
+Showing lines 3278 to 3375
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3278: 
+3279:         {/* TAB 4: COMMUNITY REPORTS & PHOTO UPLOAD */}
+3280:         {activeTab === 'community' && (
+3281:           <div className="space-y-4">
+3282:             <h2 className="text-sm font-black text-blue-800 uppercase tracking-wider">Laporan Cuaca Komunitas</h2>
+3283: 
+3284:             {/* Form */}
+3285:             <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-3 text-left">
+3286:               <p className="text-xs font-bold text-slate-700">Kirim Laporan Cuaca di Lokasi Anda</p>
+3287:               
+3288:               <div className="grid grid-cols-2 gap-2">
+3289:                 <input
+3290:                   type="text"
+3291:                   placeholder="Nama kota / daerah"
+3292:                   value={reportForm.city}
+3293:                   onChange={e => setReportForm(p => ({ ...p, city: e.target.value }))}
+3294:                   className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400"
+3295:                 />
+3296:                 <select
+3297:                   value={reportForm.condition}
+3298:                   onChange={e => setReportForm(p => ({ ...p, condition: e.target.value }))}
+3299:                   className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400"
+3300:                 >
+3301:                   <option value="">Pilih Kondisi</option>
+3302:                   <option>Cerah</option>
+3303:     
+<truncated 2507 bytes>
+
+3347:               {communityReports.length === 0 ? (
+3348:                 <p className="text-gray-400 text-xs text-center py-6">Belum ada laporan dari komunitas.</p>
+3349:               ) : communityReports.map((r, i) => (
+3350:                 <div key={i} className="bg-white rounded-2xl p-4 border border-gray-150 shadow-sm text-left flex gap-3">
+3351:                   <span className="text-3xl shrink-0">{r.emoji}</span>
+3352:                   <div className="flex-1 min-w-0">
+3353:                     <div className="flex items-center gap-2">
+3354:                       <p className="font-bold text-sm text-slate-800">{r.city}</p>
+3355:                       <span className="text-[9px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold uppercase">{r.condition}</span>
+3356:                     </div>
+3357:                     {r.note && <p className="text-xs text-slate-500 mt-1 leading-relaxed">{r.note}</p>}
+3358:                     {r.photoUrl && (
+3359:                       <div className="mt-2 rounded-xl overflow-hidden border border-gray-100 max-h-32 bg-slate-50">
+3360:                         <img src={r.photoUrl} alt="Laporan Langit" className="w-full h-full object-cover" />
+3361:                       </div>
+3362:                     )}
+3363:                     <div className="flex items-center gap-1 mt-2 text-[9px] text-gray-300">
+3364:                       <Clock size={9} />
+3365:                       <span>{new Date(r.timestamp).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+3366:                     </div>
+3367:                   </div>
+3368:                 </div>
+3369:               ))}
+3370:             </div>
+3371:           </div>
+3372:         )}
+3373: 
+3374:         {/* TAB 5: CALENDAR INTEGRATION & ACTIVITY PLANNER */}
+3375:         {activeTab === 'calendar' && (
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

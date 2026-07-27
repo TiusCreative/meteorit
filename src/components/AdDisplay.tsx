@@ -26,12 +26,15 @@ export default function AdDisplay({ position }: AdDisplayProps) {
 
   if (!settings) return null;
 
-  const { adsenseActive, adsenseClientId, adsenseSlotId, adsensePositions, manualAds } = settings;
+  const { adsenseActive, adsensePositions, manualAds } = settings;
 
-  // 1. Google Adsense (if active and configured for this position)
-  // Hardcoded to false until Google approval is obtained
-  const adsenseApproved = false;
-  if (adsenseActive && adsenseApproved && adsensePositions.includes(position)) {
+  // Gunakan env variable untuk client ID dan slot ID AdSense
+  const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || settings.adsenseClientId || 'ca-pub-9511274459054303';
+  const adsenseSlotId = process.env.NEXT_PUBLIC_ADSENSE_SLOT_ID || settings.adsenseSlotId || '2773589292';
+
+  // AdSense diaktifkan jika active dan sudah dikonfigurasi
+  const adsenseEnabled = adsenseActive && adsenseClientId && adsenseSlotId;
+  if (adsenseEnabled && adsensePositions?.includes(position)) {
     return (
       <div className="my-8 flex justify-center items-center w-full overflow-hidden min-h-[90px] bg-slate-900/40 border border-cyan-950/30 rounded-lg p-2">
         <div className="text-center w-full">

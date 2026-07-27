@@ -1,25 +1,12 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { auth, db, googleProvider } from '@/lib/firebaseConfig';
+import { auth, googleProvider } from '@/lib/firebaseConfig';
 import { 
   signInWithPopup, 
   onAuthStateChanged, 
   User 
 } from 'firebase/auth';
-import { 
-  collection, 
-  addDoc, 
-  query, 
-  orderBy, 
-  onSnapshot, 
-  doc, 
-  updateDoc, 
-  arrayUnion, 
-  arrayRemove,
-  getDocs,
-  where
-} from 'firebase/firestore';
 
 interface ForumPost {
   id: string;
@@ -66,89 +53,95 @@ export default function ForumPage() {
     return () => unsubscribe();
   }, []);
 
-  // Listen to forum posts
-  useEffect(() => {
-    const q = query(collection(db, 'forum_posts'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const postsList: ForumPost[] = [];
-      snapshot.forEach(docSnap => {
-        postsList.push({ id: docSnap.id, ...docSnap.data() } as ForumPost);
-      });
-      setPosts(postsList);
-    }, (error) => {
-      console.error("Firestore loading error, falling back to mock posts:", error);
-      // Fallback mockup
-      setPosts([
-        {
-          id: 'post-1',
-          title: 'Apakah batu hitam ini meteorit? Ditemukan di Pantai Parangtritis',
-          content: 'Saya menemukan batu hitam pekat ini ketika berjalan di pinggir pantai. Terasa cukup berat dibandingkan batu biasa dan sedikit menempel magnet kulkas. Mohon bantuannya para suhu!',
-          imageUrl: 'https://placehold.co/600x400/1e293b/f59e0b?text=Batu+Hitam+Misterius',
-          votes: 14,
-          votedUsers: [],
-          authorId: 'user-2',
-          authorName: 'Budi Santoso',
-          authorPhoto: 'https://placehold.co/100x100/10b981/fff?text=BS',
-          createdAt: { toDate: () => new Date() },
-          category: 'Meteor atau Bukan'
-        },
-        {
-          id: 'post-2',
-          title: 'Tips membersihkan kerak fusi (fusion crust) meteorit besi',
-          content: 'Bagi rekan-rekan kolektor pemula, ini cara membersihkan noda karat ringan pada meteorit besi Campo del Cielo tanpa merusak pola garis Widmanstätten di dalamnya.',
-          votes: 27,
-          votedUsers: [],
-          authorId: 'user-3',
-          authorName: 'Rudi Komet',
-          authorPhoto: 'https://placehold.co/100x100/6366f1/fff?text=RK',
-          createdAt: { toDate: () => new Date(Date.now() - 86400000) },
-          category: 'Diskusi'
+  // Fetch forum posts from D1 API
+  const fetchPosts = () => {
+    fetch('/api/forum/posts')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.success && data.posts) {
+          const postsList = data.posts.map((p: any) => ({
+            ...p,
+            createdAt: { toDate: () => new Date(p.createdAt) }
+          }));
+          setPosts(postsList);
+        } else {
+          throw new Error("Gagal memuat postingan.");
         }
-      ]);
-    });
+      })
+      .catch((error) => {
+        console.error("D1 API loading error, falling back to mock posts:", error);
+        // Fallback mockup
+        setPosts([
+          {
+            id: 'post-1',
+            title: 'Apakah batu hitam ini meteorit? Ditemukan di Pantai Parangtritis',
+            content: 'Saya menemukan batu hitam pekat ini ketika berjalan di pinggir pantai. Terasa cukup berat dibandingkan batu biasa dan sedikit menempel magnet kulkas. Mohon bantuannya para suhu!',
+            imageUrl: 'https://placehold.co/600x400/1e293b/f59e0b?text=Batu+Hitam+Misterius',
+            votes: 14,
+            votedUsers: [],
+            authorId: 'user-2',
+            authorName: 'Budi Santoso',
+            authorPhoto: 'https://placehold.co/100x100/10b981/fff?text=BS',
+            createdAt: { toDate: () => new Date() },
+            category: 'Meteor atau Bukan'
+          },
+          {
+            id: 'post-2',
+            title: 'Tips membersihkan kerak fusi (fusion crust) meteorit besi',
+            content: 'Bagi rekan-rekan kolektor pemula, ini cara membersihkan noda karat ringan pada meteorit besi Campo del Cielo tanpa merusak pola garis Widmanstätten di dalamnya.',
+            votes: 27,
+            votedUsers: [],
+            authorId: 'user-3',
+            authorName: 'Rudi Komet',
+            authorPhoto: 'https://placehold.co/100x100/6366f1/fff?text=RK',
+            createdAt: { toDate: () => new Date(Date.now() - 86400000) },
+            category: 'Diskusi'
+          }
+        ]);
+      });
+  };
 
-    return () => unsubscribe();
+  useEffect(() => {
+    fetchPosts();
   }, []);
 
-  // Load comments when active post changes
-  useEffect(() => {
+  // Load comments from D1 API
+  const fetchComments = () => {
     if (!activePost) {
       setComments([]);
       return;
     }
 
-    const q = query(
-      collection(db, 'forum_comments'), 
-      where('postId', '==', activePost.id)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const commentsList: ForumComment[] = [];
-      snapshot.forEach(docSnap => {
-        commentsList.push({ id: docSnap.id, ...docSnap.data() } as ForumComment);
-      });
-      // Sort client side
-      commentsList.sort((a, b) => {
-        const timeA = a.createdAt?.seconds || 0;
-        const timeB = b.createdAt?.seconds || 0;
-        return timeA - timeB;
-      });
-      setComments(commentsList);
-    }, () => {
-      // Mock comment fallback
-      setComments([
-        {
-          id: 'c-1',
-          postId: 'post-1',
-          content: 'Terlihat seperti slag sisa peleburan besi mas, dilihat dari rongga gelembung udaranya.',
-          authorName: 'Dewi Bintang',
-          authorPhoto: 'https://placehold.co/100x100/ec4899/fff?text=DB',
-          createdAt: new Date()
+    fetch(`/api/forum/comments?postId=${activePost.id}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.success && data.comments) {
+          const commentsList = data.comments.map((c: any) => ({
+            ...c,
+            createdAt: new Date(c.createdAt)
+          }));
+          setComments(commentsList);
+        } else {
+          throw new Error("Gagal memuat tanggapan.");
         }
-      ]);
-    });
+      })
+      .catch(() => {
+        // Mock comment fallback
+        setComments([
+          {
+            id: 'c-1',
+            postId: activePost.id,
+            content: 'Terlihat seperti slag sisa peleburan besi mas, dilihat dari rongga gelembung udaranya.',
+            authorName: 'Dewi Bintang',
+            authorPhoto: 'https://placehold.co/100x100/ec4899/fff?text=DB',
+            createdAt: new Date()
+          }
+        ]);
+      });
+  };
 
-    return () => unsubscribe();
+  useEffect(() => {
+    fetchComments();
   }, [activePost]);
 
   const handleLogin = async () => {
@@ -161,26 +154,33 @@ export default function ForumPage() {
     if (!newTitle || !newContent) return alert('Judul dan isi postingan tidak boleh kosong');
 
     try {
-      await addDoc(collection(db, 'forum_posts'), {
-        title: newTitle,
-        content: newContent,
-        category: newCategory,
-        imageUrl: newImageUrl || null,
-        votes: 0,
-        votedUsers: [],
-        authorId: user.uid,
-        authorName: user.displayName || 'Anonim',
-        authorPhoto: user.photoURL || '',
-        createdAt: new Date()
+      const res = await fetch('/api/forum/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newTitle,
+          content: newContent,
+          category: newCategory,
+          imageUrl: newImageUrl || null,
+          authorId: user.uid,
+          authorName: user.displayName || 'Anonim',
+          authorPhoto: user.photoURL || '',
+        }),
       });
 
-      setNewTitle('');
-      setNewContent('');
-      setNewImageUrl('');
-      setIsCreatingPost(false);
-    } catch (err) {
+      const data = await res.json();
+      if (data && data.success) {
+        setNewTitle('');
+        setNewContent('');
+        setNewImageUrl('');
+        setIsCreatingPost(false);
+        fetchPosts(); // Refresh posts feed
+      } else {
+        throw new Error(data.error || 'Gagal mengirim postingan.');
+      }
+    } catch (err: any) {
       console.error("Error creating post:", err);
-      alert("Gagal mengirim postingan. Anda dapat menyalin data postingan Anda.");
+      alert(`Gagal mengirim postingan: ${err.message || String(err)}`);
     }
   };
 
@@ -190,16 +190,27 @@ export default function ForumPage() {
     if (!newComment || !activePost) return;
 
     try {
-      await addDoc(collection(db, 'forum_comments'), {
-        postId: activePost.id,
-        content: newComment,
-        authorName: user.displayName || 'Anonim',
-        authorPhoto: user.photoURL || '',
-        createdAt: new Date()
+      const res = await fetch('/api/forum/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          postId: activePost.id,
+          content: newComment,
+          authorName: user.displayName || 'Anonim',
+          authorPhoto: user.photoURL || '',
+        }),
       });
-      setNewComment('');
-    } catch (err) {
+
+      const data = await res.json();
+      if (data && data.success) {
+        setNewComment('');
+        fetchComments(); // Refresh comment list
+      } else {
+        throw new Error(data.error || 'Gagal mengirim tanggapan.');
+      }
+    } catch (err: any) {
       console.error(err);
+      alert(`Gagal mengirim tanggapan: ${err.message || String(err)}`);
     }
   };
 
@@ -207,24 +218,34 @@ export default function ForumPage() {
     if (!user) return alert('Silakan login untuk memberikan voting.');
     
     try {
-      const docRef = doc(db, 'forum_posts', postId);
-      const hasVoted = currentVoted.includes(user.uid);
+      const res = await fetch('/api/forum/posts', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          postId,
+          userId: user.uid,
+        }),
+      });
 
-      if (hasVoted) {
-        // Remove vote
-        await updateDoc(docRef, {
-          votes: currentVotes - 1,
-          votedUsers: arrayRemove(user.uid)
-        });
+      const data = await res.json();
+      if (data && data.success) {
+        // Optimistically update local posts state
+        setPosts(prevPosts => 
+          prevPosts.map(p => 
+            p.id === postId 
+              ? { ...p, votes: data.votes, votedUsers: data.votedUsers } 
+              : p
+          )
+        );
+        if (activePost && activePost.id === postId) {
+          setActivePost(prev => prev ? { ...prev, votes: data.votes, votedUsers: data.votedUsers } : null);
+        }
       } else {
-        // Add vote
-        await updateDoc(docRef, {
-          votes: currentVotes + 1,
-          votedUsers: arrayUnion(user.uid)
-        });
+        throw new Error(data.error || 'Gagal meregistrasikan voting.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert(`Gagal meregistrasikan voting: ${err.message || String(err)}`);
     }
   };
 

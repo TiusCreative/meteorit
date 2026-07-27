@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import R2_CONFIG from './cloudflareR2Config';
 
 // Initialize S3 Client for Cloudflare R2
@@ -47,3 +47,20 @@ export async function fetchJsonFromR2<T>(key: string): Promise<T | null> {
     return null;
   }
 }
+
+/**
+ * Deletes a file from Cloudflare R2
+ */
+export async function deleteFromR2(key: string): Promise<boolean> {
+  try {
+    await s3Client.send(new DeleteObjectCommand({
+      Bucket: R2_CONFIG.bucketName,
+      Key: key
+    }));
+    return true;
+  } catch (error) {
+    console.error(`Error deleting ${key} from R2:`, error);
+    return false;
+  }
+}
+

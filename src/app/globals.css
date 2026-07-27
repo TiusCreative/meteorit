@@ -2,30 +2,67 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ──────────────────────────────────────────
+   Leaflet Map CSS — diperlukan untuk ISS Tracker
+   Import di sini agar tersedia secara global di Next.js App Router
+   ────────────────────────────────────────── */
+@import 'leaflet/dist/leaflet.css';
+
+/* Override: Pastikan peta Leaflet selalu terlihat dan tidak ter-clip Tailwind */
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 192px;
+  background: #020617 !important;
+  border-radius: inherit;
+  z-index: 0;
+}
+
+.leaflet-tile-pane {
+  opacity: 0.85;
+}
+
+.leaflet-control-attribution {
+  display: none !important;
+}
+
+.leaflet-control-zoom {
+  display: none !important;
+}
+
+/* Custom ISS icon — agar tidak ter-reset Tailwind preflight */
+.custom-iss-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #020617; /* default slate-950 (theme malam dipertahankan) */
+  --foreground: #f8fafc; /* default slate-50 */
 }
 
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Light Mode Variables */
+html.light {
+  --background: #ffffff; /* putih murni */
+  --foreground: #0f172a; /* slate-900 */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --foreground: #f1f5f9;
-  }
+/* Smooth Transition */
+html, body, header, footer, main, section, nav, .bg-slate-900, .bg-slate-850, .bg-slate-950, .border-slate-800, .border-slate-700, .border-cyan-950 {
+  transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Pastikan html & body memiliki height 100% agar miniapp flex layout bekerja */
+html, body {
+  height: 100%;
 }
 
 .mars-prose h2 {
@@ -70,3 +107,307 @@ body {
     color: #000 !important;
   }
 }
+
+/* ──────────────────────────────────────────
+   Light Mode Overrides & Accessibility Fixes
+   ────────────────────────────────────────── */
+html.light h1,
+html.light h2,
+html.light h3,
+html.light h4,
+html.light h5,
+html.light h6,
+html.light .text-white,
+html.light .text-slate-50,
+html.light .text-slate-100,
+html.light .text-slate-200,
+html.light .text-gray-100,
+html.light .text-gray-200,
+html.light .text-zinc-100,
+html.light .text-zinc-200 {
+  color: #000000 !important; /* Hitam murni */
+}
+
+html.light .text-slate-300,
+html.light .text-slate-350,
+html.light .text-slate-400,
+html.light .text-slate-450,
+html.light .text-slate-500,
+html.light .text-slate-550,
+html.light .text-gray-300,
+html.light .text-gray-400,
+html.light .text-gray-500,
+html.light .text-zinc-300,
+html.light .text-zinc-350,
+html.light .text-zinc-400,
+html.light .text-zinc-500,
+html.light .text-neutral-300,
+html.light .text-neutral-400,
+html.light .text-neutral-500 {
+  color: #1e293b !important; /* Slate-800 / gelap pekat */
+}
+
+html.light .text-cyan-400,
+html.light .text-cyan-300 {
+  color: #0891b2 !important; /* cyan-600 */
+}
+
+/* Override background gelap transparan di mode terang menjadi putih bersih */
+html.light .bg-slate-900\/40,
+html.light .bg-slate-900\/60,
+html.light .bg-slate-900\/50,
+html.light .bg-slate-900\/70,
+html.light .bg-slate-900\/80,
+html.light .bg-slate-950\/50,
+html.light .bg-slate-950\/45,
+html.light .bg-slate-950\/90,
+html.light .bg-slate-950\/80,
+html.light .bg-slate-950\/60,
+html.light .bg-slate-800\/60,
+html.light .bg-slate-800\/80,
+html.light .bg-slate-800\/60,
+html.light .bg-slate-850\/60,
+html.light .bg-emerald-950\/20,
+html.light .bg-orange-950\/20,
+html.light .bg-cyan-900\/10 {
+  background-color: #ffffff !important; /* Putih murni */
+  border-color: #cbd5e1 !important; /* slate-300 */
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03) !important;
+}
+
+html.light .bg-slate-900,
+html.light .bg-slate-850,
+html.light .bg-slate-950,
+html.light .bg-slate-800,
+html.light .bg-black {
+  background-color: #ffffff !important; /* Putih murni */
+  border-color: #cbd5e1 !important; /* slate-300 */
+}
+
+/* Override box contoh di glosarium agar berwarna abu-abu terang */
+html.light p.bg-slate-900 {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+/* Force body background to white in light mode */
+html.light body,
+html.light main,
+html.light section {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Hero Section overrides in Light Mode */
+html.light .hero-bg-gradient {
+  background: #ffffff !important;
+  background-image: radial-gradient(circle at top left, #f3e8ff 0%, #ffffff 60%) !important; /* Soft premium purple glow */
+}
+
+html.light .hero-nebula {
+  opacity: 0.03 !important; /* Nebula nyaris transparan */
+}
+
+html.light .hero-title-1 {
+  background-image: linear-gradient(to right, #6b21a8, #4f46e5) !important; /* Premium dark purple to indigo gradient */
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+  color: transparent !important;
+}
+
+html.light .hero-title-2 {
+  background-image: linear-gradient(to right, #ea580c, #c2410c) !important; /* High contrast orange gradient */
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+  color: transparent !important;
+}
+
+html.light .hero-title-3 {
+  color: #1e1b4b !important; /* Deep indigo text */
+}
+
+html.light .hero-desc {
+  color: #334155 !important; /* slate-700 */
+}
+
+/* Community Forum section override in Light Mode */
+html.light .community-bg-gradient {
+  background: #ffffff !important;
+  background-image: linear-gradient(to bottom right, #ffffff, #f8fafc) !important;
+  border-top-color: #e2e8f0 !important;
+}
+
+html.light .border-cyan-900\/30,
+html.light .border-cyan-950\/30,
+html.light .border-red-950\/40,
+html.light .border-red-950\/30,
+html.light .border-orange-900\/30,
+html.light .border-emerald-950\/30 {
+  border-color: #cbd5e1 !important; /* slate-300 */
+}
+
+/* Override .mars-prose di mode siang */
+html.light .mars-prose h2 {
+  color: #ea580c !important; /* orange-600 */
+}
+
+html.light .mars-prose p,
+html.light .mars-prose ul,
+html.light .mars-prose li {
+  color: #334155 !important; /* slate-700 */
+}
+
+html.light .mars-prose strong {
+  color: #1e293b !important; /* slate-800 */
+}
+
+/* --- MONITORING SCIENCE DASHBOARD CUSTOM STYLES --- */
+.monitoring-font {
+  font-family: 'Outfit', sans-serif;
+}
+.mono-font {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.dashboard-card {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(34, 211, 238, 0.12);
+  border-radius: 20px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.dashboard-card:hover {
+  border-color: rgba(34, 211, 238, 0.28);
+  box-shadow: 0 8px 32px -8px rgba(34, 211, 238, 0.12);
+  transform: translateY(-2px);
+}
+.hazard-card {
+  background: rgba(30, 10, 10, 0.6);
+  border-color: rgba(239, 68, 68, 0.25) !important;
+}
+.hazard-card:hover {
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  box-shadow: 0 8px 32px -8px rgba(239, 68, 68, 0.2) !important;
+}
+.safe-card {
+  border-color: rgba(34, 211, 238, 0.15) !important;
+}
+
+/* Light Mode local overrides for science cards */
+html.light .dashboard-card {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05) !important;
+}
+html.light .dashboard-card:hover {
+  border-color: #94a3b8 !important;
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1) !important;
+}
+html.light .hazard-card {
+  background: #fef2f2 !important; /* Soft red/rose-50 */
+  border-color: #fca5a5 !important;
+}
+html.light .hazard-card:hover {
+  border-color: #ef4444 !important;
+  box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.1) !important;
+}
+html.light .safe-card {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+@keyframes orbit {
+  from { transform: rotate(0deg) translateX(38px) rotate(0deg); }
+  to { transform: rotate(360deg) translateX(38px) rotate(-360deg); }
+}
+@keyframes orbitSlow {
+  from { transform: rotate(0deg) translateX(55px) rotate(0deg); }
+  to { transform: rotate(360deg) translateX(55px) rotate(-360deg); }
+}
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(239,68,68,0); }
+}
+@keyframes pulse-cyan {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34,211,238,0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(34,211,238,0); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.orbit-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  margin: -4px 0 0 -4px;
+}
+.orbit-dot-1 { animation: orbit 4s linear infinite; background: #ef4444; }
+.orbit-dot-2 { animation: orbitSlow 7s linear infinite; background: #22d3ee; }
+.orbit-dot-2-safe { animation: orbitSlow 7s linear infinite; background: #22d3ee; }
+
+.beacon-red {
+  animation: pulse-red 1.5s ease-in-out infinite;
+}
+.beacon-cyan {
+  animation: pulse-cyan 2s ease-in-out infinite;
+}
+.float-anim {
+  animation: float 3s ease-in-out infinite;
+}
+
+.tab-active-cyan { border-color: #22d3ee; color: #22d3ee; background: rgba(34,211,238,0.08); }
+.tab-active-orange { border-color: #fb923c; color: #fb923c; background: rgba(251,146,60,0.08); }
+.tab-active-amber { border-color: #f59e0b; color: #f59e0b; background: rgba(245,158,11,0.08); }
+.tab-active-rose { border-color: #fb7185; color: #fb7185; background: rgba(251,113,133,0.08); }
+.tab-active-emerald { border-color: #34d399; color: #34d399; background: rgba(52,211,153,0.08); }
+
+.scanline-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  z-index: 0;
+}
+
+/* Force monitoring-epic-container background to white in light mode */
+html.light .monitoring-epic-container {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Langit Malam page overrides in Light Mode */
+html.light .langit-malam-bg-gradient {
+  background: #ffffff !important;
+  background-image: radial-gradient(circle at top, #e0e7ff 0%, #ffffff 70%) !important; /* Soft indigo glow */
+}
+
+html.light .langit-malam-nebula {
+  opacity: 0.02 !important;
+}
+
+html.light .langit-malam-title {
+  color: #1e1b4b !important; /* Deep indigo text */
+}
+
+
+

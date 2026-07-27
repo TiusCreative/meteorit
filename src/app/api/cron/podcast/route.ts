@@ -82,6 +82,34 @@ export async function GET(request: Request) {
   const siteUrl = getSiteUrl();
 
   try {
+    // Membaca episode terdahulu dari R2 untuk pengecekan batas podcast non-ID
+    const episodesKey = 'data/podcast/episodes.json';
+    let episodesList = await fetchJsonFromR2<EpisodeMetadata[]>(episodesKey) || [];
+
+    // Podcast non-Indonesia (Inggris, dll) hanya dibuat selama 60 hari pertama (maksimal 120 episode)
+    if (lang !== 'id') {
+      const foreignEpisodes = episodesList.filter(ep => ep.language === lang);
+      let limitReached = false;
+      if (foreignEpisodes.length >= 120) {
+        limitReached = true;
+      } else if (foreignEpisodes.length > 0) {
+        const oldestEpDate = new Date(foreignEpisodes[foreignEpisodes.length - 1].pubDate).getTime();
+        const ageDays = (Date.now() - oldestEpDate) / (1000 * 60 * 60 * 24);
+        if (ageDays >= 60) {
+          limitReached = true;
+        }
+      }
+
+      if (limitReached) {
+        console.log(`[Podcast Cron] Batas 60 hari / 120 episode tercapai untuk podcast bahasa ${lang}. Melewati pembuatan MP3 baru.`);
+        return NextResponse.json({
+          success: true,
+          message: `Podcast bahasa ${lang} telah mencapai batas 60 hari / 120 episode. Tidak ada episode MP3 baru yang dibuat, namun RSS feed tetap aktif.`,
+          totalEpisodes: foreignEpisodes.length
+        });
+      }
+    }
+
     // 1. Unggah logo cover art podcast ke R2 jika file lokal ada
     const logoKey = 'logo-meteor-spotify.png';
     const logoUrl = `${R2_CONFIG.publicUrl}/${logoKey}`;
@@ -277,8 +305,7 @@ export async function GET(request: Request) {
     console.log(`[Podcast Cron] Berkas MP3 berhasil diunggah ke R2: ${enclosureUrl}`);
 
     // 6. Membaca dan memperbarui berkas daftar episode index.json di R2
-    const episodesKey = 'data/podcast/episodes.json';
-    let episodesList = await fetchJsonFromR2<EpisodeMetadata[]>(episodesKey) || [];
+    episodesList = await fetchJsonFromR2<EpisodeMetadata[]>(episodesKey) || [];
     
     const newEpisode: EpisodeMetadata = {
       id: episodeId,
@@ -295,18 +322,19 @@ export async function GET(request: Request) {
 
     episodesList = [newEpisode, ...episodesList];
 
-    // 7. Bersihkan berkas MP3 lama yang berusia lebih dari 300 hari untuk menghemat R2
+    // 7. Bersihkan berkas MP3 lama yang berusia lebih dari 300 hari (khusus Podcast Bahasa Indonesia, MP3 bahasa Inggris/asing disimpan selamanya)
     const PODCAST_RETENTION_DAYS = 300;
     const RETENTION_MS = PODCAST_RETENTION_DAYS * 24 * 60 * 60 * 1000;
     const nowMs = Date.now();
     for (const ep of episodesList) {
       const epAgeMs = nowMs - new Date(ep.pubDate).getTime();
-      if (epAgeMs > RETENTION_MS && !ep.deletedFromR2) {
+      const isIndonesianEp = ep.language === 'id' || !ep.language;
+      if (isIndonesianEp && epAgeMs > RETENTION_MS && !ep.deletedFromR2) {
         try {
           const oldMp3Key = `data/podcast/mp3s/${ep.id}.mp3`;
           await deleteFromR2(oldMp3Key);
           ep.deletedFromR2 = true;
-          console.log(`[Podcast Cron] Menghapus MP3 kedaluwarsa (> 300 hari) dari R2: ${oldMp3Key}`);
+          console.log(`[Podcast Cron] Menghapus MP3 ID kedaluwarsa (> 300 hari) dari R2: ${oldMp3Key}`);
         } catch (cleanupErr) {
           console.error(`[Podcast Cron] Gagal menghapus MP3 kedaluwarsa untuk episode ${ep.id}:`, cleanupErr);
         }
@@ -422,9 +450,13 @@ export async function GET(request: Request) {
 
   } catch (err: any) {
     console.error('[Podcast Cron] Error:', err);
+    const errText = err instanceof Error ? err.message : String(err);
+    const errStack = err instanceof Error ? (err.stack || err.message) : String(err);
+
     // Kirim laporan gagal ke Telegram Admin
     const failMsg = `⚠️ <b>LAPORAN PODCAST SPOTIFY GAGAL</b>\n\n` +
-      `❌ <b>Error:</b> ${err instanceof Error ? err.message : String(err)}\n` +
+      `❌ <b>Error:</b> ${errText}\n` +
+      `🛠 <b>Detail:</b> ${errStack.substring(0, 300)}\n` +
       `🛠 <b>Status:</b> Failed`;
     try {
       await sendTelegramMessage(TELEGRAM_CHAT_ID, failMsg);
@@ -432,7 +464,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: false,
-      error: err instanceof Error ? err.message : String(err)
+      error: errText,
+      stack: errStack
     }, { status: 500 });
   }
 }

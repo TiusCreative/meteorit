@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
-import { uploadToR2 } from '@/lib/r2Client';
-import { adminDb } from '@/lib/firebaseAdmin';
+import { uploadToR2, fetchJsonFromR2 } from '@/lib/r2Client';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { getAbsoluteUrl, getSiteUrl } from '@/lib/siteUrl';
+import { buildArticleTranslations } from '@/lib/articleLocalization';
+import { shouldSkipExternalFetch } from '@/lib/cronSafety';
+import { sendBroadcastNotification } from '@/lib/notifications';
+import { rebuildRSSFeedHelper } from '@/lib/rss';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 80;
 
 const CRON_SECRET = process.env.CRON_SECRET || 'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU=';
 const NASA_API_KEY = process.env.NASA_API_KEY || 'DEMO_KEY';
@@ -65,22 +69,13 @@ function dayOfYear(date: Date) {
   return Math.floor(diff / 86400000);
 }
 
-async function rebuildR2BlogCache() {
-  const allArticlesSnapshot = await adminDb.collection('articles').get();
-  const articlesList: any[] = [];
-  allArticlesSnapshot.forEach((doc: any) => {
-    const data = doc.data();
-    if (data.status === 'Published') {
-      articlesList.push({ id: doc.id, ...data });
-    }
-  });
 
-  articlesList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-  await uploadToR2('data/blog/posts.json', JSON.stringify(articlesList, null, 2), 'application/json');
-}
 
 async function fetchMarsImage(): Promise<MarsImage> {
   try {
+    const fetchGuard = await shouldSkipExternalFetch('nasa-mars-photos', 6 * 60 * 60 * 1000);
+    if (fetchGuard.skip) throw new Error(`Cooldown anti-loop NASA Mars Photos aktif sampai ${fetchGuard.nextAllowedAt}`);
+
     const res = await fetch(
       `https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/latest_photos?api_key=${NASA_API_KEY}`,
       { cache: 'no-store' }
@@ -122,26 +117,27 @@ async function generateMarsArticle(prompt: string): Promise<GeneratedMarsArticle
       name: 'Groq Utama',
       url: 'https://api.groq.com/openai/v1/chat/completions',
       key: process.env.GROQ_API_KEY,
-      model: 'llama-3.1-8b-instant'
+      model: 'llama-3.3-70b-versatile'
     },
     {
       name: 'Groq Backup',
       url: 'https://api.groq.com/openai/v1/chat/completions',
       key: process.env.GROQ_BACKUP_API_KEY,
-      model: 'llama-3.1-8b-instant'
+      model: 'llama-3.3-70b-versatile'
     },
     {
       name: 'OpenRouter Utama',
       url: 'https://openrouter.ai/api/v1/chat/completions',
       key: process.env.OPENROUTER_API_KEY,
-      model: 'meta-llama/llama-3.1-8b-instruct:free'
+      model: 'meta-llama/llama-3.3-70b-instruct:free'
     },
     {
       name: 'OpenRouter Backup',
       url: 'https://openrouter.ai/api/v1/chat/completions',
       key: process.env.OPENROUTER_BACKUP_API_KEY,
-      model: 'meta-llama/llama-3.1-8b-instruct:free'
+      model: 'meta-llama/llama-3.3-70b-instruct:free'
     }
+
   ];
 
   const errors: string[] = [];
@@ -198,12 +194,10 @@ async function generateMarsArticle(prompt: string): Promise<GeneratedMarsArticle
   throw new Error(`Semua provider AI gagal untuk artikel Mars. ${errors.join(' | ')}`);
 }
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const secret = searchParams.get('secret');
-  const authHeader = request.headers.get('authorization');
+import { isValidCronRequest } from '@/lib/cronAuth';
 
-  if (secret !== CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
+export async function GET(request: Request) {
+  if (!isValidCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -214,10 +208,10 @@ export async function GET(request: Request) {
     const marsImage = await fetchMarsImage();
     const dateKey = now.toISOString().split('T')[0];
     const docId = `mars-${dateKey}`;
-    const docRef = adminDb.collection('articles').doc(docId);
-    const existing = await docRef.get();
 
-    if (existing.exists) {
+    // Check if already exists in R2 (no Firestore)
+    const existingPosts = await fetchJsonFromR2<any[]>('data/blog/posts.json') || [];
+    if (existingPosts.some((p: any) => p.id === docId)) {
       return NextResponse.json({
         success: true,
         created: false,
@@ -256,11 +250,29 @@ Aturan:
       year: 'numeric'
     });
 
+    const attribution = "\n\nSource: NASA Open Data APIs\nSumber Data: Pusat Data Publik Antariksa";
+    const articleContent = article.contentHtml + attribution;
+
+    // Auto-translate ke 4 bahasa (EN, MS, ZH, JA) saat artikel dibuat
+    console.log(`[Cron Mars] Memulai auto-translate untuk: ${article.title}`);
+    let translations = {};
+    try {
+      translations = await buildArticleTranslations({
+        title: article.title,
+        excerpt: article.excerpt,
+        content: articleContent,
+      });
+      console.log(`[Cron Mars] \u2705 Auto-translate selesai: ${Object.keys(translations).join(', ')}`);
+    } catch (translateErr) {
+      console.warn('[Cron Mars] \u26a0\ufe0f Auto-translate gagal, artikel tetap disimpan tanpa terjemahan:', translateErr);
+    }
+
     const newArticle = {
       id: docId,
       title: article.title,
       excerpt: article.excerpt,
-      content: article.contentHtml,
+      content: articleContent,
+      translations,
       content_format: 'html',
       category: 'Planet Mars',
       date: dateFormatted,
@@ -281,11 +293,47 @@ Aturan:
       }
     };
 
-    await docRef.set(newArticle);
-    await rebuildR2BlogCache();
+    // Save article directly to R2 (no Firestore)
+    await uploadToR2(`data/blog/articles/${docId}.json`, JSON.stringify(newArticle, null, 2), 'application/json');
+
+    // Save metadata to Cloudflare D1
+    try {
+      const { queryD1 } = await import('@/lib/d1Client');
+      await queryD1(
+        `INSERT OR REPLACE INTO articles (
+          id, title, category, r2_path, createdAt, tags, image, excerpt, date, views, status, review_status, ai_provider
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        [
+          newArticle.id,
+          newArticle.title,
+          newArticle.category,
+          `data/blog/articles/${newArticle.id}.json`,
+          newArticle.createdAt,
+          'mars,rover,nasa,curiosity',
+          newArticle.image,
+          newArticle.excerpt,
+          newArticle.date,
+          newArticle.views,
+          newArticle.status,
+          newArticle.review_status,
+          newArticle.ai_provider
+        ]
+      );
+      console.log(`[Cron Mars] Metadata successfully stored in Cloudflare D1 for: ${docId}`);
+    } catch (d1Err) {
+      console.error('[Cron Mars] Gagal menyimpan metadata ke Cloudflare D1:', d1Err);
+    }
+
+
+    // Update posts.json index in R2
+    const updatedPosts = [newArticle, ...existingPosts.filter((p: any) => p.id !== docId)];
+    updatedPosts.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    await uploadToR2('data/blog/posts.json', JSON.stringify(updatedPosts, null, 2), 'application/json');
+
+    // Rebuild RSS
+    await rebuildRSSFeedHelper();
 
     const articleUrl = getAbsoluteUrl(`/mars/${docId}`);
-    const channelId = process.env.TELEGRAM_CHANNEL_ID || '-1004429795655';
     const adminChatId = process.env.TELEGRAM_CHAT_ID || '5429818332';
 
     const channelMsg =
@@ -294,9 +342,16 @@ Aturan:
       `<i>${newArticle.excerpt}</i>\n\n` +
       `🛰 <b>Gambar:</b> ${marsImage.rover_name} - ${marsImage.camera_name}\n` +
       `🔗 Baca selengkapnya:\n${articleUrl}`;
-    await sendTelegramMessage(channelId, channelMsg);
 
-    const totalMars = await adminDb.collection('articles').where('category', '==', 'Planet Mars').get().then((snap: any) => snap.size);
+    await sendBroadcastNotification({
+      title: `🔴 Planet Mars: ${newArticle.title}`,
+      body: `Artikel Planet Mars Terbaru:\n${newArticle.title}\n${newArticle.excerpt}`,
+      telegramHtml: channelMsg,
+      link: `/mars/${docId}`,
+      imageUrl: newArticle.image
+    });
+
+    const totalMars = updatedPosts.filter((p: any) => p.category === 'Planet Mars').length;
     const reportMsg =
       `📢 <b>LAPORAN CRON PLANET MARS</b>\n\n` +
       `🟢 <b>Status:</b> Sukses Terbit\n` +

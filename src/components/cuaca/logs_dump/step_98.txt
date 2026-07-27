@@ -1,0 +1,39 @@
+Created At: 2026-07-06T00:42:44Z
+Completed At: 2026-07-06T00:42:44Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 3903
+Total Bytes: 214381
+Showing lines 1520 to 1550
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1520:     quakeMinMag: "Мин. магнитуда",
+1521:     quakeScope: "Географический охват",
+1522:     btnFilter: "Применить фильтр",
+1523:     scopeIndonesia: "Индонезия",
+1524:     scopeAll: "Весь мир",
+1525:   },
+1526:   fr: {
+1527:     mapTitle: "🗺️ Carte de surveillance satellite et sismique",
+1528:     tabQuake: "🌋 Séismes",
+1529:     tabHotspots: "🔥 Foyers d'incendie",
+1530:     tabRain: "🌧️ Précipitations GPM",
+1531:     tabVolcano: "🏔️ Volcans",
+1532:     tabEnso: "🌊 Climat ENSO",
+1533:     quakeFilter: "Filtre des séismes (USGS)",
+1534:     quakeMinMag: "Magnitude Min",
+1535:     quakeScope: "Zone géographique",
+1536:     btnFilter: "Filtrer les données",
+1537:     scopeIndonesia: "Indonésie",
+1538:     scopeAll: "Monde entier",
+1539:   }
+1540: };
+1541: 
+1542: // ─── Main Component ───────────────────────────────────────────────────────────
+1543: export default function WeatherMiniApp() {
+1544:   const language = useSiteLanguage();
+1545:   const t = localDict[language] || localDict['id'];
+1546:   const d = disasterDict[language] || disasterDict['id'];
+1547: 
+1548:   const [weather, setWeather] = useState<WeatherData | null>(null);
+1549:   const [langMenuOpen, setLangMenuOpen] = useState(false);
+1550:   const languageOptions = [
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

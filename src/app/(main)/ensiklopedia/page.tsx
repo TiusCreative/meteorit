@@ -23,6 +23,7 @@ interface Meteorite {
   description: string;
   translated_description: string;
   image_url: string;
+  translations?: Record<string, any>;
 }
 
 export default async function EncyclopediaPage() {
@@ -56,6 +57,7 @@ export default async function EncyclopediaPage() {
           description: data.description || '',
           translated_description: data.translated_description || data.description || '',
           image_url: data.image_url || '',
+          translations: data.translations || {},
         });
       });
     } catch (err) {

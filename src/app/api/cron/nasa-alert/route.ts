@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { getAbsoluteUrl } from '@/lib/siteUrl';
+import { isValidCronRequest } from '@/lib/cronAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  // Verify cron secret
-  const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isValidCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -84,6 +83,26 @@ export async function GET(request: Request) {
       telegramSent = await sendTelegramMessage(channelId, message);
     }
 
+    // === AUTOMATIC KOMET ARTICLE GENERATION ===
+    // Trigger the komet generation endpoint immediately to publish a new article for the closest/hazardous asteroid
+    let kometArticleTriggered = false;
+    let kometArticleResult = null;
+    try {
+      const secret = process.env.CRON_SECRET || 'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU=';
+      const kometUrl = getAbsoluteUrl(`/api/cron/komet?secret=${encodeURIComponent(secret)}&bypass=true`);
+      const kometRes = await fetch(kometUrl, { 
+        headers: { 'Authorization': `Bearer ${secret}` },
+        cache: 'no-store'
+      });
+      if (kometRes.ok) {
+        kometArticleTriggered = true;
+        kometArticleResult = await kometRes.json();
+        console.log('[Cron NASA Alert] Komet article generated successfully:', kometArticleResult);
+      }
+    } catch (kometErr) {
+      console.error('[Cron NASA Alert] Failed to trigger automatic komet article:', kometErr);
+    }
+
     return NextResponse.json({
       success: true,
       date: today,
@@ -91,6 +110,8 @@ export async function GET(request: Request) {
       hazardousCount: hazardous.length,
       xFlareDetected: hasXFlare,
       telegramSent,
+      kometArticleTriggered,
+      kometArticleResult
     });
   } catch (error) {
     console.error('[Cron NASA Alert] Error:', error);

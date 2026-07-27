@@ -1,0 +1,47 @@
+Created At: 2026-07-06T00:47:05Z
+Completed At: 2026-07-06T00:47:06Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4268
+Total Bytes: 236245
+Showing lines 3770 to 3820
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3770:                           <p className="text-center text-[10px] text-gray-400 font-semibold py-2 bg-gray-50 rounded-xl border border-gray-150">
+3771:                             {d.showingHotspots.replace('{total}', hotspots.length.toString())}
+3772:                           </p>
+3773:                         )}
+3774:                       </div>
+3775:                     </div>
+3776:                   </>
+3777:                 )}
+3778:               </div>
+3779:                 {/* Dashboard Metrics */}
+3780:                 {hotspotsLoading ? (
+3781:                   <div className="bg-white rounded-3xl p-8 text-center border border-gray-100 shadow-sm">
+3782:                     <RefreshCw size={24} className="animate-spin text-blue-500 mx-auto mb-2" />
+3783:                     <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">{language === 'id' || language === 'ms' ? 'Menghubungi Satelit NASA FIRMS...' : language === 'zh' ? '正在连接 NASA FIRMS 卫星...' : language === 'ja' ? 'NASA FIRMS 衛星に接続中...' : 'Contacting NASA FIRMS Satellites...'}</p>
+3784:                   </div>
+3785:                 ) : hotspots.length === 0 ? (
+3786:                   <div className="bg-white rounded-3xl p-6 text-center border border-gray-100 shadow-sm">
+3787:                     <span className="text-3xl block mb-2">🌴</span>
+3788:                     <p className="text-xs text-gray-500 font-bold leading-relaxed">
+3789:                       {language === 'id' || language === 'ms' ? 'Kondisi w
+<truncated 1870 bytes>
+xt-amber-600 mt-1">{hotspotStats.avgFrp.toFixed(1)} MW</p>
+3804:                         </div>
+3805:                         <div className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm">
+3806:                           <p className="text-[8px] text-gray-400 font-extrabold uppercase tracking-wider">{language === 'id' || language === 'ms' ? 'Intensitas Maks (FRP)' : language === 'zh' ? '最大火源功率 (FRP)' : language === 'ja' ? '最大火熱放射強度 (FRP)' : 'Max Intensity (FRP)'}</p>
+3807:                           <p className="text-xl font-black text-red-600 mt-1">{hotspotStats.maxFrp.toFixed(1)} MW</p>
+3808:                         </div>
+3809:                         <div className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm">
+3810:                           <p className="text-[8px] text-gray-400 font-extrabold uppercase tracking-wider">{language === 'id' || language === 'ms' ? 'Kondisi Siang/Malam' : language === 'zh' ? '昼夜分布' : language === 'ja' ? '昼夜状況' : 'Day/Night Condition'}</p>
+3811:                           <p className="text-xs font-black text-slate-700 mt-1.5">
+3812:                             ☀️ {hotspotStats.dayCount} {language === 'id' || language === 'ms' ? 'Siang' : language === 'zh' ? '白天' : language === 'ja' ? '昼' : 'Day'} &bull; 🌙 {hotspotStats.nightCount} {language === 'id' || language === 'ms' ? 'Malam' : language === 'zh' ? '夜晚' : language === 'ja' ? '夜' : 'Night'}
+3813:                           </p>
+3814:                         </div>
+3815:                       </div>
+3816:                     )}
+3817: 
+3818:                     {/* Additional Stats Dashboard */}
+3819:                     {hotspotStats && (
+3820:                       <div className="bg-white rounded-3xl p-4 border border-gray-100 shadow-sm space-y-2 text-xs">
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

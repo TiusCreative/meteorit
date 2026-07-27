@@ -1,0 +1,44 @@
+Created At: 2026-07-06T00:46:39Z
+Completed At: 2026-07-06T00:46:39Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4275
+Total Bytes: 236595
+Showing lines 3900 to 3935
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3900:                                   <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase shrink-0">
+3901:                                     {fire.daynight === 'D' ? `☀️ ${language === 'id' || language === 'ms' ? 'Siang' : language === 'zh' ? '白天' : language === 'ja' ? '昼' : 'Day'}` : `🌙 ${language === 'id' || language === 'ms' ? 'Malam' : language === 'zh' ? '夜晚' : language === 'ja' ? '夜' : 'Night'}`}
+3902:                                   </span>
+3903:                                 </div>
+3904:                               </div>
+3905:                               <div className="text-right shrink-0">
+3906:                                 <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded text-[9px] font-black">
+3907:                                   {fire.frp.toFixed(1)} MW
+3908:                                 </span>
+3909:                                 <p className="text-[8px] text-gray-400 mt-1">UTC {fire.acq_date} {fire.acq_time}</p>
+3910:                               </div>
+3911:                             </button>
+3912:                           );
+3913:                         })}
+3914:                         {hotspots.length > 50 && (
+3915:                           <p className="text-center text-[10px] text-gray-400 font-semibold py-2 bg-gray-50 rounded-xl border border-gray-150">
+3916:                             {language === 'id' || language === 'ms' ? `Melihat 50 dari ${hotspots.length} titik api. Gunakan unduhan laporan untuk melihat daftar lengkap.` : language === 'zh' ? `显示 ${hotspots.length} 个火点中的前 50 个。下载完整报告以查看全部。` : language === 'ja' ? `${hotspots.length} 地点中 50 地点表示中。完全なリストを見るにはレポートをダウンロードしてください。` : `Showing 50 of ${hotspots.length} hotspots. Download the report to see the complete list.`}
+3917:                           </p>
+3918:                         )}
+3919:                       </div>
+3920:                     </div>
+3921:                   </>
+3922:                 )}
+3923:               </div>
+3924:             )}
+3925: 
+3926:             {/* Sub-tab 3: Curah Hujan & Banjir (NASA GPM & GFMS) */}
+3927:             {disasterSubTab === 'rain' && (
+3928:               <div className="space-y-4">
+3929:                 {/* Control Panel */}
+3930:                 <div className="bg-white rounded-3xl p-5 border border-gray-150 shadow-sm space-y-3">
+3931:                   <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+3932:                     <div className="flex items-center gap-1.5">
+3933:                       <span className="text-lg">🌧️</span>
+3934:                       <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">{language === 'id' || language === 'ms' ? 'Presipitasi GPM & Risiko Banjir GFMS' : language === 'zh' ? 'GPM 降水与 GFMS 洪水风险' : language === 'ja' ? 'GPM 降水量＆ GFMS 洪水リスク' : 'GPM Precipitation & GFMS Flood Risks'}</h4>
+3935:                     </div>
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

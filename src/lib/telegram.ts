@@ -15,10 +15,11 @@ export async function sendTelegramMessage(chatId: string, text: string): Promise
 
   try {
     // --- TRIK BYPASS CACHE GAMBAR TELEGRAM ---
-    // Mencari URL ensiklopedia di dalam teks dan menambahkan ?v=timestamp unik
+    // Mencari semua URL internal website di dalam teks dan menambahkan ?v=timestamp unik
+    // agar Telegram membypass cache preview-nya dan selalu mengambil logo terbaru
     let updatedText = text;
     const escapedSiteUrl = getSiteUrl().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const urlRegex = new RegExp(`(${escapedSiteUrl}/ensiklopedia/[^\\s<]+)`, 'g');
+    const urlRegex = new RegExp(`(${escapedSiteUrl}/[^\\s<]+)`, 'g');
     
     if (urlRegex.test(text)) {
       updatedText = text.replace(urlRegex, (match) => {

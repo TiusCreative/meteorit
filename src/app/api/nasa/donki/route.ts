@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { fetchNasaJsonCached } from '@/lib/nasaApiCache';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,26 +14,27 @@ export async function GET() {
     const startStr = startDate.toISOString().split('T')[0];
     const endStr = endDate.toISOString().split('T')[0];
 
-    // Fetch CME and Solar Flare in parallel
     const [cmeRes, flrRes] = await Promise.allSettled([
-      fetch(
+      fetchNasaJsonCached<any[]>(
+        `donki-cme-${startStr}-${endStr}`,
         `https://api.nasa.gov/DONKI/CME?startDate=${startStr}&endDate=${endStr}&api_key=${apiKey}`,
-        { next: { revalidate: 3600 } }
+        60 * 60 * 1000
       ),
-      fetch(
+      fetchNasaJsonCached<any[]>(
+        `donki-flr-${startStr}-${endStr}`,
         `https://api.nasa.gov/DONKI/FLR?startDate=${startStr}&endDate=${endStr}&api_key=${apiKey}`,
-        { next: { revalidate: 3600 } }
+        60 * 60 * 1000
       ),
     ]);
 
     let cmeData: any[] = [];
     let flrData: any[] = [];
 
-    if (cmeRes.status === 'fulfilled' && cmeRes.value.ok) {
-      cmeData = await cmeRes.value.json();
+    if (cmeRes.status === 'fulfilled') {
+      cmeData = cmeRes.value;
     }
-    if (flrRes.status === 'fulfilled' && flrRes.value.ok) {
-      flrData = await flrRes.value.json();
+    if (flrRes.status === 'fulfilled') {
+      flrData = flrRes.value;
     }
 
     // Determine activity level based on flare class
@@ -75,6 +77,10 @@ export async function GET() {
       cme,
       flares,
       period: { start: startStr, end: endStr },
+    }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=21600',
+      },
     });
   } catch (error) {
     console.error('[API DONKI] Error:', error);

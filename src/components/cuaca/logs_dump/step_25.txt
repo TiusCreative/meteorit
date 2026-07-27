@@ -1,0 +1,50 @@
+Created At: 2026-07-06T00:38:31Z
+Completed At: 2026-07-06T00:38:31Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 3014
+Total Bytes: 164208
+Showing lines 2600 to 2700
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+2600: 
+2601:                     {/* Interactive Hotspot List */}
+2602:                     <div className="space-y-2">
+2603:                       <div className="flex items-center justify-between">
+2604:                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">📋 {language === 'id' || language === 'ms' ? 'Daftar Koordinat Kebakaran Hutan' : language === 'zh' ? '林火坐标列表' : language === 'ja' ? '森林火災座標リスト' : 'Wildfire Coordinates List'} ({hotspots.length} {language === 'id' || language === 'ms' ? 'Titik' : language === 'zh' ? '点' : language === 'ja' ? '地点' : 'Points'})</p>
+2605:                         <p className="text-[8px] text-blue-500 font-semibold italic">* {language === 'id' || language === 'ms' ? 'Klik koordinat untuk menunjuk di peta' : language === 'zh' ? '点击坐标在地图上定位' : language === 'ja' ? '座標をクリックして地図上に表示' : 'Click coordinates to focus on map'}</p>
+2606:                       </div>
+2607:                       <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+2608:                         {hotspots.slice(0, 50).map((fire: any, idx: number) => {
+2609:                           const conf = String(fire.confidence).toLowerCase();
+2610:                           const isHigh = conf === 'h' || conf === 'high' || parseInt(conf) >= 80;
+2611:                           const isLow = conf === 'l' || conf === 'low' || parseInt(conf) < 30;
+2612:                           const confLabel = i
+<truncated 5209 bytes>
+与 GFMS 洪水风险' : language === 'ja' ? 'GPM 降水量＆ GFMS 洪水リスク' : 'GPM Precipitation & GFMS Flood Risks'}</h4>
+2674:                     </div>
+2675:                     <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[8px] font-extrabold uppercase animate-pulse">
+2676:                       Active Map Layer
+2677:                     </span>
+2678:                   </div>
+2679: 
+2680:                   <div className="grid grid-cols-2 gap-2">
+2681:                     <div>
+2682:                       <label className="block text-[8px] font-extrabold text-slate-400 uppercase mb-1 tracking-wider">{language === 'id' || language === 'ms' ? 'Wilayah Pemantauan' : language === 'zh' ? '监测区域' : language === 'ja' ? '監視地域' : 'Monitoring Region'}</label>
+2683:                       <select
+2684:                         value={rainRegion}
+2685:                         onChange={e => {
+2686:                           const val = e.target.value as 'IDN' | 'world';
+2687:                           setRainRegion(val);
+2688:                           if (val === 'IDN') {
+2689:                             setMapCenter([-2.5, 118.0]);
+2690:                           } else {
+2691:                             setMapCenter([20.0, 0.0]);
+2692:                           }
+2693:                         }}
+2694:                         className="w-full px-2 py-1.5 rounded-xl border border-gray-200 text-[10px] font-bold bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
+2695:                       >
+2696:                         <option value="IDN">🇮🇩 Indonesia</option>
+2697:                         <option value="world">🌐 Global</option>
+2698:                       </select>
+2699:                     </div>
+2700:                     <div className="flex flex-col justify-end">
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

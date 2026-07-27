@@ -72,9 +72,13 @@ export default function Footer() {
   }
 
   useEffect(() => {
-    const storedLanguage = window.localStorage.getItem(LANGUAGE_STORAGE_KEY)
-    if (isSiteLanguage(storedLanguage)) {
-      setLanguage(storedLanguage)
+    try {
+      const storedLanguage = typeof window !== 'undefined' ? window.localStorage.getItem(LANGUAGE_STORAGE_KEY) : null;
+      if (isSiteLanguage(storedLanguage)) {
+        setLanguage(storedLanguage);
+      }
+    } catch (err) {
+      console.warn('Gagal membaca storage di Footer:', err);
     }
     const handleLanguageChange = (event: Event) => {
       const nextLanguage = (event as CustomEvent<SiteLanguage>).detail

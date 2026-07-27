@@ -1,0 +1,59 @@
+Created At: 2026-07-06T00:41:34Z
+Completed At: 2026-07-06T00:41:34Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 3881
+Total Bytes: 213722
+Showing lines 270 to 320
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+270: 
+271: // ─── Forecast Card ────────────────────────────────────────────────────────────
+272: function ForecastCard({ day, isSelected, onClick }: { day: ForecastDay; isSelected: boolean; onClick: () => void }) {
+273:   return (
+274:     <button
+275:       onClick={onClick}
+276:       className={`flex flex-col items-center bg-white rounded-2xl p-3 border shadow-sm min-w-[85px] snap-start transition-all ${isSelected ? 'ring-2 ring-blue-600 border-blue-600 bg-blue-50/30' : 'border-gray-100 hover:bg-gray-50'}`}
+277:     >
+278:       <p className="text-[10px] font-bold text-gray-500 mb-1">{day.dayName}</p>
+279:       <WeatherIcon code={day.icon} size={28} />
+280:       <p className="text-sm font-black text-gray-800">{Math.round(day.high)}°</p>
+281:       <p className="text-[10px] text-gray-400">{Math.round(day.low)}°</p>
+282:       {dayconst localDict: Record<string, Record<string, string>> = {
+283:   id: {
+284:     tabWeather: "Cuaca",
+285:     tabForecast: "Prakiraan",
+286:     tabMap: "Peta Radar",
+287:     tabReport: "Laporan",
+288:     tabCalendar: "Rencana",
+289:     tabDisaster: "Kebencanaan",
+290:     searchPlaceholder: "Cari kota, daerah, atau koordinat (-6.2, 106.8)",
+291:     btnSearch: "Cari",
+292:     loadingStation: "Memuat data stasiun BMKG terdekat...",
+293:     hottestDay: "Hari terpanas:",
+294:     windiestDay: "Hari paling berangin:",
+295:     ensoTitle: "Status Iklim ENSO Terkini",
+296:     forecastTitle: "Prakiraan 7 Hari",
+297:     weeklyDetails: "Detail Mingguan →",
+298:     spaceWeatherTitle: "Cuaca Antariksa NOAA / USGS",
+299:     satelliteRisk: "Resiko Satelit:",
+300:     kpLabel: "Kp Index (Geomagnetik)",
+301:     kpScale: "Skala 0-9",
+302:     windLabel: "Angin Matahari",
+303:     windUnit: "km/detik",
+304:     auroraLabel: "Peluang Aurora",
+305:     auroraHigh: "Lintang Tinggi",
+306:     actMagnet: "Aktivitas Magnetosfer:",
+307:     actRec: "Pengaruh & Rekomendasi:",
+308:     stormClass: "Status Badai:",
+309:     releaseLabel: "Rilis:",
+310:     missionControl: "🛰️ Integrasi Sistem Misi",
+311:     issTitle: "Space Control & Pelacak ISS Live",
+312:     issDesc: "Pantau stasiun luar angkasa ISS di peta Voyager, lintasan orbit aktual, dan daftar astronot aktif di luar angkasa secara real-time.",
+313:     btnOpenIss: "Buka Dashboard ISS Tracker →",
+314:     forumTitle: "Diskusi Komunitas Terbaru (D1)",
+315:     allForum: "Semua Forum →",
+316:     votesLabel: "voting",
+317:     forecastDetailTitle: "Prakiraan Detail 7 Hari",
+318:     forecastSearchPlaceholder: "Masukkan nama kota untuk memuat prakiraan.",
+319:     rainChance: "Peluang Hujan",
+320:     selectedDetailTitle: "Detail Kondisi Terpilih",
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

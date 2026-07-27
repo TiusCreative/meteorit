@@ -91,8 +91,8 @@ export async function GET() {
   try {
     const settings = await getGlobalSettings();
     const propertyId = normalizePropertyId(settings.googleAnalyticsPropertyId);
-    const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || process.env.GA_CLIENT_EMAIL || '';
-    const privateKey = process.env.GOOGLE_PRIVATE_KEY || process.env.GA_PRIVATE_KEY || '';
+    const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || process.env.GA_CLIENT_EMAIL || process.env.FIREBASE_ADMIN_CLIENT_EMAIL || '';
+    const privateKey = process.env.GOOGLE_PRIVATE_KEY || process.env.GA_PRIVATE_KEY || process.env.FIREBASE_ADMIN_PRIVATE_KEY || '';
 
     if (!propertyId || propertyId.startsWith('G-')) {
       return NextResponse.json({
@@ -108,7 +108,7 @@ export async function GET() {
         success: false,
         configured: false,
         reason: 'SERVICE_ACCOUNT_REQUIRED',
-        message: 'Tambahkan GOOGLE_SERVICE_ACCOUNT_EMAIL dan GOOGLE_PRIVATE_KEY agar dashboard admin bisa membaca GA4.',
+        message: 'Tambahkan GOOGLE_SERVICE_ACCOUNT_EMAIL dan GOOGLE_PRIVATE_KEY atau kredensial FIREBASE_ADMIN agar dashboard admin bisa membaca GA4.',
       });
     }
 

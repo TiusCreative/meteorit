@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { landingText } from '@/lib/landingText';
+import { useSiteLanguage } from '@/lib/useSiteLanguage';
 
 export default function StatsBanner() {
-  const [asteroidCount, setAsteroidCount] = useState<number | string>('Loading...');
-  const [astronautCount, setAstronautCount] = useState<number | string>('Loading...');
+  const language = useSiteLanguage();
+  const t = landingText[language];
+  const [asteroidCount, setAsteroidCount] = useState<number | string>(t.loading);
+  const [astronautCount, setAstronautCount] = useState<number | string>(t.loading);
+  const [ensoStatus, setEnsoStatus] = useState<string>('Memuat...');
 
   useEffect(() => {
     async function fetchAsteroidStats() {
@@ -36,38 +41,64 @@ export default function StatsBanner() {
       }
     }
     fetchAstronautStats();
+
+    async function fetchEnsoStatus() {
+      try {
+        const res = await fetch(`/api/cuaca/enso?t=${Date.now()}`);
+        if (res.ok) {
+          const payload = await res.json();
+          if (payload.success && payload.data) {
+            setEnsoStatus(payload.data.status);
+          } else {
+            setEnsoStatus('Netral');
+          }
+        } else {
+          setEnsoStatus('Netral');
+        }
+      } catch {
+        setEnsoStatus('Netral');
+      }
+    }
+    fetchEnsoStatus();
   }, []);
 
   return (
-    <section className="bg-gradient-to-r from-slate-950 via-cyan-950/20 to-slate-950 border-y border-cyan-900/20 py-5 overflow-hidden">
+    <section className="bg-white border-y border-slate-200 py-6 overflow-hidden">
       <div className="container mx-auto px-4">
         <div className="flex flex-wrap justify-around gap-6 text-center">
           <div className="flex items-center gap-3">
-            <span className="text-amber-400 text-3xl animate-pulse">🌠</span>
+            <span className="text-amber-500 text-3xl animate-pulse">🌠</span>
             <div>
-              <p className="text-xl font-extrabold text-cyan-400">45,000+</p>
-              <p className="text-xs text-gray-400 uppercase tracking-wider">Meteorit Terdata Dunia</p>
+              <p className="text-xl font-extrabold text-slate-900">45,000+</p>
+              <p className="text-xs text-slate-600 font-semibold uppercase tracking-wider">{t.statsMeteorites}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-amber-400 text-3xl animate-pulse">👥</span>
+            <span className="text-amber-500 text-3xl animate-pulse">👥</span>
             <div>
-              <p className="text-xl font-extrabold text-cyan-400">2,500+</p>
-              <p className="text-xs text-gray-400 uppercase tracking-wider">Kolektor Indonesia</p>
+              <p className="text-xl font-extrabold text-slate-900">2,500+</p>
+              <p className="text-xs text-slate-600 font-semibold uppercase tracking-wider">{t.statsCollectors}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-amber-400 text-3xl animate-pulse">🛰️</span>
+            <span className="text-amber-500 text-3xl animate-pulse">🛰️</span>
             <div>
-              <p className="text-xl font-extrabold text-cyan-400">{asteroidCount} Objek</p>
-              <p className="text-xs text-gray-400 uppercase tracking-wider">Asteroid Dekat Bumi Hari Ini</p>
+              <p className="text-xl font-extrabold text-slate-900">{asteroidCount} {t.objectUnit}</p>
+              <p className="text-xs text-slate-600 font-semibold uppercase tracking-wider">{t.statsAsteroids}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-amber-400 text-3xl animate-pulse">👨‍🚀</span>
+            <span className="text-amber-500 text-3xl animate-pulse">👨‍🚀</span>
             <div>
-              <p className="text-xl font-extrabold text-cyan-400">{astronautCount} Kru</p>
-              <p className="text-xs text-gray-400 uppercase tracking-wider">Astronot di Orbit Saat Ini</p>
+              <p className="text-xl font-extrabold text-slate-900">{astronautCount} {t.crewUnit}</p>
+              <p className="text-xs text-slate-600 font-semibold uppercase tracking-wider">{t.statsAstronauts}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-amber-500 text-3xl animate-pulse">🌊</span>
+            <div>
+              <p className="text-xl font-extrabold text-slate-900">{ensoStatus}</p>
+              <p className="text-xs text-slate-600 font-semibold uppercase tracking-wider">Status ENSO Iklim</p>
             </div>
           </div>
         </div>
@@ -75,3 +106,4 @@ export default function StatsBanner() {
     </section>
   );
 }
+

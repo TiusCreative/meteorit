@@ -1,0 +1,59 @@
+Created At: 2026-07-06T00:38:56Z
+Completed At: 2026-07-06T00:38:56Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 3014
+Total Bytes: 164208
+Showing lines 1550 to 1600
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1550:       awardPoints(50); // Get 50 XP for reporting weather
+1551:       setTimeout(() => setReportSubmitted(false), 3000);
+1552:     } catch { /* silent */ }
+1553:   };
+1554: 
+1555:   // ── Calendar Event addition ──
+1556:   const addCalendarEvent = (e: React.FormEvent) => {
+1557:     e.preventDefault();
+1558:     if (!newActivity.title || !newActivity.location) return;
+1559:     const nextActs = [...activities, newActivity];
+1560:     setActivities(nextActs);
+1561:     localStorage.setItem('cuaca_activities', JSON.stringify(nextActs));
+1562:     setNewActivity({ time: '16:00', title: '', location: '' });
+1563:     awardPoints(20);
+1564:   };
+1565: 
+1566:   // Smart advice engine based on calendar events and weather
+1567:   const getCalendarAdvice = (act: ActivityEvent) => {
+1568:     if (!weather) return 'Muat data cuaca untuk mendapatkan saran aktivitas pintar.';
+1569:     const isMatchedLocation = weather.city.toLowerCase().includes(act.location.toLowerCase()) || act.location.toLowerCase().includes(weather.city.toLowerCase());
+1570:     
+1571:     if (!isMatchedLocation) return `Rencana di ${act.location}. (Prakiraan cuaca regional disarankan).`;
+1572:     
+1573:     const cond = weather.description.toLowerCase();
+1574:     if (cond.includes('hujan') || cond.includes('petir') || cond.includes('gerimis')) {
+1575:       return `🌧️ Saran: Jadwal '${act.title}' Anda terancam hujan lebat. Pindahkan ke dalam ruangan (indoor) agar tetap aman.`;
+1576:     }
+1577:     if (weather.temp > 35) {
+1578:       return `🔥 Saran: Suhu sangat panas (${Math.round(weather.temp)}°C). Siapkan air minum ekstra agar terhindar dari dehidrasi.`;
+1579:     }
+1580:     return `☀️ Saran: Cuaca di ${weather.city} sangat bagus (${weather.description}, ${Math.round(weather.temp)}°C). Waktu ideal untuk ${act.title.toLowerCase()}!`;
+1581:   };
+1582: 
+1583:   return (
+1584:     <div className="min-h-screen bg-gray-50 font-sans text-slate-800 pb-16">
+1585:       {/* BMKG clean white style Header */}
+1586:       <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-200">
+1587:         <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+1588:           <a href="/" className="flex items-center gap-2 hover:opacity-85 transition-opacity">
+1589:             <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shadow-sm">
+1590:               <img src="/logo-cuaca.png" alt="Logo Cuaca" className="w-full h-full object-cover" />
+1591:             </div>
+1592:             <div>
+1593:               <h1 className="text-sm font-black text-blue-800 leading-tight">Cuaca & Langit</h1>
+1594:               <p className="text-[10px] text-gray-400 leading-none">PWA Cuaca Indonesia</p>
+1595:             </div>
+1596:           </a>
+1597: 
+1598:           <div className="flex items-center gap-2">
+1599:             {/* Home button */}
+1600:             <a
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

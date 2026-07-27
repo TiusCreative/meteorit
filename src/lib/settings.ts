@@ -66,7 +66,7 @@ const DEFAULT_SETTINGS: GlobalSettings = {
   ],
   encyclopediaCronLimit: 20,
   googleTagId: "G-X4F6EB07D4",
-  googleAnalyticsPropertyId: "",
+  googleAnalyticsPropertyId: "543353784",
   googleSearchConsoleUrl: "https://search.google.com/search-console",
   customHeadCode: `<!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-X4F6EB07D4"></script>
@@ -80,26 +80,45 @@ const DEFAULT_SETTINGS: GlobalSettings = {
   customBodyEndCode: ""
 };
 
+let cachedSettings: GlobalSettings | null = null;
+let lastFetchTime = 0;
+const CACHE_TTL = 10 * 60 * 1000; // 10 menit cache
+
 export async function getGlobalSettings(): Promise<GlobalSettings> {
+  const now = Date.now();
+  if (cachedSettings && (now - lastFetchTime < CACHE_TTL)) {
+    return cachedSettings;
+  }
+
   try {
     const docRef = adminDb.collection('settings').doc('global');
     const snapshot = await docRef.get();
     
     if (!snapshot.exists) {
-      // Initialize with default values if not exists
       await docRef.set(DEFAULT_SETTINGS);
+      cachedSettings = DEFAULT_SETTINGS;
+      lastFetchTime = now;
       return DEFAULT_SETTINGS;
     }
     
     const data = snapshot.data() || {};
-    // Gunakan adminEmails dari database jika ada. Jika tidak, gunakan default settings.
     const adminEmails = data.adminEmails !== undefined
       ? (data.adminEmails || []).map((e: string) => e.toLowerCase().trim())
       : (DEFAULT_SETTINGS.adminEmails || []);
     
-    return { ...DEFAULT_SETTINGS, ...data, adminEmails } as GlobalSettings;
+    const mergedSettings = { ...DEFAULT_SETTINGS, ...data, adminEmails } as GlobalSettings;
+    if (!String(mergedSettings.googleAnalyticsPropertyId || '').trim()) {
+      mergedSettings.googleAnalyticsPropertyId = DEFAULT_SETTINGS.googleAnalyticsPropertyId;
+    }
+    
+    cachedSettings = mergedSettings;
+    lastFetchTime = now;
+    return mergedSettings;
   } catch (error) {
     console.error("Error fetching global settings:", error);
+    if (cachedSettings) {
+      return cachedSettings;
+    }
     return DEFAULT_SETTINGS;
   }
 }
@@ -108,6 +127,10 @@ export async function updateGlobalSettings(settings: Partial<GlobalSettings>): P
   try {
     const docRef = adminDb.collection('settings').doc('global');
     await docRef.set(settings, { merge: true });
+    
+    // Invalidate cache agar setelan terbaru langsung aktif
+    cachedSettings = null;
+    lastFetchTime = 0;
     return true;
   } catch (error) {
     console.error("Error updating global settings:", error);

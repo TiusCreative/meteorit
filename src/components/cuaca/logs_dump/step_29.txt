@@ -1,0 +1,52 @@
+Created At: 2026-07-06T00:38:35Z
+Completed At: 2026-07-06T00:38:35Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 3014
+Total Bytes: 164208
+Showing lines 2800 to 2900
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+2800:             )}
+2801: 
+2802:             {/* Sub-tab 4: Gunung Api (MAGMA Indonesia) */}
+2803:             {disasterSubTab === 'volcano' && (
+2804:               <div className="space-y-3">
+2805:                 <div className="bg-white rounded-2xl p-4 border border-gray-150 shadow-sm space-y-1">
+2806:                   <h4 className="text-xs font-bold text-slate-700">{language === 'id' || language === 'ms' ? 'Laporan Erupsi MAGMA Indonesia' : language === 'zh' ? '印尼 MAGMA 火山喷发报告' : language === 'ja' ? 'インドネシア MAGMA 火山噴火レポート' : 'Indonesia MAGMA Volcanic Eruption Reports'}</h4>
+2807:                   <p className="text-[10px] text-slate-500 leading-relaxed">
+2808:                     {language === 'id' || language === 'ms' ? 'Sistem pemantauan gunung api ESDM MAGMA Indonesia untuk memperingatkan maskapai penerbangan (VONA) dan masyarakat sekitar zona bahaya.' : language === 'zh' ? '印尼 ESDM MAGMA 火山监测系统，旨在为航空公司 (VONA) 和危险区域周围的公众提供早期预警。' : language === 'ja' ? '航空会社（VONA）や危険ゾーン周辺の住民に早期警戒を提供するためのインドネシアESDM MAGMA火山監視システム。' : 'ESDM MAGMA Indonesia volcano monitoring system to provide early warnings for airlines (VONA) and communities around the danger zone.'}
+2809:                   </p>
+2810:                 </div>
+2811: 
+2812:                 <div className="space-y-2">
+2813:                   <p className="text-[10px] font-bold
+<truncated 4947 bytes>
+d">
+2873:                         {enso.description}
+2874:                       </p>
+2875: 
+2876:                       <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1">
+2877:                         <div className="bg-white/70 rounded-xl p-2.5 border border-gray-100 shadow-sm">
+2878:                           <p className="text-[8px] text-gray-400 font-bold uppercase">Indeks ONI</p>
+2879:                           <p className="text-sm font-black text-blue-700 mt-0.5">
+2880:                             {enso.oni >= 0 ? '+' : ''}{enso.oni.toFixed(2)} &deg;C
+2881:                           </p>
+2882:                         </div>
+2883:                         <div className="bg-white/70 rounded-xl p-2.5 border border-gray-100 shadow-sm">
+2884:                           <p className="text-[8px] text-gray-400 font-bold uppercase">Niño 3.4 Anomali</p>
+2885:                           <p className="text-sm font-black text-blue-700 mt-0.5">
+2886:                             {enso.nino34_anomaly >= 0 ? '+' : ''}{enso.nino34_anomaly.toFixed(2)} &deg;C
+2887:                           </p>
+2888:                         </div>
+2889:                         <div className="bg-white/70 rounded-xl p-2.5 border border-gray-100 shadow-sm">
+2890:                           <p className="text-[8px] text-gray-400 font-bold uppercase">Suhu Laut (SST)</p>
+2891:                           <p className="text-sm font-black text-blue-700 mt-0.5">{enso.nino34_sst.toFixed(2)} &deg;C</p>
+2892:                         </div>
+2893:                       </div>
+2894:                     </div>
+2895: 
+2896:                     {/* SVG Chart */}
+2897:                     {renderEnsoChart(enso.history)}
+2898: 
+2899:                     {/* Forecast seasonal transitions */}
+2900:                     {enso.forecasts && enso.forecasts.length > 0 && (
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

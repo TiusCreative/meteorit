@@ -1,0 +1,52 @@
+Created At: 2026-07-06T00:46:09Z
+Completed At: 2026-07-06T00:46:12Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4038
+Total Bytes: 223389
+Showing lines 3530 to 3600
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3530:                           );
+3531:                         })}
+3532:                         {hotspots.length > 50 && (
+3533:                           <p className="text-center text-[10px] text-gray-400 font-semibold py-2 bg-gray-50 rounded-xl border border-gray-150">
+3534:                             {d.showingHotspots.replace('{total}', hotspots.length.toString())}
+3535:                           </p>
+3536:                         )}
+3537:                       </div>
+3538:                     </div>
+3539:                   </>
+3540:                 )}
+3541:               </div>
+3542:             )}24 Hours'}</option>
+3543:                         <option value="2">{language === 'id' || language === 'ms' ? '48 Jam Terakhir' : language === 'zh' ? '过去48小时' : language === 'ja' ? '過去48時間' : 'Last 48 Hours'}</option>
+3544:                       </select>
+3545:                     </div>
+3546:                   </div>
+3547:                 </div>
+3548: 
+3549:                 {/* Dashboard Metrics */}
+3550:                 {hotspotsLoading ? (
+3551:                   <div className="bg-white rounded-3xl p-8 text-center border border-gray-100 shadow-sm">
+3552:                     <RefreshCw size={24} className="animate-spin text-blue-500 mx-auto mb-2" />
+3553:                     <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">{language === 'id' || language === 'ms' ? 'Menghubungi Satelit NASA FIRMS...' : language === 'zh' ? '正在连接 NASA FIRMS 卫星...' : language === 'ja' ? 'NA
+<truncated 3828 bytes>
+ '夜晚' : language === 'ja' ? '夜' : 'Night'}
+3583:                           </p>
+3584:                         </div>
+3585:                       </div>
+3586:                     )}
+3587: 
+3588:                     {/* Additional Stats Dashboard */}
+3589:                     {hotspotStats && (
+3590:                       <div className="bg-white rounded-3xl p-4 border border-gray-100 shadow-sm space-y-2 text-xs">
+3591:                         <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">📊 {language === 'id' || language === 'ms' ? 'Analisis Kepercayaan (Confidence)' : language === 'zh' ? '置信度分析' : language === 'ja' ? '信頼度分析' : 'Confidence Analysis'}</p>
+3592:                         <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+3593:                           <div className="bg-red-50 text-red-700 p-2 rounded-xl border border-red-100 font-bold">
+3594:                             {language === 'id' || language === 'ms' ? 'Tinggi' : language === 'zh' ? '高置信度' : language === 'ja' ? '高信頼度' : 'High'}: {hotspotStats.highConf}
+3595:                           </div>
+3596:                           <div className="bg-amber-50 text-amber-700 p-2 rounded-xl border border-amber-100 font-bold">
+3597:                             {language === 'id' || language === 'ms' ? 'Nominal' : language === 'zh' ? '中置信度' : language === 'ja' ? '中信頼度' : 'Nominal'}: {hotspotStats.nominalConf}
+3598:                           </div>
+3599:                           <div className="bg-blue-50 text-blue-700 p-2 rounded-xl border border-blue-100 font-bold">
+3600:                             {language === 'id' || language === 'ms' ? 'Rendah' : language === 'zh' ? '低置信度' : language === 'ja' ? '低信頼度' : 'Low'}: {hotspotStats.lowConf}
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

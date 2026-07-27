@@ -1,0 +1,39 @@
+Created At: 2026-07-06T00:47:08Z
+Completed At: 2026-07-06T00:47:08Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4268
+Total Bytes: 236245
+Showing lines 3895 to 3925
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3895:                                   </span>
+3896:                                 </div>
+3897:                               </div>
+3898:                               <div className="text-right shrink-0">
+3899:                                 <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded text-[9px] font-black">
+3900:                                   {fire.frp.toFixed(1)} MW
+3901:                                 </span>
+3902:                                 <p className="text-[8px] text-gray-400 mt-1">UTC {fire.acq_date} {fire.acq_time}</p>
+3903:                               </div>
+3904:                             </button>
+3905:                           );
+3906:                         })}
+3907:                         {hotspots.length > 50 && (
+3908:                           <p className="text-center text-[10px] text-gray-400 font-semibold py-2 bg-gray-50 rounded-xl border border-gray-150">
+3909:                             {language === 'id' || language === 'ms' ? `Melihat 50 dari ${hotspots.length} titik api. Gunakan unduhan laporan untuk melihat daftar lengkap.` : language === 'zh' ? `显示 ${hotspots.length} 个火点中的前 50 个。下载完整报告以查看全部。` : language === 'ja' ? `${hotspots.length} 地点中 50 地点表示中。完全なリストを見るにはレポートをダウンロードしてください。` : `Showing 50 of ${hotspots.length} hotspots. Download the report to see the complete list.`}
+3910:                           </p>
+3911:                         )}
+3912:                       </div>
+3913:                     </div>
+3914:                   </>
+3915:                 )}
+3916:               </div>
+3917:             )}
+3918: 
+3919:             {/* Sub-tab 3: Curah Hujan & Banjir (NASA GPM & GFMS) */}
+3920:             {disasterSubTab === 'rain' && (
+3921:               <div className="space-y-4">
+3922:                 {/* Control Panel */}
+3923:                 <div className="bg-white rounded-3xl p-5 border border-gray-150 shadow-sm space-y-3">
+3924:                   <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+3925:                     <div className="flex items-center gap-1.5">
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

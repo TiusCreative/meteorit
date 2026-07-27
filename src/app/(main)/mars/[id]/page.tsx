@@ -6,6 +6,11 @@ import MarsArticleActions from '@/components/MarsArticleActions';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { getAbsoluteUrl } from '@/lib/siteUrl';
 
+import { cookies } from 'next/headers';
+import { isSiteLanguage, LANGUAGE_COOKIE_KEY, defaultLanguage } from '@/lib/i18n';
+import { pickLocalizedArticle, type ArticleTranslations } from '@/lib/articleLocalization';
+import { landingText } from '@/lib/landingText';
+
 export const dynamic = 'force-dynamic';
 
 interface MarsArticle {
@@ -15,6 +20,7 @@ interface MarsArticle {
   content: string;
   date: string;
   image: string;
+  translations?: ArticleTranslations;
   mars_data?: {
     topic?: string;
     rover?: string;
@@ -35,7 +41,36 @@ function sanitizeArticleHtml(html: string) {
     .replace(/javascript:/gi, '');
 }
 
+function stripHtml(str: string) {
+  return str.replace(/<[^>]*>/g, '').trim();
+}
+
+const R2_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+
 async function getMarsArticle(id: string): Promise<MarsArticle | null> {
+  // 1. Coba fetch dari Cloudflare R2
+  try {
+    const res = await fetch(`${R2_URL}/data/blog/articles/${encodeURIComponent(id)}.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (res.ok) {
+      const data: any = await res.json();
+      if (data && data.id) {
+        return {
+          id: data.id,
+          title: data.title || '',
+          excerpt: data.excerpt || '',
+          content: data.content || '',
+          date: data.date || new Date(data.createdAt).toLocaleDateString('id-ID'),
+          image: data.image || DEFAULT_IMAGE,
+          translations: data.translations || {},
+          mars_data: data.mars_data || {}
+        };
+      }
+    }
+  } catch (err) {
+    console.warn(`[Mars Detail] Gagal fetch R2 artikel ${id}, mencoba Firestore...`, err);
+  }
+
+  // 2. Fallback ke Firestore
   try {
     const snap = await adminDb.collection('articles').doc(id).get();
     if (!snap.exists) return null;
@@ -50,6 +85,7 @@ async function getMarsArticle(id: string): Promise<MarsArticle | null> {
       content: data.content || '',
       date: data.date || new Date(data.createdAt).toLocaleDateString('id-ID'),
       image: data.image || DEFAULT_IMAGE,
+      translations: data.translations || {},
       mars_data: data.mars_data || {}
     };
   } catch (error) {
@@ -70,7 +106,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   const url = getAbsoluteUrl(`/mars/${article.id}`);
   return {
     title: `${article.title} - Meteorit Indonesia`,
-    description: article.excerpt,
+    description: stripHtml(article.excerpt),
     keywords: [
       article.title,
       'Planet Mars',
@@ -103,27 +139,32 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   };
 }
 
+import MarsArticleClient from '@/components/MarsArticleClient';
+
 export default async function MarsArticlePage({ params }: { params: { id: string } }) {
   const article = await getMarsArticle(params.id);
+  const localeCookie = cookies().get(LANGUAGE_COOKIE_KEY)?.value || null;
+  const locale = isSiteLanguage(localeCookie) ? localeCookie : defaultLanguage;
+  const t = landingText[locale];
 
   if (!article) {
     return (
       <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-400 text-lg font-bold">Artikel Planet Mars tidak ditemukan.</p>
-          <Link href="/mars" className="text-orange-300 hover:underline mt-4 inline-block">Kembali ke Artikel Mars</Link>
+          <p className="text-red-400 text-lg font-bold">{t.articleNotFound || 'Artikel Planet Mars tidak ditemukan.'}</p>
+          <Link href="/mars" className="text-orange-300 hover:underline mt-4 inline-block">{t.backToMars || 'Kembali ke Artikel Mars'}</Link>
         </div>
       </main>
     );
   }
 
-  const cleanHtml = sanitizeArticleHtml(article.content);
+  const localizedArticle = pickLocalizedArticle(article as any, locale);
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Article',
-    headline: article.title,
-    description: article.excerpt,
-    image: article.image || DEFAULT_IMAGE,
+    headline: localizedArticle.title,
+    description: localizedArticle.excerpt,
+    image: localizedArticle.image || DEFAULT_IMAGE,
     author: {
       '@type': 'Organization',
       name: 'Meteorit Indonesia'
@@ -136,61 +177,13 @@ export default async function MarsArticlePage({ params }: { params: { id: string
         url: getAbsoluteUrl('/logo.png')
       }
     },
-    mainEntityOfPage: getAbsoluteUrl(`/mars/${article.id}`)
+    mainEntityOfPage: getAbsoluteUrl(`/mars/${localizedArticle.id}`)
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white py-16 print:bg-white print:text-black">
+    <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-
-      <div className="container mx-auto px-4 max-w-4xl print:max-w-full">
-        <Link href="/mars" className="text-orange-300 hover:text-orange-200 font-bold mb-8 inline-flex items-center gap-2 print:hidden">
-          ← Kembali ke Artikel Mars
-        </Link>
-
-        <article className="bg-slate-900/40 border border-red-950/40 rounded-3xl p-6 md:p-10 shadow-2xl print:border-0 print:bg-transparent print:p-0 print:shadow-none">
-          <div id="printable-mars-content">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-6 print:hidden">
-              <span className="bg-red-900 text-orange-100 text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">
-                Planet Mars
-              </span>
-              <span className="text-gray-500 text-sm">{article.date}</span>
-            </div>
-
-            <h1 className="text-3xl md:text-5xl font-extrabold mb-5 leading-tight text-orange-300 print:text-black text-left">
-              {article.title}
-            </h1>
-
-            <p className="text-slate-400 text-base md:text-lg leading-relaxed mb-8 print:text-black">
-              {article.excerpt}
-            </p>
-
-            <div className="h-64 md:h-[440px] w-full rounded-2xl overflow-hidden mb-4 print:h-auto">
-              <SafeImage
-                src={article.image}
-                alt={article.title}
-                className="w-full h-full object-cover"
-                fallback={DEFAULT_IMAGE}
-              />
-            </div>
-
-            <div className="text-xs text-slate-500 mb-8 print:text-black">
-              NASA Mars Rover API • {article.mars_data?.rover || 'Mars Rover'} • {article.mars_data?.camera || 'Camera'} • Sol {article.mars_data?.sol || '-'}
-            </div>
-
-            <MarsArticleActions article={article} />
-
-            <div
-              className="mars-prose max-w-none text-left border-b border-red-950/30 pb-8 print:border-gray-300"
-              dangerouslySetInnerHTML={{ __html: cleanHtml }}
-            />
-          </div>
-
-          <div className="print:hidden">
-            <AdDisplay position="content" />
-          </div>
-        </article>
-      </div>
-    </main>
+      <MarsArticleClient article={article} />
+    </>
   );
 }

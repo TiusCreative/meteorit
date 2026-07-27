@@ -1,0 +1,61 @@
+Created At: 2026-07-06T00:39:02Z
+Completed At: 2026-07-06T00:39:02Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 3014
+Total Bytes: 164208
+Showing lines 2370 to 2470
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+2370:                 />
+2371:               </div>
+2372:             )}
+2373: 
+2374:             {/* Sub-tab 1: Gempa Bumi */}
+2375:             {disasterSubTab === 'quake' && (
+2376:               <div className="space-y-3">
+2377:                 {/* Search & Filter */}
+2378:                 <div className="bg-white rounded-2xl p-4 border border-gray-150 shadow-sm space-y-3">
+2379:                   <p className="text-xs font-bold text-slate-700">{d.quakeFilter}</p>
+2380:                   <div className="grid grid-cols-2 gap-2">
+2381:                     <div>
+2382:                       <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">{d.quakeMinMag}</label>
+2383:                       <select
+2384:                         value={quakeMinMag}
+2385:                         onChange={e => setQuakeMinMag(e.target.value)}
+2386:                         className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-gray-50 focus:outline-none"
+2387:                       >
+2388:                         <option value="1.0">M &ge; 1.0</option>
+2389:                         <option value="3.0">M &ge; 3.0</option>
+2390:                         <option value="4.5">M &ge; 4.5</option>
+2391:                         <option value="5.0">M &ge; 5.0</option>
+2392:                       </select>
+2393:                     </div>
+2394:                     <div>
+2395:                       <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">{d.quakeScope}</label>
+2396:          
+<truncated 4378 bytes>
+ gap-3`}>
+2447:                           <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center shrink-0">
+2448:                             <span className="text-xs font-black text-white">{q.magnitude.toFixed(1)}</span>
+2449:                           </div>
+2450:                           <div className="min-w-0 flex-1">
+2451:                             <h4 className="text-xs font-black text-slate-800 truncate">{q.place || q.region}</h4>
+2452:                             <p className="text-[10px] text-slate-500 mt-0.5">
+2453:                               {language === 'id' || language === 'ms' ? 'Kedalaman' : language === 'zh' ? '深度' : language === 'ja' ? '深さ' : 'Depth'}: {q.depth} km &bull; {q.time ? new Date(q.time).toLocaleString(language === 'id' ? 'id-ID' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }) : q.dateTime || '-'}
+2454:                             </p>
+2455:                             {q.tsunami === 1 && (
+2456:                               <span className="inline-block bg-red-100 text-red-800 text-[9px] font-extrabold px-2 py-0.5 rounded-full mt-1 border border-red-200 uppercase tracking-wider animate-pulse">
+2457:                                 🚨 {language === 'id' || language === 'ms' ? 'POTENSI TSUNAMI' : language === 'zh' ? '可能发生海啸' : language === 'ja' ? '津波の可能性あり' : 'TSUNAMI POTENTIAL'}
+2458:                               </span>
+2459:                             )}
+2460:                           </div>
+2461:                         </div>
+2462:                       );
+2463:                     })
+2464:                   )}
+2465:                 </div>
+2466:               </div>
+2467:             )}
+2468: 
+2469:             {/* Sub-tab 2: Titik Api (NASA FIRMS Hotspots) */}
+2470:             {disasterSubTab === 'hotspots' && (
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

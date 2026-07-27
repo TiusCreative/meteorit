@@ -1,0 +1,59 @@
+Created At: 2026-07-06T00:38:45Z
+Completed At: 2026-07-06T00:38:45Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 3014
+Total Bytes: 164208
+Showing lines 1030 to 1080
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1030:       const lon = weatherData.lon;
+1031:       if (lat && lon) fetchForecast(lat, lon);
+1032:     } catch (e: any) {
+1033:       setError(e.message || 'Gagal memuat data cuaca');
+1034:     } finally {
+1035:       setLoading(false);
+1036:     }
+1037:   }, []);
+1038: 
+1039:   const fetchForecast = async (lat: number, lon: number) => {
+1040:     try {
+1041:       const res = await fetch(
+1042:         `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max,weathercode&timezone=Asia%2FJakarta&forecast_days=7`
+1043:       );
+1044:       if (!res.ok) return;
+1045:       const data = await res.json();
+1046:       const days: ForecastDay[] = (data.daily?.time || []).map((date: string, i: number) => {
+1047:         const wc = data.daily.weathercode?.[i] || 0;
+1048:         return {
+1049:           date,
+1050:           dayName: i === 0 ? 'Hari ini' : new Date(date).toLocaleDateString('id-ID', { weekday: 'short' }),
+1051:           high: data.daily.temperature_2m_max?.[i] ?? 0,
+1052:           low: data.daily.temperature_2m_min?.[i] ?? 0,
+1053:           description: wmocodeToDesc(wc),
+1054:           icon: wmocodeToIcon(wc),
+1055:           precip_prob: data.daily.precipitation_probability_max?.[i] ?? 0,
+1056:           wind_speed: data.daily.windspeed_10m_max?.[i] ?? 0,
+1057:         };
+1058:       });
+1059:       setForecast(days);
+1060:       setSelectedForecastIndex(0);
+1061:     } catch { /* silent */ }
+1062:   };
+1063: 
+1064:   // WMO weather code helpers
+1065:   function wmocodeToDesc(code: number): string {
+1066:     if (code === 0) return 'Cerah';
+1067:     if (code <= 2) return 'Berawan sebagian';
+1068:     if (code <= 3) return 'Berawan';
+1069:     if (code <= 48) return 'Berkabut';
+1070:     if (code <= 57) return 'Gerimis';
+1071:     if (code <= 67) return 'Hujan';
+1072:     if (code <= 77) return 'Bersalju';
+1073:     if (code <= 82) return 'Hujan deras';
+1074:     if (code <= 99) return 'Petir & Badai';
+1075:     return 'Tidak diketahui';
+1076:   }
+1077: 
+1078:   function wmocodeToIcon(code: number): string {
+1079:     if (code === 0) return '01d';
+1080:     if (code <= 2) return '02d';
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

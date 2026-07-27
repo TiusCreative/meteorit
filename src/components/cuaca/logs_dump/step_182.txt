@@ -1,0 +1,38 @@
+Created At: 2026-07-06T00:45:26Z
+Completed At: 2026-07-06T00:45:26Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4130
+Total Bytes: 227654
+Showing lines 3761 to 3790
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3761:                                 <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded text-[9px] font-black">
+3762:                                   {fire.frp.toFixed(1)} MW
+3763:                                 </span>
+3764:                                 <p className="text-[8px] text-gray-400 mt-1">UTC {fire.acq_date} {fire.acq_time}</p>
+3765:                               </div>
+3766:                             </button>
+3767:                           );
+3768:                         })}
+3769:                         {hotspots.length > 50 && (
+3770:                           <p className="text-center text-[10px] text-gray-400 font-semibold py-2 bg-gray-50 rounded-xl border border-gray-150">
+3771:                             {language === 'id' || language === 'ms' ? `Melihat 50 dari ${hotspots.length} titik api. Gunakan unduhan laporan untuk melihat daftar lengkap.` : language === 'zh' ? `显示 ${hotspots.length} 个火点中的前 50 个。下载完整报告以查看全部。` : language === 'ja' ? `${hotspots.length} 地点中 50 地点表示中。完全なリストを見るにはレポートをダウンロードしてください。` : `Showing 50 of ${hotspots.length} hotspots. Download the report to see the complete list.`}
+3772:                           </p>
+3773:                         )}
+3774:                       </div>
+3775:                     </div>
+3776:                   </>
+3777:                 )}
+3778:               </div>
+3779:             )}
+3780: 
+3781:             {/* Sub-tab 3: Curah Hujan & Banjir (NASA GPM & GFMS) */}
+3782:             {disasterSubTab === 'rain' && (
+3783:               <div className="space-y-4">
+3784:                 {/* Control Panel */}
+3785:                 <div className="bg-white rounded-3xl p-5 border border-gray-150 shadow-sm space-y-3">
+3786:                   <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+3787:                     <div className="flex items-center gap-1.5">
+3788:                       <span className="text-lg">🌧️</span>
+3789:                       <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">{language === 'id' || language === 'ms' ? 'Presipitasi GPM & Risiko Banjir GFMS' : language === 'zh' ? 'GPM 降水与 GFMS 洪水风险' : language === 'ja' ? 'GPM 降水量＆ GFMS 洪水リスク' : 'GPM Precipitation & GFMS Flood Risks'}</h4>
+3790:                     </div>
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { uploadToR2 } from '@/lib/r2Client';
+import { uploadToR2, fetchJsonFromR2 } from '@/lib/r2Client';
+import { queryD1 } from '@/lib/d1Client';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,21 +16,20 @@ async function verifyAdmin(request: Request): Promise<boolean> {
   }
 }
 
+/**
+ * Rebuild R2 posts.json index from D1 database
+ */
 async function rebuildR2BlogCache() {
-  const allArticlesSnapshot = await adminDb.collection('articles').get();
-  const articlesList: any[] = [];
-  allArticlesSnapshot.forEach((doc: any) => {
-    const data = doc.data();
-    if (data.status === 'Published') {
-      articlesList.push({ id: doc.id, ...data });
-    }
-  });
-
-  // Sort in-memory by createdAt descending
-  articlesList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-
-  // Save JSON array index list to Cloudflare R2
-  await uploadToR2('data/blog/posts.json', JSON.stringify(articlesList, null, 2), 'application/json');
+  try {
+    const res = await queryD1(`SELECT * FROM articles WHERE status = 'Published' ORDER BY createdAt DESC`);
+    const articlesList = res.results || [];
+    
+    // Save JSON array index list to Cloudflare R2
+    await uploadToR2('data/blog/posts.json', JSON.stringify(articlesList, null, 2), 'application/json');
+    console.log(`[Admin Articles] R2 posts.json cache rebuilt with ${articlesList.length} articles.`);
+  } catch (err) {
+    console.error('[Admin Articles] Failed to rebuild R2 cache from D1:', err);
+  }
 }
 
 // PUT: Edit Artikel
@@ -48,16 +48,30 @@ export async function PUT(request: Request) {
 
     const docRef = adminDb.collection('articles').doc(id);
     const docSnap = await docRef.get();
-    if (!docSnap.exists) {
-      return NextResponse.json({ error: 'Artikel tidak ditemukan.' }, { status: 404 });
-    }
+    const dbData = docSnap.exists ? docSnap.data() : {};
 
-    // Handle partial review status verification
+    // 1. Handle partial review status verification
     if (review_status && !title && !content) {
+      // Update Firestore
       await docRef.set({
         review_status,
         updatedAt: new Date().toISOString()
       }, { merge: true });
+
+      // Update D1
+      await queryD1(`UPDATE articles SET review_status = ? WHERE id = ?;`, [review_status, id]);
+
+      // Update R2 individual article JSON
+      try {
+        const articleR2 = await fetchJsonFromR2<any>(`data/blog/articles/${id}.json`);
+        if (articleR2) {
+          articleR2.review_status = review_status;
+          await uploadToR2(`data/blog/articles/${id}.json`, JSON.stringify(articleR2, null, 2), 'application/json');
+        }
+      } catch (r2Err) {
+        console.warn(`[Admin Articles PUT] Failed to update R2 file for ${id}:`, r2Err);
+      }
+
       await rebuildR2BlogCache();
       return NextResponse.json({ success: true, message: 'Status review artikel berhasil diperbarui.' });
     }
@@ -78,7 +92,62 @@ export async function PUT(request: Request) {
       updatedData.image = image;
     }
 
+    // Update Firestore
     await docRef.set(updatedData, { merge: true });
+
+    // Update D1 (Upsert metadata)
+    const tagsStr = Array.isArray(dbData?.tags) ? dbData.tags.join(',') : (dbData?.tags || '');
+    await queryD1(
+      `INSERT OR REPLACE INTO articles (
+        id, title, category, r2_path, createdAt, tags, image, excerpt, date, views, status, review_status, ai_provider
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      [
+        id,
+        title,
+        updatedData.category,
+        `data/blog/articles/${id}.json`,
+        dbData?.createdAt || new Date().toISOString(),
+        tagsStr,
+        image || dbData?.image || dbData?.imageUrl || '',
+        updatedData.excerpt,
+        dbData?.date || new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+        dbData?.views || 0,
+        dbData?.status || 'Published',
+        review_status || dbData?.review_status || 'Otomatis',
+        dbData?.ai_provider || ''
+      ]
+    );
+
+    // Update R2 individual article JSON
+    let currentR2 = await fetchJsonFromR2<any>(`data/blog/articles/${id}.json`);
+    if (!currentR2) {
+      // Build a fallback individual JSON if it doesn't exist
+      currentR2 = {
+        id,
+        title,
+        excerpt: updatedData.excerpt,
+        content,
+        category: updatedData.category,
+        date: dbData?.date || new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+        image: image || dbData?.image || dbData?.imageUrl || '',
+        views: dbData?.views || 0,
+        status: dbData?.status || 'Published',
+        review_status: review_status || dbData?.review_status || 'Otomatis',
+        createdAt: dbData?.createdAt || new Date().toISOString()
+      };
+    } else {
+      currentR2 = {
+        ...currentR2,
+        title,
+        excerpt: updatedData.excerpt,
+        content,
+        category: updatedData.category,
+        image: image || currentR2.image || '',
+        review_status: review_status || currentR2.review_status || 'Otomatis'
+      };
+    }
+    await uploadToR2(`data/blog/articles/${id}.json`, JSON.stringify(currentR2, null, 2), 'application/json');
+
     await rebuildR2BlogCache();
 
     return NextResponse.json({ success: true, message: 'Artikel berhasil diperbarui.' });
@@ -102,7 +171,19 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'ID artikel diperlukan.' }, { status: 400 });
     }
 
-    await adminDb.collection('articles').doc(id).delete();
+    // Delete from Firestore
+    try {
+      await adminDb.collection('articles').doc(id).delete();
+    } catch (fsErr) {
+      console.warn(`[Admin Articles DELETE] Firestore delete failed for ${id}:`, fsErr);
+    }
+
+    // Delete from D1
+    await queryD1(`DELETE FROM articles WHERE id = ?;`, [id]);
+
+    // Note: We keep the individual R2 JSON file as a fallback backup in case of recovery/restore needs,
+    // but we remove it from the posts.json cache.
+
     await rebuildR2BlogCache();
 
     return NextResponse.json({ success: true, message: 'Artikel berhasil dihapus.' });

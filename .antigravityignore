@@ -1,0 +1,115 @@
+# .antigravityignore
+# Menghindari Antigravity membaca file/folder sampah, build artifacts, dan data sensitif secara berlebihan.
+
+# --- Dependency dan Package Manager ---
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+.pnpm-store/
+.npm/
+
+# --- Build Output dan Cache ---
+.next/
+out/
+build/
+dist/
+.turbo/
+.swc/
+next-env.d.ts
+*.tsbuildinfo
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.prettier-cache
+.sass-cache/
+
+# --- Platform & Cloud Providers (Vercel, Firebase, dll.) ---
+.vercel/
+.firebase/
+.gcloud/
+.config/gcloud/
+.wrangler/
+.dev.vars
+
+# --- Environment & Sensitive Files (Keamanan/Privasi) ---
+.env
+.env.*
+*.local
+*.secret
+*.secrets
+secrets/
+credentials/
+private/
+service-account.json
+serviceAccount*.json
+firebase-adminsdk*.json
+google-application-credentials*.json
+*.pem
+*.key
+*.p8
+*.p12
+*.crt
+*.cer
+*.csr
+*.jks
+*.keystore
+
+# --- Python Worker Cache & Virtual Environments ---
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+ENV/
+worker/.venv/
+worker/venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+htmlcov/
+*.egg-info/
+
+# --- Logs, Temp Files, dan Backups ---
+logs/
+*.log
+*.pid
+*.pid.lock
+*.seed
+*.stackdump
+*.heapdump
+uploads/
+generated/
+exports/
+downloads/
+screenshots/
+artifacts/
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+*.rej
+
+# --- OS dan Editor Noise ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- System-generated files ---
+.git/

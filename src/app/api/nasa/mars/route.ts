@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { fetchNasaJsonCached } from '@/lib/nasaApiCache';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,16 +64,11 @@ export async function GET() {
   try {
     const apiKey = process.env.NASA_API_KEY || 'DEMO_KEY';
 
-    const res = await fetch(
+    const data = await fetchNasaJsonCached<any>(
+      'mars-curiosity-latest',
       `https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/latest_photos?api_key=${apiKey}`,
-      { next: { revalidate: 43200 } } // Cache 12 hours
+      12 * 60 * 60 * 1000
     );
-
-    if (!res.ok) {
-      throw new Error(`Mars Rover API returned status ${res.status}`);
-    }
-
-    const data = await res.json();
     const latestPhotos = data.latest_photos || [];
 
     if (latestPhotos.length === 0) {
@@ -117,6 +113,10 @@ export async function GET() {
       rover: 'Curiosity',
       count: photos.length,
       data: photos,
+    }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=43200, stale-while-revalidate=86400',
+      },
     });
   } catch (error) {
     console.warn('[API Mars Rover] Menggunakan data fallback akibat API NASA offline:', error);

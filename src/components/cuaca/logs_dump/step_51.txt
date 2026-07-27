@@ -1,0 +1,44 @@
+Created At: 2026-07-06T00:39:12Z
+Completed At: 2026-07-06T00:39:12Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 3014
+Total Bytes: 164208
+Showing lines 1520 to 1555
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1520:   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+1521:     const file = e.target.files?.[0];
+1522:     if (!file) return;
+1523:     const reader = new FileReader();
+1524:     reader.onload = () => {
+1525:       if (reader.result) setReportPhoto(String(reader.result));
+1526:     };
+1527:     reader.readAsDataURL(file);
+1528:   };
+1529: 
+1530:   // ── Community Report Submit ──
+1531:   const submitReport = async () => {
+1532:     if (!reportForm.city || !reportForm.condition) return;
+1533:     const newReport: CommunityReport = {
+1534:       ...reportForm,
+1535:       emoji: getWeatherEmoji(reportForm.condition),
+1536:       timestamp: new Date().toISOString(),
+1537:       photoUrl: reportPhoto || undefined
+1538:     };
+1539: 
+1540:     try {
+1541:       await fetch('/api/cuaca/r2-metadata', {
+1542:         method: 'POST',
+1543:         headers: { 'Content-Type': 'application/json' },
+1544:         body: JSON.stringify({ type: 'report', report: newReport }),
+1545:       });
+1546:       setCommunityReports(prev => [newReport, ...prev.slice(0, 19)]);
+1547:       setReportSubmitted(true);
+1548:       setReportForm({ city: '', condition: '', note: '' });
+1549:       setReportPhoto('');
+1550:       awardPoints(50); // Get 50 XP for reporting weather
+1551:       setTimeout(() => setReportSubmitted(false), 3000);
+1552:     } catch { /* silent */ }
+1553:   };
+1554: 
+1555:   // ── Calendar Event addition ──
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

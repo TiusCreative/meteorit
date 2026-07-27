@@ -1,0 +1,33 @@
+Created At: 2026-07-06T00:54:36Z
+Completed At: 2026-07-06T00:54:37Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4080
+Total Bytes: 222161
+Showing lines 3561 to 3705
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3561:                       return (
+3562:                         <div key={q.id} className={`p-3 rounded-2xl border shadow-sm ${color} flex items-start gap-3`}>
+3563:                           <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center shrink-0">
+3564:                             <span className="text-xs font-black text-white">{q.magnitude.toFixed(1)}</span>
+3565:                           </div>
+3566:                           <div className="min-w-0 flex-1">
+3567:                             <h4 className="text-xs font-black text-slate-800 truncate">{q.place || q.region}</h4>
+3568:                             <p className="text-[10px] text-slate-500 mt-0.5">
+3569:                               {d.depthLabel}: {q.depth} km &bull; {q.time ? new Date(q.time).toLocaleString(getLocaleForLanguage(language), { dateStyle: 'medium', timeStyle: 'short' }) : q.dateTime || '-'}
+3570:                             </p>
+3571:                             {q.tsunami === 1 && (
+3572:                                     {disasterSubTab === 'rain' && (
+3573:               <div className="space-y-4">
+3574:                 {/* Control Panel */}
+3575:                 <div className="bg-white rounded-3xl p-5 border border-gray-150 shadow-sm space-y-3">
+3576:                   <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+3577:                     <div className="flex items-center gap-1.5">
+3578:                       <span className="text-lg">🌧️</span>
+3579:         
+<truncated 9692 bytes>
+rmukaan dan memprediksi luapan sungai penyebab banjir secara global.' :
+3702:                      language === 'zh' ? '实时降水数据每 30 分钟自 GPM（全球降水测量）核心观测卫星获取一次。降水率被整合到马里兰大学和 NASA 的 GFMS（全球洪水监测系统）水文系统中，以模拟地表径流并预测全球范围内导致洪水的河流泛滥。' :
+3703:                      language === 'ja' ? 'リアルタイム降水データは、GPM（全球降水観測計画）主衛星から30分ごとに取得されます。降水強度はメリーランド大学とNASAのGFMS（全球洪水監視システム）水文モデルに統合され、地表流出をシミュレートし、世界中の洪水原因となる河川溢水を予測します。' :
+3704:                      language === 'ru' ? 'Данные об осадках в реальном времени поступают каждые 30 минут со спутника GPM (Global Precipitation Measurement) Core Observatory. Скорость осадков интегрируется в гидрологическую модель GFMS (Global Flood Monitoring System) Мэрилендского университета и NASA для моделирования поверхностного стока и прогнозирования наводнений по всему миру.' :
+3705:                      language === 'fr' ? 'Les données de précipitation en temps réel sont obtenues toutes les 30 minutes depuis le satellite GPM (Global Precipitation Measurement) Core Observatory. Le taux de précipitation est intégré dans le modèle hydrologique GFMS (Global Flood Monitoring System) de l\'Université du Maryland et de la NASA pour simuler le ruissellement de surface et prédire les crues des rivières à l\'échelle mondiale.' :
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

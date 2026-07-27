@@ -2,6 +2,7 @@
 
 import axios from "axios";
 import { useState } from "react";
+import Script from "next/script";
 
 interface DonationButtonProps {
   amount: number;
@@ -50,12 +51,19 @@ export default function DonationButton({ amount, onSuccess, onError }: DonationB
   };
 
   return (
-    <button
-      onClick={handleDonation}
-      disabled={isLoading}
-      className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded"
-    >
-      {isLoading ? "Memproses..." : `Donasi Rp${amount}`}
-    </button>
+    <>
+      <Script
+        src="https://app.midtrans.com/snap/snap.js"
+        data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+        strategy="afterInteractive"
+      />
+      <button
+        onClick={handleDonation}
+        disabled={isLoading}
+        className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded"
+      >
+        {isLoading ? "Memproses..." : `Donasi Rp${amount}`}
+      </button>
+    </>
   );
 }

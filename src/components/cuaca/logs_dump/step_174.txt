@@ -1,0 +1,39 @@
+Created At: 2026-07-06T00:45:12Z
+Completed At: 2026-07-06T00:45:13Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4130
+Total Bytes: 228805
+Showing lines 3570 to 3600
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3570:                             </p>
+3571:                             {q.tsunami === 1 && (
+3572:                               <span className="inline-block bg-red-100 text-red-800 text-[9px] font-extrabold px-2 py-0.5 rounded-full mt-1 border border-red-200 uppercase tracking-wider animate-pulse">
+3573:                                 🚨 {language === 'id' || language === 'ms' ? 'POTENSI TSUNAMI' : language === 'zh' ? '可能发生海啸' : language === 'ja' ? '津波の可能性あり' : 'TSUNAMI POTENTIAL'}
+3574:                               </span>
+3575:                             )}
+3576:                           </div>
+3577:                         </div>
+3578:                       );
+3579:                     })
+3580:                   )}
+3581:                 </div>
+3582:               </div>
+3583:             )}
+3584: 
+3585:             {/* Sub-tab 2: Titik Api (NASA FIRMS Hotspots) */}
+3586:             {disasterSubTab === 'hotspots' && (
+3587:               <div className="space-y-4">
+3588:                 {/* Control Panel */}
+3589:                 <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-3">
+3590:                   <div className="flex items-center gap-1.5 pb-2 border-b border-gray-100">
+3591:                     <span className="text-lg">🔥</span>
+3592:                     <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">{language === 'id' || language === 'ms' ? 'Sebaran Kebakaran Hutan (Hotspot) & Kontrol' : language === 'zh' ? '林火辐射 (热源) 分布与控制' : language === 'ja' ? '森林火災 (熱源) 分布と操作' : 'Wildfire (Hotspot) Distribution & Controls'}</h4>
+3593:                   </div>
+3594:                   
+3595:                   <div className="grid grid-cols-3 gap-2">
+3596:                     <div>
+3597:                       <label className="block text-[8px] font-extrabold text-slate-400 uppercase mb-1 tracking-wider">{language === 'id' || language === 'ms' ? 'Wilayah' : language === 'zh' ? '区域' : language === 'ja' ? '地域' : 'Region'}</label>
+3598:                       <select
+3599:                         value={hotspotCountry}
+3600:                         onChange={e => {
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

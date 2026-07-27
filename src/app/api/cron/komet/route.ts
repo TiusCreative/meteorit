@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
-import { uploadToR2 } from '@/lib/r2Client';
-import { adminDb } from '@/lib/firebaseAdmin';
+import { uploadToR2, fetchJsonFromR2 } from '@/lib/r2Client';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { getAbsoluteUrl, getSiteUrl } from '@/lib/siteUrl';
+import { buildArticleTranslations } from '@/lib/articleLocalization';
+import { shouldSkipExternalFetch } from '@/lib/cronSafety';
+import { sendBroadcastNotification } from '@/lib/notifications';
+import { rebuildRSSFeedHelper } from '@/lib/rss';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 80;
 
 const NASA_API_KEY = process.env.NASA_API_KEY || 'hlogNogFWGEANcJcPnYwlxYJh3auqScaH75m8ktN';
 
@@ -15,22 +19,7 @@ type GeneratedArticle = {
   provider: string;
 };
 
-async function rebuildR2BlogCache() {
-  const allArticlesSnapshot = await adminDb.collection('articles').get();
-  const articlesList: any[] = [];
-  allArticlesSnapshot.forEach((doc: any) => {
-    const data = doc.data();
-    if (data.status === 'Published') {
-      articlesList.push({ id: doc.id, ...data });
-    }
-  });
 
-  // Sort in-memory by createdAt descending
-  articlesList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-
-  // Save JSON array index list to Cloudflare R2
-  await uploadToR2('data/blog/posts.json', JSON.stringify(articlesList, null, 2), 'application/json');
-}
 
 async function generateArticleWithFallback(prompt: string): Promise<GeneratedArticle> {
   const messages = [
@@ -43,26 +32,27 @@ async function generateArticleWithFallback(prompt: string): Promise<GeneratedArt
       name: 'Groq Utama',
       url: 'https://api.groq.com/openai/v1/chat/completions',
       key: process.env.GROQ_API_KEY,
-      model: 'llama-3.1-8b-instant'
+      model: 'llama-3.3-70b-versatile'
     },
     {
       name: 'Groq Backup',
       url: 'https://api.groq.com/openai/v1/chat/completions',
       key: process.env.GROQ_BACKUP_API_KEY,
-      model: 'llama-3.1-8b-instant'
+      model: 'llama-3.3-70b-versatile'
     },
     {
       name: 'OpenRouter Utama',
       url: 'https://openrouter.ai/api/v1/chat/completions',
       key: process.env.OPENROUTER_API_KEY,
-      model: 'meta-llama/llama-3.1-8b-instruct:free'
+      model: 'meta-llama/llama-3.3-70b-instruct:free'
     },
     {
       name: 'OpenRouter Backup',
       url: 'https://openrouter.ai/api/v1/chat/completions',
       key: process.env.OPENROUTER_BACKUP_API_KEY,
-      model: 'meta-llama/llama-3.1-8b-instruct:free'
+      model: 'meta-llama/llama-3.3-70b-instruct:free'
     }
+
   ];
 
   const errors: string[] = [];
@@ -98,10 +88,13 @@ async function generateArticleWithFallback(prompt: string): Promise<GeneratedArt
       const rawContent = aiData.choices?.[0]?.message?.content;
       if (!rawContent) throw new Error('Respons AI kosong.');
 
-      const articleJson = JSON.parse(rawContent);
+      const cleanedContent = rawContent.replace(/```json|```/g, '').trim();
+      const articleJson = JSON.parse(cleanedContent);
+
       if (!articleJson.title || !articleJson.excerpt || !articleJson.content) {
         throw new Error('JSON AI tidak lengkap.');
       }
+
 
       return {
         title: articleJson.title,
@@ -119,20 +112,28 @@ async function generateArticleWithFallback(prompt: string): Promise<GeneratedArt
   throw new Error(`Semua provider AI gagal. ${errors.join(' | ') || 'Tidak ada API key AI yang tersedia.'}`);
 }
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const secret = searchParams.get('secret');
-  const authHeader = request.headers.get('authorization');
+import { isValidCronRequest } from '@/lib/cronAuth';
 
-  // Verify secret
-  if (
-    secret !== (process.env.CRON_SECRET || 'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU=') &&
-    authHeader !== `Bearer ${process.env.CRON_SECRET || 'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU='}`
-  ) {
+export async function GET(request: Request) {
+  if (!isValidCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
+    const { searchParams } = new URL(request.url);
+    const bypass = searchParams.get('bypass') === 'true';
+    if (!bypass) {
+      const fetchGuard = await shouldSkipExternalFetch('nasa-neows', 6 * 60 * 60 * 1000);
+      if (fetchGuard.skip) {
+        return NextResponse.json({
+          success: true,
+          created: false,
+          message: 'Fetch NASA NeoWs dilewati karena cooldown anti-loop masih aktif.',
+          nextAllowedAt: fetchGuard.nextAllowedAt
+        });
+      }
+    }
+
     // 1. Fetch data NeoWs (Near Earth Objects) NASA
     const today = new Date();
     const weekLater = new Date();
@@ -181,8 +182,10 @@ export async function GET(request: Request) {
 
     for (const obj of sortedObjects) {
       const candidateId = `asteroid-${obj.id}`;
-      const candidateSnap = await adminDb.collection('articles').doc(candidateId).get();
-      if (!candidateSnap.exists) {
+      // Check if article already exists in R2 (avoid Firestore read)
+      const existingPosts = await fetchJsonFromR2<any[]>('data/blog/posts.json') || [];
+      const alreadyExists = existingPosts.some((p: any) => p.id === candidateId);
+      if (!alreadyExists) {
         selectedObj = obj;
         docId = candidateId;
         break;
@@ -198,7 +201,6 @@ export async function GET(request: Request) {
     }
 
     const asteroidId = selectedObj.id;
-    const docRef = adminDb.collection('articles').doc(docId);
 
     // Extract details
     const name = selectedObj.name || 'Unknown Asteroid';
@@ -237,9 +239,11 @@ Kembalikan HANYA string JSON murni tanpa pembungkus markdown json.`;
 
     const articleJson = await generateArticleWithFallback(prompt);
 
-    // Image Illustration via Pollinations AI
-    const illustrationPrompt = encodeURIComponent(`high-res professional photos space background giant asteroid flying close to Earth realistic digital art scientific render`);
-    const imageUrl = `https://image.pollinations.ai/prompt/${illustrationPrompt}?width=800&height=500&nologo=true&seed=${asteroidId}`;
+    // Image Illustration via Fallback AI Generator
+    const illustrationPrompt = `high-res professional photos space background giant asteroid flying close to Earth realistic digital art scientific render`;
+    const imagePath = `data/komet/images/${docId}.jpg`;
+    const { generateImageWithFallback } = await import('@/lib/imageGenerator');
+    const imageUrl = await generateImageWithFallback(illustrationPrompt, imagePath);
 
     const dateFormatted = new Date().toLocaleDateString('id-ID', {
       day: 'numeric',
@@ -247,17 +251,35 @@ Kembalikan HANYA string JSON murni tanpa pembungkus markdown json.`;
       year: 'numeric'
     });
 
+    const attribution = "\n\nSource: NASA Open Data APIs\nSumber Data: Pusat Data Publik Antariksa";
+    const articleContent = articleJson.content + attribution;
+
+    // Auto-translate ke 4 bahasa (EN, MS, ZH, JA) saat artikel dibuat
+    console.log(`[Cron Komet] Memulai auto-translate untuk: ${articleJson.title}`);
+    let translations = {};
+    try {
+      translations = await buildArticleTranslations({
+        title: articleJson.title,
+        excerpt: articleJson.excerpt,
+        content: articleContent,
+      });
+      console.log(`[Cron Komet] \u2705 Auto-translate selesai: ${Object.keys(translations).join(', ')}`);
+    } catch (translateErr) {
+      console.warn('[Cron Komet] \u26a0\ufe0f Auto-translate gagal, artikel tetap disimpan tanpa terjemahan:', translateErr);
+    }
+
     const newArticle = {
       id: docId,
       title: articleJson.title,
       excerpt: articleJson.excerpt,
-      content: articleJson.content,
+      content: articleContent,
+      translations,
       category: 'Komet & Asteroid',
       date: dateFormatted,
       image: imageUrl,
       views: 0,
       status: 'Published',
-      review_status: 'Otomatis', // status review otomatis sebelum dimoderasi
+      review_status: 'Otomatis',
       ai_provider: articleJson.provider,
       createdAt: new Date().toISOString(),
       asteroid_data: {
@@ -269,11 +291,46 @@ Kembalikan HANYA string JSON murni tanpa pembungkus markdown json.`;
       }
     };
 
-    // 3. Save to Firestore
-    await docRef.set(newArticle);
+    // 3. Save individual article JSON directly to R2 (no Firestore)
+    await uploadToR2(`data/blog/articles/${docId}.json`, JSON.stringify(newArticle, null, 2), 'application/json');
 
-    // 4. Rebuild Blog index cache in R2
-    await rebuildR2BlogCache();
+    // 4. Save metadata to Cloudflare D1
+    try {
+      const { queryD1 } = await import('@/lib/d1Client');
+      await queryD1(
+        `INSERT OR REPLACE INTO articles (
+          id, title, category, r2_path, createdAt, tags, image, excerpt, date, views, status, review_status, ai_provider
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        [
+          newArticle.id,
+          newArticle.title,
+          newArticle.category,
+          `data/blog/articles/${newArticle.id}.json`,
+          newArticle.createdAt,
+          'komet,asteroid,nasa,neows',
+          newArticle.image,
+          newArticle.excerpt,
+          newArticle.date,
+          newArticle.views,
+          newArticle.status,
+          newArticle.review_status,
+          newArticle.ai_provider
+        ]
+      );
+      console.log(`[Cron Komet] Metadata successfully stored in Cloudflare D1 for: ${docId}`);
+    } catch (d1Err) {
+      console.error('[Cron Komet] Gagal menyimpan metadata ke Cloudflare D1:', d1Err);
+    }
+
+
+    // 4. Update posts.json index in R2 (prepend new article)
+    const existingPosts = await fetchJsonFromR2<any[]>('data/blog/posts.json') || [];
+    const updatedPosts = [newArticle, ...existingPosts.filter((p: any) => p.id !== docId)];
+    updatedPosts.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    await uploadToR2('data/blog/posts.json', JSON.stringify(updatedPosts, null, 2), 'application/json');
+
+    // 5. Rebuild RSS
+    await rebuildRSSFeedHelper();
 
     // 5. Send Telegram Notifications
     const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '5429818332';
@@ -291,10 +348,17 @@ Kembalikan HANYA string JSON murni tanpa pembungkus markdown json.`;
       `   • Kecepatan: ${newArticle.asteroid_data.velocity}\n` +
       `   • Status Bahaya: ${isHazardous ? '⚠️ Berpotensi Berbahaya' : '✅ Aman'}\n\n` +
       `🔗 Baca ulasan ilmiah sains selengkapnya di sini:\n${articleUrl}`;
-    await sendTelegramMessage(TELEGRAM_CHANNEL_ID, channelMsg);
+
+    await sendBroadcastNotification({
+      title: `☄️ Komet & Asteroid: ${newArticle.title}`,
+      body: `Kabar Batuan Luar Angkasa Terbaru:\n${newArticle.title}\n${newArticle.excerpt}`,
+      telegramHtml: channelMsg,
+      link: `/blog/${docId}`,
+      imageUrl: newArticle.image
+    });
 
     // Telegram Success Report to Admin
-    const totalArticles = await adminDb.collection('articles').get().then((snap: any) => snap.size);
+    const totalArticles = (await fetchJsonFromR2<any[]>('data/blog/posts.json') || []).length;
     const successMsg = `📢 <b>LAPORAN CRON KOMET OTOMATIS</b>\n\n` +
       `🟢 <b>Status:</b> Sukses Rilis\n` +
       `📝 <b>Artikel Baru:</b> "${newArticle.title}"\n` +

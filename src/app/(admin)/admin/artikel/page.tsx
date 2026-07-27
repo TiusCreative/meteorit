@@ -25,6 +25,10 @@ export default function ArtikelManagement() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingKomet, setIsGeneratingKomet] = useState(false);
   const [isGeneratingMars, setIsGeneratingMars] = useState(false);
+  const [isGeneratingFireball, setIsGeneratingFireball] = useState(false);
+  const [isGeneratingEonet, setIsGeneratingEonet] = useState(false);
+  const [isRebuildingRss, setIsRebuildingRss] = useState(false);
+  const [isBatchTranslating, setIsBatchTranslating] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Edit Modal State
@@ -125,6 +129,56 @@ export default function ArtikelManagement() {
     }
   };
 
+  const handleGenerateFireballArticle = async () => {
+    setIsGeneratingFireball(true);
+    try {
+      const secret = 'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU=';
+      const res = await fetch(`/api/cron/fireball?secret=${secret}&bypass=true`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.created === false) {
+          alert(data.message || 'Semua kejadian Fireball terbaru sudah memiliki artikel.');
+        } else {
+          alert(`Sukses! Artikel Fireball baru diterbitkan: "${data.article?.title}"`);
+        }
+        loadArticles();
+      } else {
+        const errorData = await res.json();
+        alert(`Gagal membuat artikel Fireball: ${errorData.details || errorData.error || 'Terjadi kesalahan'}`);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error memicu pembuatan artikel Fireball otomatis.');
+    } finally {
+      setIsGeneratingFireball(false);
+    }
+  };
+
+  const handleGenerateEonetArticle = async () => {
+    setIsGeneratingEonet(true);
+    try {
+      const secret = 'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU=';
+      const res = await fetch(`/api/cron/eonet?secret=${secret}&bypass=true`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.created === false) {
+          alert(data.message || 'Semua peristiwa EONET aktif sudah memiliki artikel.');
+        } else {
+          alert(`Sukses! Artikel EONET baru diterbitkan: "${data.article?.title}"`);
+        }
+        loadArticles();
+      } else {
+        const errorData = await res.json();
+        alert(`Gagal membuat artikel EONET: ${errorData.details || errorData.error || 'Terjadi kesalahan'}`);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error memicu pembuatan artikel EONET otomatis.');
+    } finally {
+      setIsGeneratingEonet(false);
+    }
+  };
+
   const handleGenerateMarsArticle = async () => {
     setIsGeneratingMars(true);
     try {
@@ -147,6 +201,57 @@ export default function ArtikelManagement() {
       alert('Error memicu pembuatan artikel Planet Mars otomatis.');
     } finally {
       setIsGeneratingMars(false);
+    }
+  };
+
+  const handleRebuildRss = async () => {
+    if (!currentUser) return;
+    setIsRebuildingRss(true);
+    try {
+      const res = await fetch('/api/admin/rebuild-rss', {
+        method: 'POST',
+        headers: {
+          'x-admin-uid': currentUser.uid
+        }
+      });
+      if (res.ok) {
+        alert('Sukses! Berkas rss.xml berhasil dibangun ulang dan diunggah ke R2.');
+      } else {
+        const data = await res.json();
+        alert(`Gagal membangun ulang RSS Feed: ${data.error || 'Terjadi kesalahan'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error memicu rebuild RSS feed.');
+    } finally {
+      setIsRebuildingRss(false);
+    }
+  };
+
+  const handleBatchTranslate = async () => {
+    if (!currentUser) return;
+    if (!confirm('Terjemahkan semua artikel yang belum diterjemahkan? Proses ini mungkin memakan waktu beberapa menit.')) return;
+    setIsBatchTranslating(true);
+    try {
+      const res = await fetch('/api/admin/translate-article?limit=10', {
+        headers: { 'x-admin-uid': currentUser.uid }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        alert(`✅ ${data.message}\n\nDiproses: ${data.processed}\nSisa: ${data.remaining}`);
+        if (data.remaining > 0) {
+          alert(`ℹ️ Masih ada ${data.remaining} artikel yang belum diterjemahkan. Klik tombol lagi untuk melanjutkan.`);
+        }
+        loadArticles();
+      } else {
+        const data = await res.json();
+        alert(`❌ Gagal batch translate: ${data.error || 'Terjadi kesalahan'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error memicu batch translate.');
+    } finally {
+      setIsBatchTranslating(false);
     }
   };
 
@@ -251,14 +356,20 @@ export default function ArtikelManagement() {
     }
   };
 
-  const categories = ['Panduan', 'Peristiwa', 'Sejarah', 'Edukasi', 'Trivia', 'Komet & Asteroid', 'Planet Mars'];
+  const categories = ['Panduan', 'Peristiwa', 'Sejarah', 'Edukasi', 'Trivia', 'Komet & Asteroid', 'Planet Mars', 'Bola Api & Fireball', 'Peristiwa Alam'];
   const kometArticles = articles.filter((article) => article.category === 'Komet & Asteroid');
   const marsArticles = articles.filter((article) => article.category === 'Planet Mars');
+  const fireballArticles = articles.filter((article) => article.category === 'Bola Api & Fireball');
+  const eonetArticles = articles.filter((article) => article.category === 'Peristiwa Alam');
   const marsTotalPages = Math.max(1, Math.ceil(marsArticles.length / PAGE_SIZE));
   const kometTotalPages = Math.max(1, Math.ceil(kometArticles.length / PAGE_SIZE));
+  const fireballTotalPages = Math.max(1, Math.ceil(fireballArticles.length / PAGE_SIZE));
+  const eonetTotalPages = Math.max(1, Math.ceil(eonetArticles.length / PAGE_SIZE));
   const allTotalPages = Math.max(1, Math.ceil(articles.length / PAGE_SIZE));
   const paginatedMarsArticles = marsArticles.slice((marsPage - 1) * PAGE_SIZE, marsPage * PAGE_SIZE);
   const paginatedKometArticles = kometArticles.slice((kometPage - 1) * PAGE_SIZE, kometPage * PAGE_SIZE);
+  const paginatedFireballArticles = fireballArticles.slice((marsPage - 1) * PAGE_SIZE, marsPage * PAGE_SIZE);
+  const paginatedEonetArticles = eonetArticles.slice((kometPage - 1) * PAGE_SIZE, kometPage * PAGE_SIZE);
   const paginatedArticles = articles.slice((allPage - 1) * PAGE_SIZE, allPage * PAGE_SIZE);
 
   useEffect(() => {
@@ -321,6 +432,34 @@ export default function ArtikelManagement() {
           <p className="text-sm text-slate-500 mt-1">Kelola konten blog edukasi sains astronomi, meteorit, dan komet.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button 
+            onClick={handleRebuildRss}
+            disabled={isRebuildingRss}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl transition-all inline-flex items-center gap-2 shadow-sm text-sm"
+          >
+            {isRebuildingRss ? '⏳ Membangun RSS...' : '📡 Rebuild RSS Feed'}
+          </button>
+          <button 
+            onClick={handleBatchTranslate}
+            disabled={isBatchTranslating}
+            className="bg-violet-600 hover:bg-violet-700 text-white font-bold py-2.5 px-4 rounded-xl transition-all inline-flex items-center gap-2 shadow-sm text-sm"
+          >
+            {isBatchTranslating ? '⏳ Menerjemahkan (10 artikel)...' : '🌐 Batch Terjemahkan Artikel'}
+          </button>
+          <button 
+            onClick={handleGenerateEonetArticle}
+            disabled={isGeneratingEonet}
+            className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 px-4 rounded-xl transition-all inline-flex items-center gap-2 shadow-sm text-sm"
+          >
+            {isGeneratingEonet ? '⏳ Memproses data EONET...' : '🌍 Picu Artikel EONET (AI)'}
+          </button>
+          <button 
+            onClick={handleGenerateFireballArticle}
+            disabled={isGeneratingFireball}
+            className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 px-4 rounded-xl transition-all inline-flex items-center gap-2 shadow-sm text-sm"
+          >
+            {isGeneratingFireball ? '⏳ Memproses data Fireball...' : '🔥 Picu Artikel Fireball (AI)'}
+          </button>
           <button 
             onClick={handleGenerateKometArticle}
             disabled={isGeneratingKomet}
@@ -432,6 +571,142 @@ export default function ArtikelManagement() {
               totalItems={marsArticles.length}
               onPageChange={setMarsPage}
             />
+          </div>
+        )}
+      </div>
+
+      {/* Fireball Articles Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-orange-200 overflow-hidden">
+        <div className="p-6 border-b border-orange-100 flex flex-col md:flex-row md:justify-between md:items-center gap-3 bg-orange-50/70">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">Daftar Artikel Bola Api & Fireball ({fireballArticles.length} artikel)</h2>
+            <p className="text-xs text-slate-500 mt-1">Artikel yang tampil di halaman publik /fireball.</p>
+          </div>
+          <button
+            onClick={handleGenerateFireballArticle}
+            disabled={isGeneratingFireball}
+            className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-xl transition-all inline-flex items-center justify-center gap-2 shadow-sm text-xs"
+          >
+            {isGeneratingFireball ? 'Memproses...' : '🔥 Picu Artikel Fireball'}
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="py-10 text-center text-slate-500 text-sm">Memuat artikel Fireball...</div>
+        ) : fireballArticles.length === 0 ? (
+          <div className="py-10 text-center text-slate-500 text-sm">Belum ada artikel Fireball. Jalankan AI Fireball Writer untuk menerbitkan artikel pertama.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Judul</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Review Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Tanggal</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Views</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-200">
+                {paginatedFireballArticles.map((article) => {
+                  const rStatus = article.review_status || 'Terverifikasi';
+                  const isAuto = rStatus === 'Otomatis';
+                  return (
+                    <tr key={article.id} className="hover:bg-orange-50/40">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-semibold text-slate-900 line-clamp-1">{article.title}</div>
+                        <div className="text-xs text-slate-400 line-clamp-1 mt-0.5">{article.excerpt}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${isAuto ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-green-100 text-green-800 border border-green-200'}`}>
+                          {rStatus}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{article.date}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{article.views || 0}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                        <div className="flex justify-center items-center gap-2">
+                          {isAuto && (
+                            <button onClick={() => handleVerifyArticle(article.id)} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm">Verifikasi</button>
+                          )}
+                          <button onClick={() => handleEditClick(article)} className="bg-amber-100 text-amber-800 hover:bg-amber-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all">Edit</button>
+                          <button onClick={() => handleDeleteClick(article.id)} className="bg-red-100 text-red-800 hover:bg-red-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all">Hapus</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <PaginationControls currentPage={marsPage} totalPages={fireballTotalPages} totalItems={fireballArticles.length} onPageChange={setMarsPage} />
+          </div>
+        )}
+      </div>
+
+      {/* EONET Articles Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-emerald-200 overflow-hidden">
+        <div className="p-6 border-b border-emerald-100 flex flex-col md:flex-row md:justify-between md:items-center gap-3 bg-emerald-50/70">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">Daftar Artikel Peristiwa Alam / EONET ({eonetArticles.length} artikel)</h2>
+            <p className="text-xs text-slate-500 mt-1">Artikel yang tampil di halaman publik /eonet.</p>
+          </div>
+          <button
+            onClick={handleGenerateEonetArticle}
+            disabled={isGeneratingEonet}
+            className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2 px-4 rounded-xl transition-all inline-flex items-center justify-center gap-2 shadow-sm text-xs"
+          >
+            {isGeneratingEonet ? 'Memproses...' : '🌍 Picu Artikel EONET'}
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="py-10 text-center text-slate-500 text-sm">Memuat artikel EONET...</div>
+        ) : eonetArticles.length === 0 ? (
+          <div className="py-10 text-center text-slate-500 text-sm">Belum ada artikel Peristiwa Alam. Jalankan AI EONET Writer untuk menerbitkan artikel pertama.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Judul</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Review Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Tanggal</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Views</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-200">
+                {paginatedEonetArticles.map((article) => {
+                  const rStatus = article.review_status || 'Terverifikasi';
+                  const isAuto = rStatus === 'Otomatis';
+                  return (
+                    <tr key={article.id} className="hover:bg-emerald-50/40">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-semibold text-slate-900 line-clamp-1">{article.title}</div>
+                        <div className="text-xs text-slate-400 line-clamp-1 mt-0.5">{article.excerpt}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${isAuto ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-green-100 text-green-800 border border-green-200'}`}>
+                          {rStatus}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{article.date}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{article.views || 0}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                        <div className="flex justify-center items-center gap-2">
+                          {isAuto && (
+                            <button onClick={() => handleVerifyArticle(article.id)} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm">Verifikasi</button>
+                          )}
+                          <button onClick={() => handleEditClick(article)} className="bg-amber-100 text-amber-800 hover:bg-amber-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all">Edit</button>
+                          <button onClick={() => handleDeleteClick(article.id)} className="bg-red-100 text-red-800 hover:bg-red-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all">Hapus</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <PaginationControls currentPage={kometPage} totalPages={eonetTotalPages} totalItems={eonetArticles.length} onPageChange={setKometPage} />
           </div>
         )}
       </div>

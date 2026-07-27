@@ -1,0 +1,48 @@
+Created At: 2026-07-06T00:45:23Z
+Completed At: 2026-07-06T00:45:23Z
+File Path: `file:///Users/tius/Documents/Data%20Tius/Meteorit/meteorit-indonesia/src/components/cuaca/WeatherMiniApp.tsx`
+Total Lines: 4130
+Total Bytes: 227654
+Showing lines 3701 to 3760
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3701:                             <span>{language === 'id' || language === 'ms' ? 'Deteksi' : language === 'zh' ? '检测' : language === 'ja' ? '検出' : 'Detection'}: UTC {hotspotStats.maxFrpDate} {hotspotStats.maxFrpTime}</span>
+3702:                           </div>
+3703:                         </div>
+3704: 
+3705:                         {/* Download button */}
+3706:                         <div className="pt-2">
+3707:                           <button
+3708:                             onClick={downloadHotspotReport}
+3709:                             className="w-full py-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-1.5"
+3710:                           >
+3711:                             📥 {language === 'id' || language === 'ms' ? 'Unduh Laporan Kebencanaan Lengkap (.TXT)' : language === 'zh' ? '下载完整灾害报告 (.TXT)' : language === 'ja' ? '災害報告書をダウンロード (.TXT)' : 'Download Complete Disaster Report (.TXT)'}
+3712:                           </button>
+3713:                         </div>
+3714:                       </div>
+3715:                     )}
+3716: 
+3717:                     {/* Interactive Hotspot List */}
+3718:                     <div className="space-y-2">
+3719:                       <div className="flex items-center justify-between">
+3720:                         <p className="text-[10px] font-bold text-gray-
+<truncated 2314 bytes>
+                              className="w-full bg-white hover:bg-slate-50 transition-all rounded-2xl p-3 border border-gray-150 shadow-sm flex justify-between items-start gap-2 text-left"
+3743:                             >
+3744:                               <div className="min-w-0 flex-1">
+3745:                                 <p className="text-xs font-black text-slate-800 flex items-center gap-1">
+3746:                                   <span>📍</span> {fire.latitude.toFixed(4)}&deg;, {fire.longitude.toFixed(4)}&deg;
+3747:                                 </p>
+3748:                                 <div className="flex items-center gap-1.5 mt-1 text-[9px] text-slate-500 flex-wrap">
+3749:                                   <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase shrink-0">
+3750:                                     {fire.satellite || 'VIIRS'}
+3751:                                   </span>
+3752:                                   <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase shrink-0 ${confBadge}`}>
+3753:                                     Conf: {confLabel}
+3754:                                   </span>
+3755:                                   <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase shrink-0">
+3756:                                     {fire.daynight === 'D' ? `☀️ ${language === 'id' || language === 'ms' ? 'Siang' : language === 'zh' ? '白天' : language === 'ja' ? '昼' : 'Day'}` : `🌙 ${language === 'id' || language === 'ms' ? 'Malam' : language === 'zh' ? '夜晚' : language === 'ja' ? '夜' : 'Night'}`}
+3757:                                   </span>
+3758:                                 </div>
+3759:                               </div>
+3760:                               <div className="text-right shrink-0">
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
