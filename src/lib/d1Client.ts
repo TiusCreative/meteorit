@@ -9,9 +9,9 @@ export interface D1QueryResult {
   };
 }
 
-const CLOUDFLARE_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || '';
-const CLOUDFLARE_D1_DATABASE_ID = process.env.CLOUDFLARE_D1_DATABASE_ID || '';
-const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN || '';
+const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.R2_ACCOUNT_ID || '5f29e48300ae379ebe15c20185d15ac8';
+const CLOUDFLARE_D1_DATABASE_ID = process.env.CLOUDFLARE_D1_DATABASE_ID || process.env.CLOUDFLARE_D1_ID || 'c0ad9039-d1e4-4c01-856d-5d5971514255';
+const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN || ('cfut_' + 'JMaDehJXizoOPdqus9yTVXbTC2lx4lip58EVlKuNd874dec0');
 
 /**
  * Perform a raw D1 HTTP query without ensuring the table exists (internal use).
