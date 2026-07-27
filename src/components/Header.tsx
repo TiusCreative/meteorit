@@ -215,7 +215,7 @@ export default function Header() {
               target.src = "https://placehold.co/100x100/png?text=MI";
             }} />
           </div>
-          <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-cyan-400 via-amber-400 to-orange-500 bg-clip-text text-transparent inline-block">
+          <span className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white drop-shadow-sm inline-block">
             Meteorit Indonesia
           </span>
         </Link>
