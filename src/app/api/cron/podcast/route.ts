@@ -305,8 +305,7 @@ export async function GET(request: Request) {
     console.log(`[Podcast Cron] Berkas MP3 berhasil diunggah ke R2: ${enclosureUrl}`);
 
     // 6. Membaca dan memperbarui berkas daftar episode index.json di R2
-    const episodesKey = 'data/podcast/episodes.json';
-    let episodesList = await fetchJsonFromR2<EpisodeMetadata[]>(episodesKey) || [];
+    episodesList = await fetchJsonFromR2<EpisodeMetadata[]>(episodesKey) || [];
     
     const newEpisode: EpisodeMetadata = {
       id: episodeId,
