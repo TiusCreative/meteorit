@@ -22,8 +22,16 @@ export async function uploadToR2(key: string, body: Buffer | string, contentType
     ContentType: contentType
   };
 
-  await s3Client.send(new PutObjectCommand(uploadParams));
-  return `${R2_CONFIG.publicUrl}/${key}`;
+  try {
+    await s3Client.send(new PutObjectCommand(uploadParams));
+    return `${R2_CONFIG.publicUrl}/${key}`;
+  } catch (error: any) {
+    if (error?.name === 'Unauthorized' || error?.message?.includes('Unauthorized') || error?.$metadata?.httpStatusCode === 401) {
+      console.error(`[R2 Auth Error] Cloudflare R2 S3 Token (401 Unauthorized). AccessKeyId: ${R2_CONFIG.accessKeyId}`);
+      throw new Error(`Kredensial Cloudflare R2 tidak valid atau telah kedaluwarsa (401 Unauthorized). Mohon buat R2 API Token baru di Cloudflare Dashboard dan perbarui R2_ACCESS_KEY_ID & R2_SECRET_ACCESS_KEY.`);
+    }
+    throw error;
+  }
 }
 
 /**
@@ -39,11 +47,15 @@ export async function fetchJsonFromR2<T>(key: string): Promise<T | null> {
     if (!response.Body) return null;
     const bodyStr = await response.Body.transformToString();
     return JSON.parse(bodyStr) as T;
-  } catch (error) {
+  } catch (error: any) {
     if ((error as any)?.Code === 'NoSuchKey' || (error as any)?.name === 'NoSuchKey') {
       return null;
     }
-    console.error(`Error reading ${key} from R2:`, error);
+    if (error?.name === 'Unauthorized' || error?.message?.includes('Unauthorized') || error?.$metadata?.httpStatusCode === 401) {
+      console.error(`[R2 Auth Error] fetchJsonFromR2 401 Unauthorized untuk key: ${key}. Periksa R2_ACCESS_KEY_ID & R2_SECRET_ACCESS_KEY.`);
+    } else {
+      console.error(`Error reading ${key} from R2:`, error);
+    }
     return null;
   }
 }
@@ -58,8 +70,12 @@ export async function deleteFromR2(key: string): Promise<boolean> {
       Key: key
     }));
     return true;
-  } catch (error) {
-    console.error(`Error deleting ${key} from R2:`, error);
+  } catch (error: any) {
+    if (error?.name === 'Unauthorized' || error?.message?.includes('Unauthorized') || error?.$metadata?.httpStatusCode === 401) {
+      console.error(`[R2 Auth Error] deleteFromR2 401 Unauthorized untuk key: ${key}.`);
+    } else {
+      console.error(`Error deleting ${key} from R2:`, error);
+    }
     return false;
   }
 }
