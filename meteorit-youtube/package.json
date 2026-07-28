@@ -1,0 +1,34 @@
+{
+  "name": "meteorit-youtube-shorts",
+  "version": "1.0.0",
+  "description": "Otomatisasi YouTube Shorts harian dari artikel meteorit.my.id menggunakan FFmpeg + Groq AI",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "start": "node main.js",
+    "auth": "node scripts/youtube-auth.js",
+    "test-render": "node scripts/test-render.js",
+    "test-category": "node -e \"import('./src/lib/categoryRotation.js').then(m => console.log(m.getTodayCategory()))\""
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.600.0",
+    "googleapis": "^140.0.0",
+    "node-fetch": "^3.3.2",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "youtube",
+    "shorts",
+    "automation",
+    "nasa",
+    "astronomi",
+    "indonesia",
+    "ffmpeg",
+    "groq"
+  ],
+  "author": "TiusCreative",
+  "license": "MIT"
+}

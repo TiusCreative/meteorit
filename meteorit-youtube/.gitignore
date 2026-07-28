@@ -1,0 +1,13 @@
+# gitignore untuk project meteorit-youtube
+.env
+.env.local
+token.json
+node_modules/
+out/
+*.mp4
+*.jpg
+*.png
+!src/assets/**/*.png
+!src/assets/**/*.jpg
+.DS_Store
+*.log
