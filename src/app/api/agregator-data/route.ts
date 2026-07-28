@@ -29,13 +29,12 @@ export async function GET(request: Request) {
 
     const d1Endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}/query`;
 
-    // 3. Menjalankan Query ke Cloudflare D1 (tanpa batasan default, bisa ?limit=N)
-    const { searchParams } = new URL(request.url);
+    // 3. Menjalankan Query ke Cloudflare D1 (Membuka semua artikel tanpa pembatasan default 30 artikel)
     const limitParam = searchParams.get('limit');
-    const limitSql = limitParam && limitParam !== 'all' ? `LIMIT ${parseInt(limitParam, 10)}` : '';
+    const limitSql = limitParam && limitParam.toLowerCase() !== 'all' ? `LIMIT ${parseInt(limitParam, 10)}` : '';
 
-    const countSql = "SELECT COUNT(*) as total FROM articles WHERE status = 'Published'";
-    const articlesSql = `SELECT id, title, category, createdAt, date, image, r2_path FROM articles WHERE status = 'Published' ORDER BY createdAt DESC ${limitSql}`;
+    const countSql = "SELECT COUNT(*) as total FROM articles";
+    const articlesSql = `SELECT id, title, category, createdAt, date, image, r2_path FROM articles ORDER BY createdAt DESC ${limitSql}`.trim();
 
     const [countResponse, articlesResponse] = await Promise.all([
       fetch(d1Endpoint, {
@@ -79,7 +78,7 @@ export async function GET(request: Request) {
 
     // 4. Formatkan Data Respon
     const formattedArticles = rawArticles.map((art: any) => {
-      let imageUrl = art.image || '';
+      let imageUrl = art.image || art.r2_path || '';
       if (imageUrl && !imageUrl.startsWith('http')) {
         imageUrl = `${r2PublicUrl}/${imageUrl.replace(/^\//, '')}`;
       }
@@ -97,6 +96,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       source: process.env.NEXT_PUBLIC_SITE_NAME || 'Meteorit Indonesia',
       total_articles: Number(totalArticles),
+      returned_articles: formattedArticles.length,
       articles: formattedArticles
     }, { status: 200 });
 
@@ -108,3 +108,4 @@ export async function GET(request: Request) {
     }, { status: 500 });
   }
 }
+
