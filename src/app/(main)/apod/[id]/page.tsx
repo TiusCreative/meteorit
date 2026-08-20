@@ -39,7 +39,7 @@ async function translateText(text: string, systemPrompt = 'Terjemahkan teks beri
     process.env.GROQ_BACKUP_API_KEY
   ].filter(Boolean) as string[];
 
-  // Try Groq keys
+  // Try Groq keys (llama-3.1-8b-instant deprecated Aug 16 2026)
   for (const key of keys) {
     try {
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -49,15 +49,18 @@ async function translateText(text: string, systemPrompt = 'Terjemahkan teks beri
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
+          model: 'meta-llama/llama-4-scout-17b-16e-instruct',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: text }
           ],
-          temperature: 0.3
-        })
+          temperature: 0.3,
+          max_tokens: 600,
+        }),
+        signal: AbortSignal.timeout(15000),
       });
 
+      if (!response.ok) continue; // skip jika model tidak tersedia
       const result = await response.json();
       if (result.choices && result.choices[0]?.message?.content) {
         return result.choices[0].message.content.trim();
@@ -215,6 +218,8 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
 }
 
 import ApodContentClient from '@/components/ApodContentClient';
+import JsonLd from '@/components/JsonLd';
+import { generateBreadcrumbSchema, generateArticleSchema } from '@/lib/seoSchemas';
 
 export default async function ApodDetailPage({ params }: { params: { id: string } }) {
   const apod = await getApod(params.id);
@@ -283,11 +288,38 @@ export default async function ApodDetailPage({ params }: { params: { id: string 
   if (!title) title = apod.title.id || apod.title.en;
   if (!explanation) explanation = apod.explanation.id || apod.explanation.en;
 
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Beranda', url: '/' },
+    { name: 'APOD', url: '/apod' },
+    { name: title, url: `/apod/${apod.id}` },
+  ]);
+
+  const articleSchema = generateArticleSchema({
+    title: `${title} - NASA APOD`,
+    description: explanation,
+    url: `/apod/${apod.id}`,
+    image: apod.image_url,
+    datePublished: apod.id,
+    category: 'Astronomy Picture of the Day',
+  });
+
+  const imageObjectSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'ImageObject',
+    name: title,
+    description: explanation,
+    contentUrl: apod.image_url,
+    creditText: apod.copyright || 'NASA Public Domain',
+  };
+
   return (
-    <ApodContentClient 
-      initialApod={apod} 
-      initialTitle={title} 
-      initialExplanation={explanation} 
-    />
+    <>
+      <JsonLd schema={[breadcrumbSchema, articleSchema, imageObjectSchema]} />
+      <ApodContentClient 
+        initialApod={apod} 
+        initialTitle={title} 
+        initialExplanation={explanation} 
+      />
+    </>
   );
 }

@@ -6,6 +6,8 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { getGlossarySeed, type GlossaryTerm } from '@/lib/glossaryData';
 import { defaultLanguage, isSiteLanguage, LANGUAGE_COOKIE_KEY, type SiteLanguage } from '@/lib/i18n';
 import { landingText } from '@/lib/landingText';
+import JsonLd from '@/components/JsonLd';
+import { generateBreadcrumbSchema } from '@/lib/seoSchemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,13 +94,13 @@ async function generateGlossaryArticle(term: GlossaryTerm, language: string): Pr
       name: 'Groq Utama',
       url: 'https://api.groq.com/openai/v1/chat/completions',
       key: process.env.GROQ_API_KEY,
-      model: 'llama-3.3-70b-versatile'
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct' // llama-3.3-70b-versatile deprecated Aug 16 2026
     },
     {
       name: 'Groq Backup',
       url: 'https://api.groq.com/openai/v1/chat/completions',
       key: process.env.GROQ_BACKUP_API_KEY,
-      model: 'llama-3.3-70b-versatile'
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct'
     },
     {
       name: 'OpenRouter Utama',
@@ -164,13 +166,13 @@ async function translateGlossaryDetails(
       name: 'Groq Utama',
       url: 'https://api.groq.com/openai/v1/chat/completions',
       key: process.env.GROQ_API_KEY,
-      model: 'llama-3.3-70b-versatile'
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct' // llama-3.3-70b-versatile deprecated Aug 16 2026
     },
     {
       name: 'Groq Backup',
       url: 'https://api.groq.com/openai/v1/chat/completions',
       key: process.env.GROQ_BACKUP_API_KEY,
-      model: 'llama-3.3-70b-versatile'
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct'
     },
     {
       name: 'OpenRouter Utama',
@@ -391,16 +393,15 @@ export default async function GlossaryDetailPage({ params }: { params: { id: str
     ]
   };
 
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Beranda', url: '/' },
+    { name: 'Glossarium', url: '/glossarium' },
+    { name: title, url: `/glossarium/${term.id}` },
+  ]);
+
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
+      <JsonLd schema={[breadcrumbSchema, articleSchema, faqSchema]} />
       <GlossaryDetailClient initialTerm={term} initialLanguage={language} />
     </>
   );

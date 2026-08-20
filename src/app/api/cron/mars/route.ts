@@ -103,95 +103,33 @@ async function fetchMarsImage(): Promise<MarsImage> {
   }
 }
 
+import { generateWithAI, parseAIJson } from '@/lib/aiProvider';
+
 async function generateMarsArticle(prompt: string): Promise<GeneratedMarsArticle> {
-  const messages = [
-    {
-      role: 'system',
-      content: 'Anda adalah penulis edukasi sains antariksa untuk Meteorit Indonesia. Kembalikan JSON murni tanpa markdown.'
-    },
-    { role: 'user', content: prompt }
-  ];
+  const result = await generateWithAI({
+    messages: [
+      {
+        role: 'system',
+        content: 'Anda adalah penulis edukasi sains antariksa untuk Meteorit Indonesia. Kembalikan JSON murni tanpa markdown.'
+      },
+      { role: 'user', content: prompt }
+    ],
+    temperature: 0.72,
+    responseFormatJson: true
+  });
 
-  const providers = [
-    {
-      name: 'Groq Utama',
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: process.env.GROQ_API_KEY,
-      model: 'llama-3.3-70b-versatile'
-    },
-    {
-      name: 'Groq Backup',
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: process.env.GROQ_BACKUP_API_KEY,
-      model: 'llama-3.3-70b-versatile'
-    },
-    {
-      name: 'OpenRouter Utama',
-      url: 'https://openrouter.ai/api/v1/chat/completions',
-      key: process.env.OPENROUTER_API_KEY,
-      model: 'meta-llama/llama-3.3-70b-instruct:free'
-    },
-    {
-      name: 'OpenRouter Backup',
-      url: 'https://openrouter.ai/api/v1/chat/completions',
-      key: process.env.OPENROUTER_BACKUP_API_KEY,
-      model: 'meta-llama/llama-3.3-70b-instruct:free'
-    }
-
-  ];
-
-  const errors: string[] = [];
-
-  for (const provider of providers) {
-    if (!provider.key) continue;
-
-    try {
-      const res = await fetch(provider.url, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${provider.key}`,
-          'Content-Type': 'application/json',
-          ...(provider.url.includes('openrouter.ai') ? {
-            'HTTP-Referer': getSiteUrl(),
-            'X-Title': 'Meteorit Indonesia'
-          } : {})
-        },
-        body: JSON.stringify({
-          model: provider.model,
-          messages,
-          temperature: 0.72,
-          response_format: { type: 'json_object' }
-        })
-      });
-
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`${res.status} ${res.statusText}: ${body.slice(0, 180)}`);
-      }
-
-      const json = await res.json();
-      const raw = json.choices?.[0]?.message?.content;
-      if (!raw) throw new Error('Respons AI kosong.');
-
-      const parsed = JSON.parse(String(raw).replace(/```json|```/g, '').trim());
-      if (!parsed.title || !parsed.excerpt || !parsed.contentHtml) {
-        throw new Error('JSON artikel Mars tidak lengkap.');
-      }
-
-      return {
-        title: parsed.title,
-        excerpt: parsed.excerpt,
-        contentHtml: parsed.contentHtml,
-        provider: provider.name
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.warn(`[Cron Mars] ${provider.name} gagal:`, message);
-      errors.push(`${provider.name}: ${message}`);
-    }
+  // parseAIJson membersihkan karakter kontrol yang tidak valid di dalam JSON string
+  const parsed = parseAIJson(String(result.content));
+  if (!parsed.title || !parsed.excerpt || !parsed.contentHtml) {
+    throw new Error('JSON artikel Mars tidak lengkap.');
   }
 
-  throw new Error(`Semua provider AI gagal untuk artikel Mars. ${errors.join(' | ')}`);
+  return {
+    title: parsed.title,
+    excerpt: parsed.excerpt,
+    contentHtml: parsed.contentHtml,
+    provider: result.provider
+  };
 }
 
 import { isValidCronRequest } from '@/lib/cronAuth';

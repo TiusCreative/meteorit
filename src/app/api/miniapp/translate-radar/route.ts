@@ -21,7 +21,8 @@ async function translateRadarData(
     {
       url: 'https://api.groq.com/openai/v1/chat/completions',
       key: process.env.GROQ_API_KEY,
-      model: 'llama-3.1-8b-instant',
+      // llama-3.1-8b-instant deprecated Aug 16 2026
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
     },
   ];
 

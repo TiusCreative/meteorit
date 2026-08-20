@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { sendBroadcastNotification } from '@/lib/notifications';
 import { getAbsoluteUrl } from '@/lib/siteUrl';
+import { isValidCronRequest } from '@/lib/cronAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,12 +19,13 @@ async function translateWithGroq(text: string, systemPrompt: string): Promise<st
     {
       name: 'Groq Utama',
       key: process.env.GROQ_API_KEY,
-      model: 'llama-3.1-8b-instant',
+      // llama-3.1-8b-instant deprecated Aug 16 2026
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
     },
     {
       name: 'Groq Backup',
       key: process.env.GROQ_BACKUP_API_KEY,
-      model: 'llama-3.1-8b-instant',
+      model: 'llama3-8b-8192',
     },
   ];
 
@@ -43,8 +45,18 @@ async function translateWithGroq(text: string, systemPrompt: string): Promise<st
             { role: 'user', content: text },
           ],
           temperature: 0.3,
+          max_tokens: 600,
         }),
+        signal: AbortSignal.timeout(15000),
       });
+
+      // Periksa status response sebelum parsing JSON
+      if (!response.ok) {
+        const errBody = await response.text();
+        console.warn(`[APOD Cron] ${provider.name} HTTP ${response.status}: ${errBody.slice(0, 120)}`);
+        continue;
+      }
+
       const result = await response.json();
       const content = result.choices?.[0]?.message?.content;
       if (content) return content.trim();
@@ -52,7 +64,7 @@ async function translateWithGroq(text: string, systemPrompt: string): Promise<st
       console.warn(`[APOD Cron] ${provider.name} failed:`, err);
     }
   }
-  return text;
+  return text; // fallback: teks asli (Bahasa Inggris)
 }
 
 /**
@@ -64,14 +76,14 @@ async function translateWithGroq(text: string, systemPrompt: string): Promise<st
  * Query params:
  *   ?secret=CRON_SECRET   (untuk trigger manual)
  *   ?force=true           (paksa re-fetch & re-translate meski sudah ada hari ini)
+ *   ?date=YYYY-MM-DD      (opsional: fetch tanggal spesifik)
  */
-import { isValidCronRequest } from '@/lib/cronAuth';
 
 async function rebuildR2ApodHistoryCache() {
   try {
     const snapApods = await adminDb.collection('apod_history')
       .orderBy('id', 'desc')
-      .limit(20)
+      .limit(100)
       .get();
     
     const historyList: any[] = [];
@@ -89,19 +101,22 @@ async function rebuildR2ApodHistoryCache() {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const force = searchParams.get('force') === 'true';
+  // Parameter opsional untuk backfill tanggal terlewat (format: YYYY-MM-DD)
+  const dateParam = searchParams.get('date') || null;
 
   if (!isValidCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const today = new Date().toISOString().split('T')[0];
+  const targetDate = dateParam || today;
 
   try {
-    // === Fetch APOD dari NASA ===
-    const apodRes = await fetch(
-      `https://api.nasa.gov/planetary/apod?api_key=${NASA_API_KEY}`,
-      { cache: 'no-store' }
-    );
+    // === Fetch APOD dari NASA (dukung parameter tanggal spesifik) ===
+    const nasaUrl = dateParam
+      ? `https://api.nasa.gov/planetary/apod?api_key=${NASA_API_KEY}&date=${dateParam}`
+      : `https://api.nasa.gov/planetary/apod?api_key=${NASA_API_KEY}`;
+    const apodRes = await fetch(nasaUrl, { cache: 'no-store' });
 
     if (!apodRes.ok) {
       throw new Error(`NASA APOD API error: HTTP ${apodRes.status}`);
@@ -115,12 +130,13 @@ export async function GET(request: Request) {
     // === Cek apakah sudah ada hari ini (kecuali force=true) ===
     if (docSnap.exists && !force) {
       const existing = docSnap.data() as any;
-      console.log(`[APOD Cron] APOD ${apodDate} sudah ada di Firestore. Lewati re-translate.`);
+      console.log(`[APOD Cron] APOD ${apodDate} sudah ada di Firestore. Rebuilding R2 history cache.`);
+      await rebuildR2ApodHistoryCache();
 
       return NextResponse.json({
         success: true,
         skipped: true,
-        message: `APOD tanggal ${apodDate} sudah ada. Gunakan ?force=true untuk paksa update.`,
+        message: `APOD tanggal ${apodDate} sudah ada. Cache R2 history telah diperbarui.`,
         apod: existing.title?.id || existing.title?.en,
         date: apodDate,
       });

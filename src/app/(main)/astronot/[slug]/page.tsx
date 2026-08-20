@@ -9,7 +9,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 
 export const dynamic = 'force-dynamic';
 
-// AI Translation helper using Groq
+// AI Translation helper using Groq (llama-3.1-8b-instant deprecated Aug 16 2026)
 async function translateText(text: string, systemPrompt = 'Terjemahkan teks berikut ke bahasa Indonesia.'): Promise<string> {
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -19,15 +19,18 @@ async function translateText(text: string, systemPrompt = 'Terjemahkan teks beri
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: text }
         ],
-        temperature: 0.3
-      })
+        temperature: 0.3,
+        max_tokens: 600,
+      }),
+      signal: AbortSignal.timeout(15000),
     });
 
+    if (!response.ok) return text;
     const result = await response.json();
     if (result.choices && result.choices[0]?.message?.content) {
       return result.choices[0].message.content.trim();
