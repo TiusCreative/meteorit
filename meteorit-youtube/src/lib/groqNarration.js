@@ -5,73 +5,147 @@
 // Output: Array 8 kalimat pendek untuk ditampilkan di video
 // ============================================================
 
-const GROQ_PROVIDERS = [
-  {
-    name: 'Groq Utama',
-    url: 'https://api.groq.com/openai/v1/chat/completions',
-    key: () => process.env.GROQ_API_KEY,
-    model: 'llama-3.1-8b-instant', // Model cepat & gratis
-  },
-  {
-    name: 'Groq Backup',
-    url: 'https://api.groq.com/openai/v1/chat/completions',
-    key: () => process.env.GROQ_BACKUP_API_KEY,
-    model: 'llama-3.1-8b-instant',
-  },
-  {
-    name: 'OpenRouter Backup',
-    url: 'https://openrouter.ai/api/v1/chat/completions',
-    key: () => process.env.OPENROUTER_API_KEY,
-    model: 'meta-llama/llama-3.1-8b-instruct:free',
-  },
-];
-
 /**
- * Panggil AI dengan fallback provider
+ * Panggil AI dengan fallback provider terpusat (Groq, OpenRouter, Cloudflare, Mistral)
  */
 async function callAI(prompt, systemPrompt = '') {
+  const messages = [
+    ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+    { role: 'user', content: prompt },
+  ];
+
+  const groqKeyPrimary = process.env.GROQ_API_KEY;
+  const openRouterKeyPrimary = process.env.OPENROUTER_API_KEY;
+  const cfAiToken = process.env.CLOUDFLARE_AI_TOKEN;
+  const cfApiToken = process.env.CLOUDFLARE_API_TOKEN;
+  const groqKeyBackup = process.env.GROQ_BACKUP_API_KEY;
+  const openRouterKeyBackup = process.env.OPENROUTER_BACKUP_API_KEY;
+  const mistralKey = process.env.MISTRAL_API_KEY;
+  const cfAccountId = process.env.R2_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID || '';
+
+  const providers = [
+    {
+      name: 'Groq Utama',
+      type: 'openai',
+      url: 'https://api.groq.com/openai/v1/chat/completions',
+      key: groqKeyPrimary,
+      // llama-3.3-70b-versatile & llama-3.1-8b-instant deprecated Aug 16 2026
+      models: ['meta-llama/llama-4-scout-17b-16e-instruct', 'llama3-8b-8192'],
+    },
+    {
+      name: 'OpenRouter Utama',
+      type: 'openai',
+      url: 'https://openrouter.ai/api/v1/chat/completions',
+      key: openRouterKeyPrimary,
+      models: ['meta-llama/llama-3.3-70b-instruct', 'meta-llama/llama-3.2-3b-instruct:free', 'google/gemini-2.0-flash-lite-001'],
+    },
+    {
+      name: 'Cloudflare Workers AI (AI Token)',
+      type: 'cloudflare',
+      key: cfAiToken,
+      models: ['@cf/meta/llama-3.1-8b-instruct'],
+    },
+    {
+      name: 'Cloudflare Workers AI (API Token)',
+      type: 'cloudflare',
+      key: cfApiToken,
+      models: ['@cf/meta/llama-3.1-8b-instruct'],
+    },
+    {
+      name: 'Groq Backup',
+      type: 'openai',
+      url: 'https://api.groq.com/openai/v1/chat/completions',
+      key: groqKeyBackup,
+      models: ['meta-llama/llama-4-scout-17b-16e-instruct', 'llama3-8b-8192'],
+    },
+    {
+      name: 'OpenRouter Backup',
+      type: 'openai',
+      url: 'https://openrouter.ai/api/v1/chat/completions',
+      key: openRouterKeyBackup,
+      models: ['meta-llama/llama-3.3-70b-instruct', 'meta-llama/llama-3.2-3b-instruct:free'],
+    },
+    {
+      name: 'Mistral (Opsi Terakhir)',
+      type: 'mistral',
+      url: 'https://api.mistral.ai/v1/chat/completions',
+      key: mistralKey,
+      models: ['open-mistral-7b', 'mistral-tiny', 'mistral-small-latest'],
+    },
+  ];
+
   const errors = [];
 
-  for (const provider of GROQ_PROVIDERS) {
-    const apiKey = provider.key();
-    if (!apiKey) continue;
+  for (const provider of providers) {
+    if (!provider.key) continue;
 
-    try {
-      const response = await fetch(provider.url, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          ...(provider.url.includes('openrouter') ? {
-            'HTTP-Referer': 'https://www.meteorit.my.id',
-            'X-Title': 'Meteorit Indonesia YouTube',
-          } : {}),
-        },
-        body: JSON.stringify({
-          model: provider.model,
-          messages: [
-            ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-            { role: 'user', content: prompt },
-          ],
-          temperature: 0.5,
-          max_tokens: 600,
-        }),
-      });
+    for (const model of provider.models) {
+      try {
+        if (provider.type === 'openai' || provider.type === 'mistral') {
+          const headers = {
+            Authorization: `Bearer ${provider.key}`,
+            'Content-Type': 'application/json',
+          };
+          if (provider.url.includes('openrouter')) {
+            headers['HTTP-Referer'] = 'https://www.meteorit.my.id';
+            headers['X-Title'] = 'Meteorit Indonesia YouTube';
+          }
 
-      if (!response.ok) {
-        const body = await response.text();
-        throw new Error(`HTTP ${response.status}: ${body.slice(0, 150)}`);
+          const response = await fetch(provider.url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              model,
+              messages,
+              temperature: 0.5,
+              max_tokens: 600,
+            }),
+            signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(20000) : undefined,
+          });
+
+          if (!response.ok) {
+            const body = await response.text();
+            throw new Error(`HTTP ${response.status}: ${body.slice(0, 150)}`);
+          }
+
+          const data = await response.json();
+          const content = data.choices?.[0]?.message?.content?.trim();
+          if (!content) throw new Error('Respons AI kosong');
+
+          console.log(`[Groq] ✅ Narasi dihasilkan via ${provider.name} (${model})`);
+          return content;
+        }
+
+        if (provider.type === 'cloudflare') {
+          if (!cfAccountId) throw new Error('Cloudflare Account ID tidak tersedia');
+          const cfUrl = `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/ai/run/${model}`;
+
+          const response = await fetch(cfUrl, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${provider.key}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ messages }),
+            signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(20000) : undefined,
+          });
+
+          if (!response.ok) {
+            const body = await response.text();
+            throw new Error(`HTTP ${response.status}: ${body.slice(0, 150)}`);
+          }
+
+          const data = await response.json();
+          const content = data.result?.response?.trim();
+          if (!content) throw new Error('Respons Cloudflare AI kosong');
+
+          console.log(`[Groq] ✅ Narasi dihasilkan via ${provider.name} (${model})`);
+          return content;
+        }
+      } catch (err) {
+        console.warn(`[Groq] ${provider.name} (${model}) gagal: ${err.message}`);
+        errors.push(`${provider.name} (${model}): ${err.message}`);
       }
-
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content?.trim();
-      if (!content) throw new Error('Respons kosong dari AI');
-
-      console.log(`[Groq] ✅ Narasi dihasilkan via ${provider.name}`);
-      return content;
-    } catch (err) {
-      console.warn(`[Groq] ${provider.name} gagal: ${err.message}`);
-      errors.push(`${provider.name}: ${err.message}`);
     }
   }
 

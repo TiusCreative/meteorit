@@ -17,95 +17,31 @@ type GeneratedArticle = {
   provider: string;
 };
 
+import { generateWithAI, parseAIJson } from '@/lib/aiProvider';
+
 async function generateArticleWithFallback(prompt: string): Promise<GeneratedArticle> {
-  const messages = [
-    { role: 'system', content: 'Anda adalah penulis blog astronomi profesional berbahasa Indonesia. Anda wajib memberikan output dalam format JSON murni.' },
-    { role: 'user', content: prompt }
-  ];
+  const result = await generateWithAI({
+    messages: [
+      { role: 'system', content: 'Anda adalah penulis blog astronomi profesional berbahasa Indonesia. Anda wajib memberikan output dalam format JSON murni.' },
+      { role: 'user', content: prompt }
+    ],
+    temperature: 0.7,
+    responseFormatJson: true
+  });
 
-  const providers = [
-    {
-      name: 'Groq Utama',
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: process.env.GROQ_API_KEY,
-      model: 'llama-3.3-70b-versatile'
-    },
-    {
-      name: 'Groq Backup',
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: process.env.GROQ_BACKUP_API_KEY,
-      model: 'llama-3.3-70b-versatile'
-    },
-    {
-      name: 'OpenRouter Utama',
-      url: 'https://openrouter.ai/api/v1/chat/completions',
-      key: process.env.OPENROUTER_API_KEY,
-      model: 'meta-llama/llama-3.3-70b-instruct:free'
-    },
-    {
-      name: 'OpenRouter Backup',
-      url: 'https://openrouter.ai/api/v1/chat/completions',
-      key: process.env.OPENROUTER_BACKUP_API_KEY,
-      model: 'meta-llama/llama-3.3-70b-instruct:free'
-    }
+  // parseAIJson membersihkan karakter kontrol yang tidak valid di dalam JSON string
+  const articleJson = parseAIJson(String(result.content));
 
-  ];
-
-  const errors: string[] = [];
-
-  for (const provider of providers) {
-    if (!provider.key) continue;
-
-    try {
-      const aiResponse = await fetch(provider.url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${provider.key}`,
-          'Content-Type': 'application/json',
-          ...(provider.url.includes('openrouter.ai') ? {
-            'HTTP-Referer': getSiteUrl(),
-            'X-Title': 'Meteorit Indonesia'
-          } : {})
-        },
-        body: JSON.stringify({
-          model: provider.model,
-          messages,
-          temperature: 0.7,
-          response_format: { type: 'json_object' }
-        })
-      });
-
-      if (!aiResponse.ok) {
-        const body = await aiResponse.text();
-        throw new Error(`${aiResponse.status} ${aiResponse.statusText}: ${body.slice(0, 200)}`);
-      }
-
-      const aiData = await aiResponse.json();
-      const rawContent = aiData.choices?.[0]?.message?.content;
-      if (!rawContent) throw new Error('Respons AI kosong.');
-
-      const cleanedContent = rawContent.replace(/```json|```/g, '').trim();
-      const articleJson = JSON.parse(cleanedContent);
-
-      if (!articleJson.title || !articleJson.excerpt || !articleJson.content) {
-        throw new Error('JSON AI tidak lengkap.');
-      }
-
-
-      return {
-        title: articleJson.title,
-        excerpt: articleJson.excerpt,
-        content: articleJson.content,
-        provider: provider.name
-      };
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      console.warn(`[Cron Blog] ${provider.name} gagal, mencoba provider berikutnya:`, msg);
-      errors.push(`${provider.name}: ${msg}`);
-    }
+  if (!articleJson.title || !articleJson.excerpt || !articleJson.content) {
+    throw new Error('JSON AI tidak lengkap.');
   }
 
-  throw new Error(`Semua provider AI gagal. ${errors.join(' | ') || 'Tidak ada API key AI yang tersedia.'}`);
+  return {
+    title: articleJson.title,
+    excerpt: articleJson.excerpt,
+    content: articleJson.content,
+    provider: result.provider
+  };
 }
 
 import { isValidCronRequest } from '@/lib/cronAuth';
@@ -142,7 +78,7 @@ Kembalikan HANYA string JSON murni tanpa membungkus dengan tag markdown json.`;
       year: 'numeric'
     });
 
-    const illustrationPrompt = `astrophotography stars space background nebula meteorite deep space style for article ${articleJson.title}`;
+    const illustrationPrompt = `${articleJson.title}, ${category}, space astronomy photography, cosmic nebula stars background, hyperrealistic 8k digital art, cinematic lighting`;
     const imagePath = `data/blog/images/${docId}.jpg`;
     const { generateImageWithFallback } = await import('@/lib/imageGenerator');
     const imageUrl = await generateImageWithFallback(illustrationPrompt, imagePath);
