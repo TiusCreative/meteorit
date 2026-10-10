@@ -116,7 +116,7 @@ export default async function Home() {
       });
     } catch (err) { console.error('Firestore blog fallback failed:', err); }
   }
-  }
+  if (blogPosts.length === 0) blogPosts = STATIC_BLOG_FALLBACK;
 
   return (
     <main className="min-h-screen bg-white dark:bg-slate-950 text-slate-800 dark:text-white transition-colors duration-300">
