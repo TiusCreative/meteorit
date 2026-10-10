@@ -26,31 +26,7 @@ export default function AdDisplay({ position }: AdDisplayProps) {
 
   if (!settings) return null;
 
-  const { adsenseActive, adsensePositions, manualAds } = settings;
-
-  // Gunakan env variable untuk client ID dan slot ID AdSense
-  const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || settings.adsenseClientId || 'ca-pub-9511274459054303';
-  const adsenseSlotId = process.env.NEXT_PUBLIC_ADSENSE_SLOT_ID || settings.adsenseSlotId || '2773589292';
-
-  // AdSense diaktifkan jika active dan sudah dikonfigurasi
-  const adsenseEnabled = adsenseActive && adsenseClientId && adsenseSlotId;
-  if (adsenseEnabled && adsensePositions?.includes(position)) {
-    return (
-      <div className="my-8 flex justify-center items-center w-full overflow-hidden min-h-[90px] bg-slate-900/40 border border-cyan-950/30 rounded-lg p-2">
-        <div className="text-center w-full">
-          <span className="text-[10px] text-gray-500 uppercase tracking-widest block mb-1">Pariwara Google</span>
-          <ins
-            className="adsbygoogle"
-            style={{ display: 'block', textCombineUpright: 'all' }}
-            data-ad-client={adsenseClientId}
-            data-ad-slot={adsenseSlotId}
-            data-ad-format="auto"
-            data-full-width-responsive="true"
-          />
-        </div>
-      </div>
-    );
-  }
+  const { manualAds } = settings;
 
   // 2. Manual Advertisements (fallback or specific) - Hide if placeholder-ad or not configured
   const matchedManualAd = manualAds?.find((ad: any) => 

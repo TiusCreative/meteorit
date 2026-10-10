@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
       .get();
 
     const entries: any[] = [];
-    snapshot.forEach(doc => {
+    snapshot.forEach((doc: any) => {
       entries.push({ id: doc.id, ...doc.data() });
     });
 
@@ -152,7 +152,7 @@ export async function GET(req: NextRequest) {
       try {
         const snapAll = await adminDb.collection('apod_history').orderBy('id', 'desc').limit(100).get();
         const historyList: any[] = [];
-        snapAll.forEach(doc => historyList.push({ id: doc.id, ...doc.data() }));
+        snapAll.forEach((doc: any) => historyList.push({ id: doc.id, ...doc.data() }));
         await uploadToR2('data/encyclopedia/history.json', JSON.stringify(historyList, null, 2), 'application/json');
         
         // Update latest.json jika entry hari ini di-fix

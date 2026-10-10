@@ -68,21 +68,12 @@ export default async function RootLayout({
         {/* PWA - modern web app capable meta tag */}
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        {/* Google AdSense */}
-        <meta name="google-adsense-account" content="ca-pub-9511274459054303" />
       </head>
       <body className={inter.className}>
         {/* Suppress harmless browser extension iframe messaging errors */}
         <Script id="suppress-extension-warnings" strategy="afterInteractive">
           {`window.addEventListener('unhandledrejection',function(e){if(e&&e.reason&&typeof e.reason.message==='string'&&e.reason.message.includes('Could not establish connection')){e.preventDefault();}});`}
         </Script>
-        {/* Google AdSense: lazy load to avoid blocking main thread */}
-        <Script
-          id="google-adsense"
-          strategy="lazyOnload"
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9511274459054303"
-          crossOrigin="anonymous"
-        />
         {/* Google Analytics: Measurement ID G-X4F6EB07D4 */}
         <Script src="https://www.googletagmanager.com/gtag/js?id=G-X4F6EB07D4" strategy="afterInteractive" />
         <Script id="gtag-init" strategy="afterInteractive">
