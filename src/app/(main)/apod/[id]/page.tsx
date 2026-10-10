@@ -49,11 +49,10 @@ const R2_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd0
 
 // Fetch APOD Data
 async function getApod(id: string): Promise<Apod | null> {
-  // 1. Coba fetch dari R2 history.json terlebih dahulu
+  // 1. Coba fetch dari R2 history.json via S3 SDK terlebih dahulu
   try {
-    const res = await fetch(`${R2_URL}/data/encyclopedia/history.json?t=${Date.now()}`, { cache: 'no-store' });
-    if (res.ok) {
-      const history: Apod[] = await res.json();
+    const history = await fetchJsonFromR2<Apod[]>('data/encyclopedia/history.json');
+    if (Array.isArray(history)) {
       const matched = history.find(a => a.id === id);
       if (matched) return matched;
     }

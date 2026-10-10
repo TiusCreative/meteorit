@@ -95,7 +95,7 @@ export default function EnsiklopediaManagement() {
     setIsFixingAPODImages(true);
     try {
       const secret = 'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU=';
-      const res = await fetch(`/api/admin/apod-fix-images?secret=${secret}`);
+      const res = await fetch(`/api/admin/apod-fix-images?secret=${encodeURIComponent(secret)}&force=true`);
       if (res.ok) {
         const data = await res.json();
         const { summary, results } = data;

@@ -1,5 +1,8 @@
 import ApodListClient from '@/components/ApodListClient';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { fetchJsonFromR2 } from '@/lib/r2Client';
+import JsonLd from '@/components/JsonLd';
+import { generateBreadcrumbSchema } from '@/lib/seoSchemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,16 +26,14 @@ interface ApodEntry {
   copyright: string;
 }
 
-const R2_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
-
 export default async function ApodPage() {
   let apods: ApodEntry[] = [];
 
-  // 1. Coba fetch dari R2
+  // 1. Coba fetch dari R2 via S3 SDK langsung
   try {
-    const res = await fetch(`${R2_URL}/data/encyclopedia/history.json?t=${Date.now()}`, { cache: 'no-store' });
-    if (res.ok) {
-      apods = await res.json();
+    const r2Data = await fetchJsonFromR2<ApodEntry[]>('data/encyclopedia/history.json');
+    if (Array.isArray(r2Data) && r2Data.length > 0) {
+      apods = r2Data;
     }
   } catch (err) {
     console.warn("[APOD List] Gagal mengambil riwayat APOD dari R2, mencoba Firestore...", err);
@@ -78,5 +79,27 @@ export default async function ApodPage() {
     });
   }
 
-  return <ApodListClient initialApods={apods} />;
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Beranda', url: '/' },
+    { name: 'APOD (Foto Antariksa)', url: '/apod' },
+  ]);
+
+  const itemListSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Galeri Foto Antariksa Harian NASA (APOD)',
+    itemListElement: apods.slice(0, 15).map((apod, idx) => ({
+      '@type': 'ListItem',
+      position: idx + 1,
+      name: apod.title.id || apod.title.en,
+      url: `https://www.meteorit.my.id/apod/${apod.id}`,
+    })),
+  };
+
+  return (
+    <>
+      <JsonLd schema={[breadcrumbSchema, itemListSchema]} />
+      <ApodListClient initialApods={apods} />
+    </>
+  );
 }
