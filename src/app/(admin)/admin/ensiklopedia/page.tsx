@@ -41,6 +41,7 @@ export default function EnsiklopediaManagement() {
   }, []);
 
   const [isAPODSyncing, setIsAPODSyncing] = useState(false);
+  const [isFixingAPODImages, setIsFixingAPODImages] = useState(false);
   const [isGeneratingKomet, setIsGeneratingKomet] = useState(false);
   const [isGeneratingAstronot, setIsGeneratingAstronot] = useState(false);
 
@@ -86,6 +87,29 @@ export default function EnsiklopediaManagement() {
       alert('Error memicu sinkronisasi NASA APOD.');
     } finally {
       setIsAPODSyncing(false);
+    }
+  };
+
+  const handleFixAPODImages = async () => {
+    if (!confirm('Proses ini akan memindai entri APOD 10 hari terakhir dan memperbaiki gambar yang rusak (placeholder NASA). Lanjutkan?')) return;
+    setIsFixingAPODImages(true);
+    try {
+      const secret = 'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU=';
+      const res = await fetch(`/api/admin/apod-fix-images?secret=${secret}`);
+      if (res.ok) {
+        const data = await res.json();
+        const { summary, results } = data;
+        const fixedDates = results.filter((r: any) => r.status === 'fixed').map((r: any) => r.date).join(', ');
+        alert(`✅ Perbaikan APOD selesai!\n\nTotal: ${summary.total} entri\nDiperbaiki: ${summary.fixed}\nSkipped (OK): ${summary.skipped}\nGagal: ${summary.failed}\n${fixedDates ? `\nTanggal diperbaiki: ${fixedDates}` : ''}`);
+      } else {
+        const err = await res.json();
+        alert(`Gagal memperbaiki gambar APOD: ${err.error || 'Terjadi kesalahan'}`);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error saat memicu perbaikan gambar APOD.');
+    } finally {
+      setIsFixingAPODImages(false);
     }
   };
 
@@ -245,7 +269,7 @@ export default function EnsiklopediaManagement() {
       </div>
 
       {/* Sync Control panel */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* APOD */}
         <div className="space-y-3 flex flex-col justify-between">
           <div>
@@ -260,6 +284,23 @@ export default function EnsiklopediaManagement() {
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-xl transition-all inline-flex items-center justify-center gap-2 text-xs shadow-sm"
           >
             {isAPODSyncing ? '⏳ Mengunduh APOD...' : '🌌 Picu APOD Manual'}
+          </button>
+        </div>
+
+        {/* Fix APOD Images */}
+        <div className="space-y-3 flex flex-col justify-between border-t md:border-t-0 md:border-l border-slate-200 pt-6 md:pt-0 md:pl-6">
+          <div>
+            <h2 className="text-base font-bold text-slate-800 mb-1">🔧 Perbaiki Gambar APOD</h2>
+            <p className="text-slate-500 text-xs leading-relaxed">
+              Pindai 10 hari terakhir dan perbaiki entri APOD yang menyimpan logo placeholder NASA — ganti dengan gambar asli dari sumber resmi NASA Science.
+            </p>
+          </div>
+          <button 
+            onClick={handleFixAPODImages}
+            disabled={isFixingAPODImages}
+            className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-xl transition-all inline-flex items-center justify-center gap-2 text-xs shadow-sm"
+          >
+            {isFixingAPODImages ? '⏳ Memindai & Memperbaiki...' : '🖼️ Fix Gambar APOD (1-10 Okt)'}
           </button>
         </div>
 
@@ -281,7 +322,7 @@ export default function EnsiklopediaManagement() {
         </div>
 
         {/* Komet */}
-        <div className="space-y-3 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-slate-200 pt-6 lg:pt-0 lg:pl-6">
+        <div className="space-y-3 flex flex-col justify-between border-t lg:border-t-0 border-slate-200 pt-6 lg:pt-0">
           <div>
             <h2 className="text-base font-bold text-slate-800 mb-1">Harvester Komet</h2>
             <p className="text-slate-500 text-xs leading-relaxed">

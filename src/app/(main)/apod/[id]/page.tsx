@@ -32,74 +32,7 @@ interface Apod {
 
 const NASA_API_KEY = process.env.NASA_API_KEY || 'hlogNogFWGEANcJcPnYwlxYJh3auqScaH75m8ktN';
 
-// AI Translation using Groq / OpenRouter with fallback
-async function translateText(text: string, systemPrompt = 'Terjemahkan teks berikut ke bahasa Indonesia.'): Promise<string> {
-  const keys = [
-    process.env.GROQ_API_KEY,
-    process.env.GROQ_BACKUP_API_KEY
-  ].filter(Boolean) as string[];
-
-  // Try Groq keys (llama-3.1-8b-instant deprecated Aug 16 2026)
-  for (const key of keys) {
-    try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${key}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: text }
-          ],
-          temperature: 0.3,
-          max_tokens: 600,
-        }),
-        signal: AbortSignal.timeout(15000),
-      });
-
-      if (!response.ok) continue; // skip jika model tidak tersedia
-      const result = await response.json();
-      if (result.choices && result.choices[0]?.message?.content) {
-        return result.choices[0].message.content.trim();
-      }
-    } catch (error) {
-      console.warn('Groq Translation key failed in APOD page:', error);
-    }
-  }
-
-  // Try OpenRouter fallback
-  if (process.env.OPENROUTER_API_KEY) {
-    try {
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'meta-llama/llama-3.3-70b-instruct:free',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: text }
-          ],
-          temperature: 0.3
-        })
-      });
-
-      const result = await response.json();
-      if (result.choices && result.choices[0]?.message?.content) {
-        return result.choices[0].message.content.trim();
-      }
-    } catch (error) {
-      console.error('OpenRouter Translation fallback failed in APOD page:', error);
-    }
-  }
-
-  return text;
-}
+import { translateText } from '@/lib/translator';
 
 // Format Date localized
 function formatLocalizedDate(dateStr: string, locale: string) {
@@ -155,7 +88,36 @@ async function getApod(id: string): Promise<Apod | null> {
       const translatedTitle = await translateText(apodData.title, 'Terjemahkan judul astronomi berikut ke Bahasa Indonesia secara singkat dan menarik.');
       const translatedExplanation = await translateText(apodData.explanation, 'Terjemahkan deskripsi ilmiah astronomi berikut ke Bahasa Indonesia yang mudah dipahami.');
 
+      // Deteksi jika NASA API mengembalikan placeholder logo
+      const isNasaLogoPlaceholder = (url: string) =>
+        url.includes('nasa-logo') || url.includes('/themes/nasa-child/assets/images/');
+
       let finalImageUrl = apodData.hdurl || apodData.url;
+
+      // Jika placeholder, coba ambil gambar asli dari WordPress API
+      if (apodData.media_type !== 'video' && isNasaLogoPlaceholder(finalImageUrl)) {
+        try {
+          const d = new Date(id + 'T00:00:00Z');
+          const monthNames = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+          const slugPrefix = `apod-${d.getUTCFullYear()}-${monthNames[d.getUTCMonth()]}-${d.getUTCDate()}`;
+          const wpRes = await fetch(
+            `https://science.nasa.gov/wp-json/wp/v2/image-article?search=${slugPrefix}&per_page=3&orderby=date&order=desc`,
+            { cache: 'no-store' }
+          );
+          if (wpRes.ok) {
+            const wpData = await wpRes.json();
+            const matched = Array.isArray(wpData) && (wpData.find((item: any) => item.slug?.startsWith(slugPrefix)) || wpData[0]);
+            if (matched) {
+              const fi = matched.featured_image;
+              if (fi?.file && fi.file.startsWith('http')) finalImageUrl = fi.file;
+              else if (matched.featured_image_url && !isNasaLogoPlaceholder(matched.featured_image_url)) finalImageUrl = matched.featured_image_url;
+            }
+          }
+        } catch (wpErr) {
+          console.warn('[APOD Detail] WordPress image fallback failed:', wpErr);
+        }
+      }
+
       try {
         if (apodData.media_type !== 'video') {
           const imgFetch = await fetch(finalImageUrl);
@@ -200,6 +162,7 @@ async function getApod(id: string): Promise<Apod | null> {
 
   return null;
 }
+
 
 // Generate Dynamic SEO Metadata
 export async function generateMetadata({ params }: { params: { id: string } }) {

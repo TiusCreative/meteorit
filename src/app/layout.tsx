@@ -9,6 +9,8 @@ import { getGlobalSettings } from '@/lib/settings'
 import CustomTagInjector from '@/components/CustomTagInjector'
 import { getSiteUrl } from '@/lib/siteUrl'
 import { ThemeProvider } from '@/components/ThemeProvider'
+import JsonLd from '@/components/JsonLd'
+import { generateWebSiteSchema, generateOrganizationSchema } from '@/lib/seoSchemas'
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' })
 const siteUrl = getSiteUrl()
@@ -54,7 +56,11 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const settings = await getGlobalSettings()
+  // getGlobalSettings dijalankan non-blocking — jika gagal pakai default
+  let settings: any = { customHeadCode: '', customBodyStartCode: '', customBodyEndCode: '' };
+  try {
+    settings = await getGlobalSettings();
+  } catch {}
 
   return (
     <html lang="id" suppressHydrationWarning>
@@ -64,13 +70,19 @@ export default async function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         {/* Google AdSense */}
         <meta name="google-adsense-account" content="ca-pub-9511274459054303" />
-        <script
-          async
+      </head>
+      <body className={inter.className}>
+        {/* Suppress harmless browser extension iframe messaging errors */}
+        <Script id="suppress-extension-warnings" strategy="afterInteractive">
+          {`window.addEventListener('unhandledrejection',function(e){if(e&&e.reason&&typeof e.reason.message==='string'&&e.reason.message.includes('Could not establish connection')){e.preventDefault();}});`}
+        </Script>
+        {/* Google AdSense: lazy load to avoid blocking main thread */}
+        <Script
+          id="google-adsense"
+          strategy="lazyOnload"
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9511274459054303"
           crossOrigin="anonymous"
         />
-      </head>
-      <body className={inter.className}>
         {/* Google Analytics: Measurement ID G-X4F6EB07D4 */}
         <Script src="https://www.googletagmanager.com/gtag/js?id=G-X4F6EB07D4" strategy="afterInteractive" />
         <Script id="gtag-init" strategy="afterInteractive">
@@ -83,6 +95,7 @@ export default async function RootLayout({
         />
 
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          <JsonLd schema={[generateWebSiteSchema(), generateOrganizationSchema()]} />
           {children}
           <ScrollToTop />
           <MeteoritChatbot />
