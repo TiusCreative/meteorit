@@ -20,23 +20,12 @@ type NavigationMode = 'none' | 'navigating' | 'simulating';
 type MapStyle = 'dark' | 'osm' | 'satellite';
 
 // MapLibre Styles
-const MAP_STYLES: Record<MapStyle, any> = {
-  osm: {
-    version: 8,
-    sources: {
-      'osm-raster': {
-        type: 'raster',
-        tiles: [
-          'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-          'https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-          'https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png'
-        ],
-        tileSize: 256,
-        attribution: '© CARTO, © OpenStreetMap'
-      }
-    },
-    layers: [{ id: 'osm-layer', type: 'raster', source: 'osm-raster', minzoom: 0, maxzoom: 19 }]
-  },
+// NOTE: osm & dark use OpenFreeMap vector styles (free, no API key required)
+// Satellite uses Esri World Imagery raster (free)
+const MAP_STYLES: Record<MapStyle, string | object> = {
+  // OpenFreeMap Liberty — bright street map, free, no key
+  osm: 'https://tiles.openfreemap.org/styles/liberty',
+  // Esri World Imagery — free raster satellite
   satellite: {
     version: 8,
     sources: {
@@ -49,22 +38,8 @@ const MAP_STYLES: Record<MapStyle, any> = {
     },
     layers: [{ id: 'satellite-layer', type: 'raster', source: 'esri-satellite', minzoom: 0, maxzoom: 19 }]
   },
-  dark: {
-    version: 8,
-    sources: {
-      'carto-dark': {
-        type: 'raster',
-        tiles: [
-          'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-          'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-          'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-        ],
-        tileSize: 256,
-        attribution: '© CARTO, © OpenStreetMap'
-      }
-    },
-    layers: [{ id: 'dark-layer', type: 'raster', source: 'carto-dark', minzoom: 0, maxzoom: 20 }]
-  }
+  // OpenFreeMap Dark — dark style, free, no key
+  dark: 'https://tiles.openfreemap.org/styles/dark',
 };
 
 // ─── Geo Math Utilities ────────────────────────────────────────────────────────

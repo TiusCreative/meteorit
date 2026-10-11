@@ -32,7 +32,9 @@ export default function DisasterMapSection() {
         // Fetch last 7 days of active alerts
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         
-        const res = await fetch(`/api/earth-monitoring/data-center?startDate=${sevenDaysAgo}&endDate=${today}&category=all&region=indonesia`);
+        // limit=300 & excludeWeather=true: avoid 11k+ records/5MB payload on landing page
+        // Prioritizes CRITICAL/HIGH severity records (gempa, gunung api, hotspot terbesar)
+        const res = await fetch(`/api/earth-monitoring/data-center?startDate=${sevenDaysAgo}&endDate=${today}&category=all&region=indonesia&limit=300&excludeWeather=true`);
         if (res.ok) {
           const data = await res.json();
           setRecords(data.records || []);

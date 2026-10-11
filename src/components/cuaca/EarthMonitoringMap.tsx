@@ -35,30 +35,16 @@ export default function EarthMonitoringMap({ type, quakeData = [], hotspotData =
           preferCanvas: true,
         });
 
-        // Bright Basemap (CARTO Voyager: clean white & cloud-blue oceans)
-        const cartoVoyager = L.default.tileLayer(
-          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-          {
-            maxZoom: 20,
-            subdomains: 'abcd',
-            attribution: '&copy; CARTO'
-          }
-        );
-
-        // Fallback tiles: OpenStreetMap
-        const osmFallback = L.default.tileLayer(
+        // Basemap: OpenStreetMap (free, no API key needed)
+        const osmTile = L.default.tileLayer(
           'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          { maxZoom: 19, attribution: '&copy; OpenStreetMap' }
+          {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+          }
         );
 
-        cartoVoyager.addTo(map);
-        cartoVoyager.on('tileerror', () => {
-          if (mapRef.current && !mapRef.current._usingFallback) {
-            mapRef.current._usingFallback = true;
-            cartoVoyager.remove();
-            osmFallback.addTo(mapRef.current);
-          }
-        });
+        osmTile.addTo(map);
 
         // Layer group for dynamic markers
         const layerGroup = L.default.layerGroup().addTo(map);

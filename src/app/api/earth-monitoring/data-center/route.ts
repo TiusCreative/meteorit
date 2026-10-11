@@ -81,6 +81,11 @@ export async function GET(req: NextRequest) {
     const category = searchParams.get('category') || 'all'; // all, volcano, quake, hotspots, tsunami, cyclone, flood, weather
     const searchQuery = (searchParams.get('searchQuery') || '').toLowerCase().trim();
     const region = searchParams.get('region') || 'all'; // all, indonesia
+    // Optional: limit total results (e.g. landing page uses limit=300 to avoid huge payload)
+    const limitParam = searchParams.get('limit');
+    const limit = limitParam ? parseInt(limitParam, 10) : null;
+    // Optional: exclude weather records (landing page doesn't need city weather)
+    const excludeWeather = searchParams.get('excludeWeather') === 'true';
 
     // Geocode searchQuery to support custom cities/districts (like Bekasi, Cikarang)
     let targetCoords: [number, number] | null = null;
@@ -531,11 +536,27 @@ export async function GET(req: NextRequest) {
     // Sort chronologically descending
     results.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
+    // Filter out weather if requested (e.g. landing page)
+    const filteredResults = excludeWeather
+      ? results.filter(r => r.type !== 'weather')
+      : results;
+
+    // Apply limit if provided (cap total records, prioritize critical/high severity first)
+    const finalResults = limit && filteredResults.length > limit
+      ? [
+          ...filteredResults.filter(r => r.severity === 'CRITICAL').slice(0, Math.floor(limit * 0.3)),
+          ...filteredResults.filter(r => r.severity === 'HIGH').slice(0, Math.floor(limit * 0.3)),
+          ...filteredResults.filter(r => r.severity === 'MODERATE').slice(0, Math.floor(limit * 0.2)),
+          ...filteredResults.filter(r => r.severity === 'LOW').slice(0, Math.floor(limit * 0.2)),
+        ].slice(0, limit)
+      : filteredResults;
+
     return NextResponse.json({
       success: true,
-      count: results.length,
-      records: results,
-      filters: { startDate, endDate, category, searchQuery, region },
+      count: finalResults.length,
+      total: results.length,
+      records: finalResults,
+      filters: { startDate, endDate, category, searchQuery, region, limit, excludeWeather },
       updatedAt: new Date().toISOString()
     });
   } catch (err: any) {
