@@ -769,7 +769,7 @@ export default function MapLibreDisasterMap({ records, centerLatLng, language }:
     try {
       const map = new maplibregl.Map({
         container: mapContainerRef.current,
-        style: MAP_STYLES[activeStyle],
+        style: MAP_STYLES[activeStyle] as any,
         center: [118.0, -2.5],
         zoom: 4.5,
         minZoom: 3,
@@ -864,7 +864,8 @@ export default function MapLibreDisasterMap({ records, centerLatLng, language }:
   // Update style — skip during active navigation to prevent map going dark
   useEffect(() => {
     if (mapRef.current && styleLoaded && navMode === 'none') {
-      mapRef.current.setStyle(MAP_STYLES[activeStyle]);
+      mapRef.current.setStyle(MAP_STYLES[activeStyle] as any);
+
     }
   }, [activeStyle, navMode, styleLoaded]);
 
