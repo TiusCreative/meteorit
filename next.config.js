@@ -1,8 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Aktifkan Next.js image optimization (resize, WebP conversion, caching)
+  // Nonaktifkan Next.js server-side image optimization agar tidak memakan CPU/bandwidth origin
+  // Gambar disajikan langsung dari Cloudflare R2 dan sumber remote
   images: {
-    unoptimized: false,
+    unoptimized: true,
     formats: ['image/webp', 'image/avif'],
     minimumCacheTTL: 86400, // 24 jam cache di edge
     remotePatterns: [

@@ -1,0 +1,61 @@
+name: ⏰ Meteorit Indonesia Cron Automation
+
+on:
+  schedule:
+    # Berjalan setiap jam (pada menit ke-5) untuk mengecek dan mengeksekusi cron yang jatuh tempo
+    - cron: '5 * * * *'
+
+  # Memungkinkan pemicuan manual dari tab GitHub Actions
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Pilih tugas cron yang ingin dijalankan manual'
+        required: true
+        default: 'auto'
+        type: choice
+        options:
+          - 'auto'
+          - 'all'
+          - 'apod'
+          - 'blog'
+          - 'mars'
+          - 'komet'
+          - 'fireball'
+          - 'eonet'
+          - 'main-cron'
+          - 'astronot'
+          - 'nasa-alert'
+          - 'earth-monitoring'
+          - 'earth-monitoring-daily'
+          - 'glossary'
+          - 'cleanup'
+
+jobs:
+  run-cron:
+    name: Execute Scheduled Task
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 📦 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 🚀 Jalankan Cron Scheduler
+        env:
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || 'https://meteorit.my.id' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET || 'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU=' }}
+        run: |
+          chmod +x ./scripts/site-cron-worker.js
+          if [ "${{ github.event.inputs.task }}" = "all" ]; then
+            node ./scripts/site-cron-worker.js --all
+          elif [ "${{ github.event.inputs.task }}" != "" ] && [ "${{ github.event.inputs.task }}" != "auto" ]; then
+            node ./scripts/site-cron-worker.js --task "${{ github.event.inputs.task }}"
+          else
+            node ./scripts/site-cron-worker.js
+          fi
+
