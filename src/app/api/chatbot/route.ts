@@ -307,98 +307,32 @@ TUGAS DAN UTAMAKAN MEMBERIKAN LINK INTERNAL:
 ${knowledgeContext ? `Konteks Basis Pengetahuan Meteorit Indonesia:\n${knowledgeContext}\n` : ''}`;
 
     // Limit conversation history to last 6 messages
-    const trimmedHistory = messages.slice(-6).map((m: any) => ({
-      role: m.role === 'assistant' ? 'assistant' : 'user',
+    const trimmedHistory: Array<{ role: 'user' | 'assistant'; content: string }> = messages.slice(-6).map((m: any) => ({
+      role: m.role === 'assistant' ? ('assistant' as const) : ('user' as const),
       content: String(m.content || ''),
     }));
 
-    const fullMessages = [
+    const fullMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
       { role: 'system', content: systemPrompt },
       ...trimmedHistory
     ];
 
     // 4. LLM Providers Fallback Execution
-    const providers = [
-      // Primary: Groq API with GROQ_BACKUP_API_KEY / GROQ_API_KEY
-      {
-        name: 'Groq (Backup Key)',
-        url: 'https://api.groq.com/openai/v1/chat/completions',
-        key: process.env.GROQ_BACKUP_API_KEY || process.env.GROQ_API_KEY,
-        model: 'llama-3.1-8b-instant',
-      },
-      {
-        name: 'Groq (Primary Key)',
-        url: 'https://api.groq.com/openai/v1/chat/completions',
-        key: process.env.GROQ_API_KEY,
-        model: 'llama-3.1-8b-instant',
-      },
-      // Fallback 1: OpenRouter API
-      {
-        name: 'OpenRouter (Backup Key)',
-        url: 'https://openrouter.ai/api/v1/chat/completions',
-        key: process.env.OPENROUTER_BACKUP_API_KEY || process.env.OPENROUTER_API_KEY,
-        model: 'meta-llama/llama-3.1-8b-instruct:free',
-      },
-      {
-        name: 'OpenRouter (Primary Key)',
-        url: 'https://openrouter.ai/api/v1/chat/completions',
-        key: process.env.OPENROUTER_API_KEY,
-        model: 'google/gemini-2.5-flash',
-      },
-      // Fallback 2: Mistral API
-      {
-        name: 'Mistral API',
-        url: 'https://api.mistral.ai/v1/chat/completions',
-        key: process.env.MISTRAL_API_KEY,
-        model: 'open-mistral-7b',
-      },
-    ];
-
     let replyText = '';
     let usedProvider = '';
 
-    for (const provider of providers) {
-      if (!provider.key) continue;
-
-      try {
-        const headers: Record<string, string> = {
-          Authorization: `Bearer ${provider.key}`,
-          'Content-Type': 'application/json',
-        };
-
-        if (provider.url.includes('openrouter.ai')) {
-          headers['HTTP-Referer'] = getSiteUrl();
-          headers['X-Title'] = 'Meteorit Indonesia Chatbot';
-        }
-
-        const res = await fetch(provider.url, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            model: provider.model,
-            messages: fullMessages,
-            temperature: 0.6,
-            max_tokens: 350,
-          }),
-          signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(12000) : undefined,
-        });
-
-        if (!res.ok) {
-          console.warn(`[Chatbot API] Provider ${provider.name} status ${res.status}`);
-          continue;
-        }
-
-        const data = await res.json();
-        const content = data.choices?.[0]?.message?.content;
-
-        if (content && typeof content === 'string' && content.trim().length > 0) {
-          replyText = content.trim();
-          usedProvider = provider.name;
-          break; // Success!
-        }
-      } catch (err) {
-        console.warn(`[Chatbot API] Provider ${provider.name} failed:`, err);
-      }
+    try {
+      const { generateWithAI } = await import('@/lib/aiProvider');
+      const aiResult = await generateWithAI({
+        messages: fullMessages,
+        temperature: 0.6,
+        maxTokens: 350,
+        timeoutMs: 15000,
+      });
+      replyText = aiResult.content;
+      usedProvider = aiResult.provider;
+    } catch (aiErr) {
+      console.warn('[Chatbot API] AI generation failed:', aiErr);
     }
 
     if (!replyText) {

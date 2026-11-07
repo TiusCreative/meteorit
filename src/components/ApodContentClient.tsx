@@ -41,7 +41,7 @@ function formatLocalizedDate(dateStr: string, locale: string) {
     if (!isNaN(date.getTime())) {
       return date.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
     }
-  } catch (e) {}
+  } catch (e) { }
   return dateStr;
 }
 
@@ -103,18 +103,19 @@ export default function ApodContentClient({ initialApod, initialTitle, initialEx
     }
   }, [language, apod.id]);
 
-  const isVideo = apod.image_url.includes('youtube.com') || 
-                  apod.image_url.includes('youtu.be') || 
-                  apod.image_url.includes('vimeo.com') || 
-                  apod.image_url.includes('player.vimeo.com');
+  const isDirectVideo = apod.image_url.includes('.mp4') || apod.image_url.includes('.webm') || apod.image_url.includes('.ogv');
+  const isIframeVideo = apod.image_url.includes('youtube.com') ||
+    apod.image_url.includes('youtu.be') ||
+    apod.image_url.includes('vimeo.com') ||
+    apod.image_url.includes('player.vimeo.com');
 
   return (
     <main className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white py-16 transition-colors duration-300 print:bg-white print:text-black">
       <div className="container mx-auto px-4 max-w-4xl print:max-w-full">
-        
+
         {/* Navigation Breadcrumb */}
-        <Link 
-          href="/apod" 
+        <Link
+          href="/apod"
           className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300 font-bold mb-8 inline-flex items-center gap-2 print:hidden"
         >
           {t.backToApod || '← Kembali ke Galeri Foto Antariksa'}
@@ -122,7 +123,7 @@ export default function ApodContentClient({ initialApod, initialTitle, initialEx
 
         {/* Detail Box */}
         <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-cyan-950/30 rounded-3xl p-6 md:p-10 shadow-2xl transition-all print:border-0 print:bg-transparent print:p-0 print:shadow-none">
-          
+
           {/* Header Metadata */}
           <div className="flex justify-between items-center mb-6 print:hidden">
             <span className="bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-500/30 text-xs font-bold px-3.5 py-1 rounded-full uppercase">
@@ -147,20 +148,32 @@ export default function ApodContentClient({ initialApod, initialTitle, initialEx
           </div>
 
           {/* Interactive Client Actions */}
-          <ApodActions 
-            apod={{ 
-              ...apod, 
-              title: { id: currentTitle, en: apod.title.en }, 
-              explanation: { id: currentExplanation, en: apod.explanation.en } 
-            }} 
+          <ApodActions
+            apod={{
+              ...apod,
+              title: { id: currentTitle, en: apod.title.en },
+              explanation: { id: currentExplanation, en: apod.explanation.en }
+            }}
           />
 
           {/* Printable APOD Content */}
           <div id="printable-apod-content" className="space-y-8">
-            
+
             {/* Visual Media Wrapper */}
             <div className="w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-cyan-950/50 relative bg-slate-950">
-              {isVideo ? (
+              {isDirectVideo ? (
+                <div className="w-full aspect-video flex items-center justify-center bg-black">
+                  <video
+                    src={apod.image_url}
+                    controls
+                    playsInline
+                    autoPlay
+                    muted
+                    loop
+                    className="w-full h-full max-h-[600px] object-contain mx-auto"
+                  />
+                </div>
+              ) : isIframeVideo ? (
                 <div className="aspect-video w-full">
                   <iframe
                     src={apod.image_url}
@@ -171,9 +184,9 @@ export default function ApodContentClient({ initialApod, initialTitle, initialEx
                   />
                 </div>
               ) : (
-                <SafeImage 
-                  src={apod.image_url} 
-                  alt={currentTitle || 'NASA APOD'} 
+                <SafeImage
+                  src={apod.image_url}
+                  alt={currentTitle || 'NASA APOD'}
                   className="w-full h-auto max-h-[600px] object-contain mx-auto"
                   fallback="https://placehold.co/800x500/020617/22d3ee?text=APOD+Space+Photo"
                 />

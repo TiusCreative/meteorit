@@ -120,101 +120,20 @@ const PRESET_ASTRONAUTS: Record<string, { name: string; country: string; agency:
   },
 };
 
-// AI generation with fallback chain: Groq → OpenRouter → Mistral
+import { generateWithAI as generateWithCentralAI, parseAIJson } from '@/lib/aiProvider';
+
 async function generateWithAI(prompt: string): Promise<string> {
-  // 1. Try Groq
-  if (GROQ_API_KEY) {
-    try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
-          messages: [
-            { role: 'system', content: 'Anda adalah ahli biografi luar angkasa. Kembalikan output dalam format JSON murni.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.5,
-          response_format: { type: 'json_object' }
-        }),
-        signal: AbortSignal.timeout(4000) // 4 seconds limit
-      });
-      if (res.ok) {
-        const json = await res.json();
-        const content = json.choices[0].message.content.trim();
-        JSON.parse(content);
-        console.log('[Cron Astronot] Generated via Groq');
-        return content;
-      }
-    } catch (err) {
-      console.warn('[Cron Astronot] Groq failed, trying fallback:', err);
-    }
-  }
+  const result = await generateWithCentralAI({
+    messages: [
+      { role: 'system', content: 'Anda adalah ahli biografi luar angkasa. Kembalikan output dalam format JSON murni.' },
+      { role: 'user', content: prompt }
+    ],
+    temperature: 0.5,
+    responseFormatJson: true,
+    timeoutMs: 8000
+  });
 
-  // 2. Fallback: OpenRouter
-  if (OPENROUTER_API_KEY) {
-    try {
-      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': getSiteUrl(),
-          'X-Title': 'Meteorit Indonesia'
-        },
-        body: JSON.stringify({
-          model: 'meta-llama/llama-3.1-8b-instruct:free',
-          messages: [
-            { role: 'system', content: 'Anda adalah ahli biografi luar angkasa. Kembalikan output dalam format JSON murni tanpa markdown.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.5
-        }),
-        signal: AbortSignal.timeout(4000)
-      });
-      if (res.ok) {
-        const json = await res.json();
-        const content = json.choices[0].message.content.trim()
-          .replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        JSON.parse(content);
-        console.log('[Cron Astronot] Generated via OpenRouter');
-        return content;
-      }
-    } catch (err) {
-      console.warn('[Cron Astronot] OpenRouter failed, trying fallback:', err);
-    }
-  }
-
-  // 3. Fallback: Mistral
-  if (MISTRAL_API_KEY) {
-    try {
-      const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${MISTRAL_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'mistral-small-latest',
-          messages: [
-            { role: 'system', content: 'Anda adalah ahli biografi luar angkasa. Kembalikan output dalam format JSON murni tanpa markdown.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.5
-        }),
-        signal: AbortSignal.timeout(4000)
-      });
-      if (res.ok) {
-        const json = await res.json();
-        const content = json.choices[0].message.content.trim()
-          .replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        JSON.parse(content);
-        console.log('[Cron Astronot] Generated via Mistral');
-        return content;
-      }
-    } catch (err) {
-      console.warn('[Cron Astronot] Mistral failed:', err);
-    }
-  }
-
-  throw new Error('Semua AI provider gagal digunakan.');
+  return result.content;
 }
 
 import { isValidCronRequest } from '@/lib/cronAuth';
@@ -331,7 +250,7 @@ export async function GET(request: Request) {
         try {
           aiCallCount++;
           const aiContent = await generateWithAI(prompt);
-          const parsed = JSON.parse(aiContent);
+          const parsed = parseAIJson(aiContent);
           profileData = {
             fullname: parsed.fullname || profileData.fullname,
             country: parsed.country || profileData.country,

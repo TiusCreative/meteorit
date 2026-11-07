@@ -8,6 +8,9 @@ import { useSiteLanguage } from '@/lib/useSiteLanguage';
 import { localizeArticle, localizeCategory } from '@/lib/clientArticleLocalization';
 import type { ArticleTranslations } from '@/lib/articleLocalization';
 
+import SafeImage from '@/components/SafeImage';
+import MobileFlipboardReader, { MobileReaderItem } from '@/components/MobileFlipboardReader';
+
 interface BlogPost {
   id: string;
   title: string;
@@ -22,6 +25,9 @@ interface BlogListClientProps {
   initialPosts: BlogPost[];
 }
 
+import DateFilterBar, { DateFilterValue } from '@/components/DateFilterBar';
+import { matchesDateFilter } from '@/lib/dateFilterHelper';
+
 export default function BlogListClient({ initialPosts }: BlogListClientProps) {
   const language = useSiteLanguage();
   const t = landingText[language];
@@ -29,8 +35,25 @@ export default function BlogListClient({ initialPosts }: BlogListClientProps) {
   const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>(initialPosts);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>({
+    startDate: '',
+    endDate: '',
+    selectedMonth: '',
+    selectedYear: '',
+  });
   const [currentPage, setCurrentPage] = useState(1);
+  const [readerMode, setReaderMode] = useState<'grid' | 'flipboard'>('grid');
   const itemsPerPage = 30;
+
+  useEffect(() => {
+    const saved = localStorage.getItem('meteorit_reader_mode');
+    if (saved === 'flipboard') setReaderMode('flipboard');
+  }, []);
+
+  const toggleReaderMode = (mode: 'grid' | 'flipboard') => {
+    setReaderMode(mode);
+    localStorage.setItem('meteorit_reader_mode', mode);
+  };
 
   useEffect(() => {
     let result = posts;
@@ -43,25 +66,81 @@ export default function BlogListClient({ initialPosts }: BlogListClientProps) {
         p.excerpt?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
+    if (dateFilter.startDate || dateFilter.endDate || dateFilter.selectedMonth || dateFilter.selectedYear) {
+      result = result.filter(p => matchesDateFilter(p, dateFilter));
+    }
     setFilteredPosts(result);
     setCurrentPage(1);
-  }, [selectedCategory, searchQuery, posts]);
+  }, [selectedCategory, searchQuery, dateFilter, posts]);
 
   const categories = ['Panduan', 'Peristiwa', 'Sejarah', 'Edukasi', 'Trivia'];
   const totalPages = Math.ceil(filteredPosts.length / itemsPerPage);
   const currentItems = filteredPosts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+  const flipboardItems: MobileReaderItem[] = filteredPosts.map((post) => {
+    const localized = localizeArticle(post, language);
+    return {
+      id: post.id,
+      title: localized.title,
+      excerpt: localized.excerpt,
+      image: post.image,
+      category: localizeCategory(post.category, language),
+      date: post.date,
+      link: `/blog/${post.id}`,
+    };
+  });
+
   return (
     <div className="pt-6 pb-16">
+      {/* Mobile Fullscreen Flipboard Reader Mode */}
+      {readerMode === 'flipboard' && (
+        <MobileFlipboardReader
+          items={flipboardItems}
+          title={t.blogListTitle}
+          onSwitchToGrid={() => toggleReaderMode('grid')}
+        />
+      )}
+
       <div className="container mx-auto px-4 max-w-6xl">
-        <div className="text-center mb-12 pt-8">
+        <div className="text-center mb-8 pt-8">
           <h1 className="text-4xl md:text-5xl font-extrabold mb-4 bg-gradient-to-r from-cyan-400 via-amber-400 to-orange-500 bg-clip-text text-transparent">
             {t.blogListTitle}
           </h1>
           <p className="text-gray-400 text-base md:text-lg max-w-2xl mx-auto">
             {t.blogListDesc}
           </p>
+
+          {/* DUAL MODE READER SWITCHER TOGGLE (Mobile Only) */}
+          <div className="flex justify-center items-center gap-2 mt-6">
+            <div className="bg-slate-900/90 border border-cyan-900/40 p-1 rounded-2xl flex items-center shadow-lg">
+              <button
+                onClick={() => toggleReaderMode('grid')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  readerMode === 'grid'
+                    ? 'bg-amber-500 text-slate-950 shadow-md'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <span>📰</span>
+                <span>Mode Grid</span>
+              </button>
+              <button
+                onClick={() => toggleReaderMode('flipboard')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  readerMode === 'flipboard'
+                    ? 'bg-amber-500 text-slate-950 shadow-md'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <span>📱</span>
+                <span>Mode Swipe Feed</span>
+              </button>
+            </div>
+          </div>
         </div>
+
+        {/* Date Filter Bar */}
+        <DateFilterBar value={dateFilter} onChange={setDateFilter} />
 
         {/* Filter & Search */}
         <div className="bg-slate-900/60 backdrop-blur border border-cyan-900/30 p-4 md:p-6 rounded-2xl mb-8 flex flex-col md:flex-row gap-4 justify-between items-center shadow-lg">
@@ -113,15 +192,11 @@ export default function BlogListClient({ initialPosts }: BlogListClientProps) {
                   >
                     <div className="h-44 bg-slate-950 overflow-hidden relative shrink-0">
                       {post.image ? (
-                        <img
+                        <SafeImage
                           src={post.image}
                           alt={localized.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          loading="lazy"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = 'https://placehold.co/600x400/020617/22d3ee?text=Astronomi';
-                          }}
+                          fallback="https://placehold.co/600x400/020617/22d3ee?text=Astronomi"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 to-cyan-950">

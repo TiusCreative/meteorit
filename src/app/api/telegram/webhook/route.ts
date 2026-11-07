@@ -32,83 +32,20 @@ async function rebuildR2BlogCache() {
 }
 
 
+import { generateWithAI, parseAIJson } from '@/lib/aiProvider';
+
 // Helper to query LLM with fallbacks
 async function askAIWithFallback(prompt: string, isJson: boolean = true): Promise<string> {
-  const messages = [
-    { role: 'system', content: 'Anda adalah pakar astronomi dan penulis sains profesional dari Indonesia. Berikan output yang akurat dan bersih.' },
-    { role: 'user', content: prompt }
-  ];
+  const result = await generateWithAI({
+    messages: [
+      { role: 'system', content: 'Anda adalah pakar astronomi dan penulis sains profesional dari Indonesia. Berikan output yang akurat dan bersih.' },
+      { role: 'user', content: prompt }
+    ],
+    temperature: 0.7,
+    responseFormatJson: isJson
+  });
 
-  const providers: AIProvider[] = [
-    {
-      name: 'Groq Utama',
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: process.env.GROQ_API_KEY,
-      model: 'llama-3.3-70b-versatile'
-    },
-    {
-      name: 'Groq Backup',
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: process.env.GROQ_BACKUP_API_KEY,
-      model: 'llama-3.3-70b-versatile'
-    },
-    {
-      name: 'OpenRouter Utama',
-      url: 'https://openrouter.ai/api/v1/chat/completions',
-      key: process.env.OPENROUTER_API_KEY,
-      model: 'meta-llama/llama-3.3-70b-instruct:free'
-    },
-    {
-      name: 'OpenRouter Backup',
-      url: 'https://openrouter.ai/api/v1/chat/completions',
-      key: process.env.OPENROUTER_BACKUP_API_KEY,
-      model: 'meta-llama/llama-3.3-70b-instruct:free'
-    }
-
-  ];
-
-  const errors: string[] = [];
-
-  for (const provider of providers) {
-    if (!provider.key) continue;
-
-    try {
-      const res = await fetch(provider.url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${provider.key}`,
-          'Content-Type': 'application/json',
-          ...(provider.url.includes('openrouter.ai') ? {
-            'HTTP-Referer': getSiteUrl(),
-            'X-Title': 'Meteorit Indonesia'
-          } : {})
-        },
-        body: JSON.stringify({
-          model: provider.model,
-          messages,
-          temperature: 0.7,
-          ...(isJson ? { response_format: { type: 'json_object' } } : {})
-        })
-      });
-
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`${res.status} ${res.statusText}: ${body.slice(0, 200)}`);
-      }
-
-      const data = await res.json();
-      const rawContent = data.choices?.[0]?.message?.content;
-      if (!rawContent) throw new Error('Respons AI kosong.');
-
-      return rawContent;
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      console.warn(`[Webhook Telegram AI] ${provider.name} gagal:`, msg);
-      errors.push(`${provider.name}: ${msg}`);
-    }
-  }
-
-  throw new Error(`Semua provider AI gagal. ${errors.join(' | ')}`);
+  return result.content;
 }
 
 function slugify(text: string): string {
@@ -227,7 +164,7 @@ Jika pesan tersebut bukan laporan mengenai asteroid melintas dekat bumi, maka "i
 Kembalikan HANYA JSON murni tanpa ada formatting markdown \`\`\`json atau penjelasan tambahan lainnya.`;
 
     const parseResultStr = await askAIWithFallback(parsePrompt, true);
-    const parsedData = JSON.parse(parseResultStr.replace(/```json|```/g, '').trim());
+    const parsedData = parseAIJson(parseResultStr);
 
     if (!parsedData.is_asteroid_report || !parsedData.asteroid || !parsedData.asteroid.name) {
       return NextResponse.json({
@@ -282,7 +219,7 @@ Ketentuan Artikel:
 Kembalikan HANYA string JSON murni tanpa pembungkus markdown json.`;
 
     const articleResultStr = await askAIWithFallback(articlePrompt, true);
-    const articleJson = JSON.parse(articleResultStr.replace(/```json|```/g, '').trim());
+    const articleJson = parseAIJson(articleResultStr);
 
     // 3. Generate image using Pollinations with Cloudflare AI backup
     const illustrationPrompt = `high-res professional photos space background giant asteroid flying close to Earth realistic digital art scientific render`;

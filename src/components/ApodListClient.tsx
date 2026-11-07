@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { landingText } from '@/lib/landingText';
 import { useSiteLanguage } from '@/lib/useSiteLanguage';
 import SafeImage from '@/components/SafeImage';
+import MobileFlipboardReader, { MobileReaderItem } from '@/components/MobileFlipboardReader';
 
 interface ApodEntry {
   id: string;
@@ -47,9 +48,15 @@ const getYoutubeId = (url: string) => {
   return (match && match[2].length === 11) ? match[2] : null;
 };
 
-const isVideoUrl = (url: string) => {
+const isDirectVideoUrl = (url: string) => {
   if (!url) return false;
-  return url.includes('youtube.com') || url.includes('youtu.be') || url.includes('vimeo.com') || url.includes('player.vimeo.com');
+  return url.includes('.mp4') || url.includes('.webm') || url.includes('.ogv');
+};
+
+const isVideoUrl = (url: string, mediaType?: string) => {
+  if (mediaType === 'video') return true;
+  if (!url) return false;
+  return isDirectVideoUrl(url) || url.includes('youtube.com') || url.includes('youtu.be') || url.includes('vimeo.com') || url.includes('player.vimeo.com');
 };
 
 const getThumbnailUrl = (url: string) => {
@@ -59,15 +66,38 @@ const getThumbnailUrl = (url: string) => {
     if (ytId) {
       return `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`;
     }
+    if (isDirectVideoUrl(url)) {
+      return url;
+    }
     return 'https://placehold.co/600x400/020617/eab308?text=Video+Astronomi';
   }
   return url;
 };
 
+import DateFilterBar, { DateFilterValue } from '@/components/DateFilterBar';
+import { matchesDateFilter } from '@/lib/dateFilterHelper';
+
 export default function ApodListClient({ initialApods }: ApodListClientProps) {
   const language = useSiteLanguage();
   const t = landingText[language];
   const [searchQuery, setSearchQuery] = useState('');
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>({
+    startDate: '',
+    endDate: '',
+    selectedMonth: '',
+    selectedYear: '',
+  });
+  const [readerMode, setReaderMode] = useState<'grid' | 'flipboard'>('grid');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('meteorit_reader_mode_apod');
+    if (saved === 'flipboard') setReaderMode('flipboard');
+  }, []);
+
+  const toggleReaderMode = (mode: 'grid' | 'flipboard') => {
+    setReaderMode(mode);
+    localStorage.setItem('meteorit_reader_mode_apod', mode);
+  };
 
   const filteredApods = initialApods.filter((apod) => {
     const query = searchQuery.toLowerCase();
@@ -77,17 +107,46 @@ export default function ApodListClient({ initialApods }: ApodListClientProps) {
     const explanationEn = (apod.explanation?.en || '').toLowerCase();
     const dateStr = apod.id.toLowerCase();
 
-    return (
+    const matchesSearch = !query || (
       titleId.includes(query) ||
       titleEn.includes(query) ||
       explanationId.includes(query) ||
       explanationEn.includes(query) ||
       dateStr.includes(query)
     );
+
+    const isDateFiltered = Boolean(dateFilter.startDate || dateFilter.endDate || dateFilter.selectedMonth || dateFilter.selectedYear);
+    const matchesDate = !isDateFiltered || matchesDateFilter(apod, dateFilter);
+
+    return matchesSearch && matchesDate;
+  });
+
+  const flipboardItems: MobileReaderItem[] = filteredApods.map((apod) => {
+    const isVideo = isVideoUrl(apod.image_url);
+    const title = (language !== 'id' && (apod.title as any)[language]) || apod.title?.id || apod.title?.en || 'Foto Antariksa';
+    const explanation = (language !== 'id' && (apod.explanation as any)[language]) || apod.explanation?.id || apod.explanation?.en || '';
+    return {
+      id: apod.id,
+      title: title,
+      excerpt: explanation,
+      image: getThumbnailUrl(apod.image_url),
+      category: isVideo ? '📼 Video APOD' : '🌌 Foto NASA',
+      date: formatLocalizedDate(apod.id, language),
+      link: `/apod/${apod.id}`,
+    };
   });
 
   return (
     <main className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white py-16 transition-colors duration-300">
+      {/* Mobile Fullscreen Flipboard Reader Mode */}
+      {readerMode === 'flipboard' && (
+        <MobileFlipboardReader
+          items={flipboardItems}
+          title={t.apodGalleryTitle || "Galeri Foto Antariksa"}
+          onSwitchToGrid={() => toggleReaderMode('grid')}
+        />
+      )}
+
       <div className="container mx-auto px-4 max-w-6xl">
         {/* Page Header */}
         <div className="text-center mb-12">
@@ -100,7 +159,38 @@ export default function ApodListClient({ initialApods }: ApodListClientProps) {
           <p className="text-slate-600 dark:text-gray-400 text-sm md:text-base max-w-2xl mx-auto leading-relaxed">
             {t.apodGalleryDesc}
           </p>
+
+          {/* DUAL MODE READER SWITCHER TOGGLE (Mobile Only) */}
+          <div className="flex justify-center items-center gap-2 mt-6">
+            <div className="bg-slate-900/90 border border-cyan-900/40 p-1 rounded-2xl flex items-center shadow-lg">
+              <button
+                onClick={() => toggleReaderMode('grid')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  readerMode === 'grid'
+                    ? 'bg-amber-500 text-slate-950 shadow-md'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <span>📰</span>
+                <span>Mode Grid</span>
+              </button>
+              <button
+                onClick={() => toggleReaderMode('flipboard')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  readerMode === 'flipboard'
+                    ? 'bg-amber-500 text-slate-950 shadow-md'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <span>📱</span>
+                <span>Mode Swipe Feed</span>
+              </button>
+            </div>
+          </div>
         </div>
+
+        {/* Date Filter Bar */}
+        <DateFilterBar value={dateFilter} onChange={setDateFilter} />
 
         {/* Search Bar */}
         <div className="max-w-md mx-auto mb-12">
@@ -127,7 +217,8 @@ export default function ApodListClient({ initialApods }: ApodListClientProps) {
         {filteredApods.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredApods.map((apod) => {
-              const isVideo = isVideoUrl(apod.image_url);
+              const isDirectVideo = isDirectVideoUrl(apod.image_url);
+              const isVideo = isVideoUrl(apod.image_url, (apod as any).media_type);
               // Handle translated title
               const title = (language !== 'id' && (apod.title as any)[language]) || apod.title?.id || apod.title?.en || 'Foto Antariksa';
               const explanation = (language !== 'id' && (apod.explanation as any)[language]) || apod.explanation?.id || apod.explanation?.en || '';
@@ -140,12 +231,23 @@ export default function ApodListClient({ initialApods }: ApodListClientProps) {
                 >
                   {/* Thumbnail Wrapper */}
                   <div className="h-52 w-full relative overflow-hidden bg-slate-950 shrink-0">
-                    <SafeImage
-                      src={getThumbnailUrl(apod.image_url)}
-                      alt={title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      fallback="https://placehold.co/600x400/020617/22d3ee?text=APOD+Space"
-                    />
+                    {isDirectVideo ? (
+                      <video
+                        src={apod.image_url}
+                        muted
+                        playsInline
+                        autoPlay
+                        loop
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <SafeImage
+                        src={getThumbnailUrl(apod.image_url)}
+                        alt={title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        fallback="https://placehold.co/600x400/020617/22d3ee?text=APOD+Space"
+                      />
+                    )}
 
                     {/* Media Type Badges */}
                     <div className="absolute top-4 left-4 z-10 flex gap-2">

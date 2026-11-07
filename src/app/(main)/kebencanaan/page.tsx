@@ -1,5 +1,7 @@
 import { Metadata } from 'next';
 import dynamicImport from 'next/dynamic';
+import JsonLd from '@/components/JsonLd';
+import { generateBreadcrumbSchema, generateDatasetSchema } from '@/lib/seoSchemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,5 +46,23 @@ interface PageProps {
 
 export default function KebencanaanPage({ searchParams }: PageProps) {
   const tab = searchParams?.tab || 'volcano';
-  return <DisasterDashboard initialTab={tab} />;
+
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Beranda', url: '/' },
+    { name: 'Dasbor Kebencanaan', url: '/kebencanaan' },
+  ]);
+
+  const datasetSchema = generateDatasetSchema({
+    name: 'Sistem Pemantauan Kebencanaan Nasional Meteorit Indonesia',
+    description: 'Integrasi data sensor BMKG, MAGMA ESDM, NASA FIRMS, dan NASA GPM untuk mitigasi bencana nasional.',
+    url: '/kebencanaan',
+    keywords: ['gempa bumi', 'gunung api', 'titik api', 'cuaca ekstrem', 'mitigasi bencana'],
+  });
+
+  return (
+    <>
+      <JsonLd schema={[breadcrumbSchema, datasetSchema]} />
+      <DisasterDashboard initialTab={tab} />
+    </>
+  );
 }

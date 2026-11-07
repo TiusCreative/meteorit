@@ -6,6 +6,7 @@ import { landingText } from '@/lib/landingText';
 import { useSiteLanguage } from '@/lib/useSiteLanguage';
 import { localizeArticle } from '@/lib/clientArticleLocalization';
 import { useLocalizedArticles } from '@/lib/useLocalizedArticles';
+import SafeImage from '@/components/SafeImage';
 
 interface Article {
   id: string;
@@ -145,11 +146,11 @@ export default function FireballEonetSection({ fireballPosts: initialFireballPos
                         className="group flex gap-3 p-2 rounded-xl bg-slate-950/40 hover:bg-slate-950/80 border border-slate-900 hover:border-orange-500/20 transition-all"
                       >
                         <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-slate-900 relative">
-                          <img
-                            src={localizedPost.image || 'https://placehold.co/100x100'}
+                          <SafeImage
+                            src={localizedPost.image}
                             alt={localizedPost.title}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            loading="lazy"
+                            fallback="https://placehold.co/100x100/020617/f97316?text=Fireball"
                           />
                         </div>
                         <div className="min-w-0 flex flex-col justify-center">
@@ -198,11 +199,11 @@ export default function FireballEonetSection({ fireballPosts: initialFireballPos
                         className="group flex gap-3 p-2 rounded-xl bg-slate-950/40 hover:bg-slate-950/80 border border-slate-900 hover:border-emerald-500/20 transition-all"
                       >
                         <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-slate-900 relative">
-                          <img
-                            src={localizedPost.image || 'https://placehold.co/100x100'}
+                          <SafeImage
+                            src={localizedPost.image}
                             alt={localizedPost.title}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            loading="lazy"
+                            fallback="https://placehold.co/100x100/020617/34d399?text=EONET"
                           />
                         </div>
                         <div className="min-w-0 flex flex-col justify-center">

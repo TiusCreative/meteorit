@@ -68,6 +68,8 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
   };
 }
 
+import { generateWithAI, parseAIJson } from '@/lib/aiProvider';
+
 // AI article generator helper with multi-provider fallbacks
 async function generateGlossaryArticle(term: GlossaryTerm, language: string): Promise<string> {
   const lang = language as SiteLanguage;
@@ -84,64 +86,16 @@ async function generateGlossaryArticle(term: GlossaryTerm, language: string): Pr
 
   Return ONLY the raw HTML string, without wrapping it in markdown code blocks or any explanation.`;
 
-  const messages = [
-    { role: 'system', content: 'You are an expert scientific writer and educator. You write highly engaging, premium quality articles in clean HTML.' },
-    { role: 'user', content: prompt }
-  ];
+  const result = await generateWithAI({
+    messages: [
+      { role: 'system', content: 'You are an expert scientific writer and educator. You write highly engaging, premium quality articles in clean HTML.' },
+      { role: 'user', content: prompt }
+    ],
+    temperature: 0.65,
+    timeoutMs: 10000,
+  });
 
-  const providers = [
-    {
-      name: 'Groq Utama',
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: process.env.GROQ_API_KEY,
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct' // llama-3.3-70b-versatile deprecated Aug 16 2026
-    },
-    {
-      name: 'Groq Backup',
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: process.env.GROQ_BACKUP_API_KEY,
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct'
-    },
-    {
-      name: 'OpenRouter Utama',
-      url: 'https://openrouter.ai/api/v1/chat/completions',
-      key: process.env.OPENROUTER_API_KEY,
-      model: 'meta-llama/llama-3.3-70b-instruct:free'
-    }
-  ];
-
-  for (const provider of providers) {
-    if (!provider.key) continue;
-
-    try {
-      const response = await fetch(provider.url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${provider.key}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: provider.model,
-          messages,
-          temperature: 0.65
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Status ${response.status}`);
-      }
-
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
-      if (content) {
-        return content.replace(/```html|```/gi, '').trim();
-      }
-    } catch (err) {
-      console.warn(`[Glossary AI Generation] ${provider.name} failed:`, err);
-    }
-  }
-
-  throw new Error('All AI providers failed to generate glossary article.');
+  return String(result.content).replace(/```html|```/gi, '').trim();
 }
 
 async function translateGlossaryDetails(
@@ -156,77 +110,23 @@ async function translateGlossaryDetails(
 
   Provide the translation in raw JSON format with precisely the keys "term", "definition", and "example". Do not include any explanation or markdown formatting, just return raw JSON.`;
 
-  const messages = [
-    { role: 'system', content: 'You are a professional scientific translator. Return ONLY a valid JSON object.' },
-    { role: 'user', content: prompt }
-  ];
+  const result = await generateWithAI({
+    messages: [
+      { role: 'system', content: 'You are a professional scientific translator. Return ONLY a valid JSON object.' },
+      { role: 'user', content: prompt }
+    ],
+    temperature: 0.2,
+    responseFormatJson: true,
+    timeoutMs: 6000,
+  });
 
-  const providers = [
-    {
-      name: 'Groq Utama',
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: process.env.GROQ_API_KEY,
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct' // llama-3.3-70b-versatile deprecated Aug 16 2026
-    },
-    {
-      name: 'Groq Backup',
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: process.env.GROQ_BACKUP_API_KEY,
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct'
-    },
-    {
-      name: 'OpenRouter Utama',
-      url: 'https://openrouter.ai/api/v1/chat/completions',
-      key: process.env.OPENROUTER_API_KEY,
-      model: 'meta-llama/llama-3.3-70b-instruct:free'
-    }
-  ];
-
-  for (const provider of providers) {
-    if (!provider.key) continue;
-
-    try {
-      const response = await fetch(provider.url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${provider.key}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: provider.model,
-          messages,
-          temperature: 0.2
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Status ${response.status}`);
-      }
-
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
-      if (content) {
-        const match = content.match(/\{[\s\S]*\}/);
-        if (match) {
-          try {
-            const parsed = JSON.parse(match[0].trim());
-            if (parsed.term && parsed.definition && parsed.example) {
-              return {
-                term: parsed.term.trim(),
-                definition: parsed.definition.trim(),
-                example: parsed.example.trim()
-              };
-            }
-          } catch (jsonErr) {
-            console.warn(`[Glossary Translation] JSON parse error from ${provider.name}:`, jsonErr, "Content was:", content);
-          }
-        } else {
-          console.warn(`[Glossary Translation] No JSON block found in content from ${provider.name}:`, content);
-        }
-      }
-    } catch (err) {
-      console.warn(`[Glossary Translation] ${provider.name} failed:`, err);
-    }
+  const parsed = parseAIJson(String(result.content));
+  if (parsed.term && parsed.definition && parsed.example) {
+    return {
+      term: String(parsed.term).trim(),
+      definition: String(parsed.definition).trim(),
+      example: String(parsed.example).trim()
+    };
   }
 
   throw new Error('All AI providers failed to translate glossary term.');

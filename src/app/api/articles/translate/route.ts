@@ -15,6 +15,8 @@ const LANG_LABELS: Record<string, string> = {
 
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
 
+import { generateWithAI, parseAIJson } from '@/lib/aiProvider';
+
 // Translate title + excerpt + content
 async function translateFields(
   title: string,
@@ -22,73 +24,36 @@ async function translateFields(
   content: string,
   langLabel: string
 ): Promise<{ title: string; excerpt: string; content: string } | null> {
-  const providers = [
-    {
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: process.env.GROQ_API_KEY,
-      model: 'llama-3.1-8b-instant',
-    },
-    {
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: process.env.GROQ_BACKUP_API_KEY,
-      model: 'llama-3.1-8b-instant',
-    },
-    {
-      url: 'https://openrouter.ai/api/v1/chat/completions',
-      key: process.env.OPENROUTER_API_KEY,
-      model: 'meta-llama/llama-3.2-3b-instruct:free',
-    },
-  ];
-
-  for (const provider of providers) {
-    if (!provider.key) continue;
-    try {
-      const res = await fetch(provider.url, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${provider.key}`,
-          'Content-Type': 'application/json',
-          ...(provider.url.includes('openrouter.ai')
-            ? { 'HTTP-Referer': getSiteUrl(), 'X-Title': 'Meteorit Indonesia' }
-            : {}),
+  try {
+    const result = await generateWithAI({
+      messages: [
+        {
+          role: 'system',
+          content: `You are a careful scientific translator. Keep HTML, headings, or Markdown structures intact and return only a valid JSON object.`,
         },
-        body: JSON.stringify({
-          model: provider.model,
-          temperature: 0.25,
-          response_format: { type: 'json_object' },
-          messages: [
-            {
-              role: 'system',
-              content: `You are a careful scientific translator. Keep HTML, headings, or Markdown structures intact and return only a valid JSON object.`,
-            },
-            {
-              role: 'user',
-              content: `Translate this Indonesian science article into ${langLabel}. Return JSON with "title", "excerpt", and "content" keys.
-              
-              Source:
-              ${JSON.stringify({ title, excerpt, content })}`,
-            },
-          ],
-        }),
-        signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(25000) : undefined,
-      });
+        {
+          role: 'user',
+          content: `Translate this Indonesian science article into ${langLabel}. Return JSON with "title", "excerpt", and "content" keys.
+          
+          Source:
+          ${JSON.stringify({ title, excerpt, content })}`,
+        },
+      ],
+      temperature: 0.25,
+      responseFormatJson: true,
+      timeoutMs: 25000,
+    });
 
-      if (!res.ok) continue;
-      const data = await res.json();
-      const raw = data.choices?.[0]?.message?.content;
-      if (!raw) continue;
-
-      const parsed = JSON.parse(String(raw).replace(/```json|```/g, '').trim());
-      if (parsed.title && parsed.excerpt && parsed.content) {
-        return {
-          title: String(parsed.title),
-          excerpt: String(parsed.excerpt),
-          content: String(parsed.content),
-        };
-      }
-    } catch {
-      // try next provider
+    const parsed = parseAIJson(String(result.content));
+    if (parsed.title && parsed.excerpt && parsed.content) {
+      return {
+        title: String(parsed.title),
+        excerpt: String(parsed.excerpt),
+        content: String(parsed.content),
+      };
     }
+  } catch (err) {
+    console.warn(`[Article Translate] AI translation failed for ${langLabel}:`, err);
   }
 
   // Ultimate Fallback: Google Translate Free Client

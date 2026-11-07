@@ -28,7 +28,7 @@ type ProviderConfig = {
 };
 
 export async function generateWithAI(options: AIGenerateOptions): Promise<AIGenerateResult> {
-  const { messages, temperature = 0.7, responseFormatJson = false, maxTokens, timeoutMs = 25000 } = options;
+  const { messages, temperature = 0.7, responseFormatJson = false, maxTokens, timeoutMs = 8000 } = options;
 
   const groqKeyPrimary = process.env.GROQ_API_KEY;
   const openRouterKeyPrimary = process.env.OPENROUTER_API_KEY;
@@ -40,23 +40,28 @@ export async function generateWithAI(options: AIGenerateOptions): Promise<AIGene
 
   const cfAccountId = process.env.R2_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID || '';
 
-  // Order requested by user:
-  // 1. Groq Utama
+  // Order of providers:
+  // 1. Cloudflare Workers AI (AI Token) - Lightning fast, reliable
   // 2. OpenRouter Utama
-  // 3. Cloudflare AI Token
-  // 4. Cloudflare API Token
+  // 3. Groq Utama (Llama 3.3 70B / Llama 3.1 8B)
+  // 4. Cloudflare Workers AI (API Token)
   // 5. Groq Backup
   // 6. OpenRouter Backup
-  // 7. Mistral (Opsi Terakhir)
+  // 7. Mistral (Latest models)
   const providers: ProviderConfig[] = [
+    {
+      name: 'Cloudflare Workers AI (AI Token)',
+      type: 'cloudflare',
+      key: cfAiToken,
+      model: '@cf/meta/llama-3.1-8b-instruct',
+    },
     {
       name: 'Groq Utama',
       type: 'openai-compatible',
       url: 'https://api.groq.com/openai/v1/chat/completions',
       key: groqKeyPrimary,
-      // llama-3.3-70b-versatile & llama-3.1-8b-instant deprecated Aug 16 2026
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-      fallbackModels: ['llama3-8b-8192'],
+      model: 'llama-3.3-70b-versatile',
+      fallbackModels: ['llama-3.1-8b-instant', 'gemma2-9b-it', 'mixtral-8x7b-32768'],
     },
     {
       name: 'OpenRouter Utama',
@@ -65,12 +70,6 @@ export async function generateWithAI(options: AIGenerateOptions): Promise<AIGene
       key: openRouterKeyPrimary,
       model: 'meta-llama/llama-3.3-70b-instruct',
       fallbackModels: ['meta-llama/llama-3.2-3b-instruct:free', 'google/gemini-2.0-flash-lite-001'],
-    },
-    {
-      name: 'Cloudflare Workers AI (AI Token)',
-      type: 'cloudflare',
-      key: cfAiToken,
-      model: '@cf/meta/llama-3.1-8b-instruct',
     },
     {
       name: 'Cloudflare Workers AI (API Token)',
@@ -83,8 +82,8 @@ export async function generateWithAI(options: AIGenerateOptions): Promise<AIGene
       type: 'openai-compatible',
       url: 'https://api.groq.com/openai/v1/chat/completions',
       key: groqKeyBackup,
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-      fallbackModels: ['llama3-8b-8192'],
+      model: 'llama-3.3-70b-versatile',
+      fallbackModels: ['llama-3.1-8b-instant', 'gemma2-9b-it', 'mixtral-8x7b-32768'],
     },
     {
       name: 'OpenRouter Backup',
@@ -95,12 +94,12 @@ export async function generateWithAI(options: AIGenerateOptions): Promise<AIGene
       fallbackModels: ['meta-llama/llama-3.2-3b-instruct:free'],
     },
     {
-      name: 'Mistral (Opsi Terakhir)',
+      name: 'Mistral',
       type: 'mistral',
       url: 'https://api.mistral.ai/v1/chat/completions',
       key: mistralKey,
-      model: 'open-mistral-7b',
-      fallbackModels: ['mistral-tiny', 'mistral-small-latest'],
+      model: 'mistral-small-latest',
+      fallbackModels: ['ministral-8b-latest', 'ministral-3b-latest'],
     },
   ];
 
@@ -228,35 +227,137 @@ export async function generateWithAI(options: AIGenerateOptions): Promise<AIGene
 }
 
 /**
- * Parse JSON dari respons AI secara aman.
- * Membersihkan karakter kontrol yang tidak valid di dalam JSON string literals
- * sebelum di-parse, sehingga menghindari error "Bad control character in string literal".
+ * Sanitasi string JSON dari LLM secara karakter-demi-karakter.
+ * Menangani:
+ * - Markdown code block fences (```json ... ```)
+ * - Teks percakapan di luar struktur JSON
+ * - Karakter kontrol (newline 0x0A, carriage return 0x0D, tab 0x09, 0x00-0x1F) di dalam string literal
+ * - Tanda petik ganda tidak ter-escape di dalam nilai string
+ * - Koma ekstra (trailing comma) sebelum kurung tutup
+ * - Respons terpotong akibat max_tokens limit (auto-close string & bracket)
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function parseAIJson(raw: string): Record<string, any> {
-  // Hapus markdown code fences yang mungkin membungkus JSON
-  const cleaned = raw
+export function sanitizeJsonString(raw: string): string {
+  let str = raw
     .replace(/```json\s*/gi, '')
     .replace(/```\s*/g, '')
     .trim();
 
+  const firstBrace = str.indexOf('{');
+  const firstBracket = str.indexOf('[');
+
+  let start = -1;
+  if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+    start = firstBrace;
+  } else if (firstBracket !== -1) {
+    start = firstBracket;
+  }
+
+  if (start !== -1) {
+    str = str.substring(start);
+  }
+
+  let result = '';
+  let inString = false;
+  let isEscaped = false;
+  const stack: string[] = [];
+
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    const code = str.charCodeAt(i);
+
+    if (!inString) {
+      if (char === '{') {
+        stack.push('}');
+        result += char;
+      } else if (char === '[') {
+        stack.push(']');
+        result += char;
+      } else if (char === '}' || char === ']') {
+        if (stack.length > 0 && stack[stack.length - 1] === char) {
+          stack.pop();
+        }
+        result += char;
+      } else if (char === '"') {
+        inString = true;
+        isEscaped = false;
+        result += char;
+      } else {
+        result += char;
+      }
+    } else {
+      if (isEscaped) {
+        if ('"\\/bfnrtu'.includes(char)) {
+          result += char;
+        } else {
+          result += '\\' + char;
+        }
+        isEscaped = false;
+      } else if (char === '\\') {
+        isEscaped = true;
+        result += char;
+      } else if (char === '"') {
+        let nextNonSpace = '';
+        for (let j = i + 1; j < str.length; j++) {
+          if (!' \t\n\r'.includes(str[j])) {
+            nextNonSpace = str[j];
+            break;
+          }
+        }
+        if (':,}]'.includes(nextNonSpace) || nextNonSpace === '') {
+          inString = false;
+          result += char;
+        } else {
+          result += '\\"';
+        }
+      } else if (code < 32) {
+        if (char === '\n') result += '\\n';
+        else if (char === '\r') result += '\\r';
+        else if (char === '\t') result += '\\t';
+        else if (char === '\b') result += '\\b';
+        else if (char === '\f') result += '\\f';
+        else {
+          const hex = code.toString(16).padStart(4, '0');
+          result += '\\u' + hex;
+        }
+      } else {
+        result += char;
+      }
+    }
+  }
+
+  if (inString) {
+    result += '"';
+  }
+
+  result = result.replace(/,\s*([}\]])/g, '$1');
+  result = result.replace(/,\s*$/, '');
+
+  while (stack.length > 0) {
+    result += stack.pop();
+  }
+
+  return result;
+}
+
+/**
+ * Parse JSON dari respons AI secara aman.
+ * Membersihkan karakter kontrol yang tidak valid dan format yang rusak di dalam JSON string literals
+ * sebelum di-parse, sehingga menghindari error "Bad control character in string literal".
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function parseAIJson<T = Record<string, any>>(raw: string): T {
+  if (!raw || typeof raw !== 'string') {
+    throw new Error('Input string ke parseAIJson kosong.');
+  }
+
   // Coba parse langsung terlebih dahulu
   try {
+    const cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
     return JSON.parse(cleaned);
   } catch {
-    // Escape karakter kontrol yang ada di dalam JSON string literals
-    // Regex: cocokkan quoted string dan escape literal control chars di dalamnya
-    const sanitized = cleaned.replace(
-      /"((?:[^"\\]|\\.)*)"/g,
-      (_match, group: string) => {
-        const escaped = group
-          .replace(/\n/g, '\\n')
-          .replace(/\r/g, '\\r')
-          .replace(/\t/g, '\\t')
-          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-        return `"${escaped}"`;
-      }
-    );
+    // Jalankan pembersihan penuh dengan scanner karakter
+    const sanitized = sanitizeJsonString(raw);
     return JSON.parse(sanitized);
   }
 }
+

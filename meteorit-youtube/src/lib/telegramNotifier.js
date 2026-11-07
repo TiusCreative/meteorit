@@ -7,7 +7,7 @@
 // ============================================================
 
 const BOT_TOKEN = () => process.env.TELEGRAM_BOT_TOKEN;
-const CHAT_ID   = () => process.env.TELEGRAM_CHAT_ID;
+const CHAT_ID = () => process.env.TELEGRAM_CHAT_ID;
 
 /**
  * Kirim pesan HTML ke Telegram

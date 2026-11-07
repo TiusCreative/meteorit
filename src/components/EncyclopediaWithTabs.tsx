@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import EncyclopediaListClient from '@/components/EncyclopediaListClient';
 import NeoWsSection from '@/components/NeoWsSection';
 
@@ -25,6 +25,15 @@ interface EncyclopediaWithTabsProps {
 
 export default function EncyclopediaWithTabs({ initialMeteorites }: EncyclopediaWithTabsProps) {
   const [activeTab, setActiveTab] = useState<'meteorit' | 'komet'>('meteorit');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('tab') === 'komet') {
+        setActiveTab('komet');
+      }
+    }
+  }, []);
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">

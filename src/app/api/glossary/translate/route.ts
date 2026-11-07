@@ -9,6 +9,8 @@ import { getSiteUrl } from '@/lib/siteUrl';
 
 export const dynamic = 'force-dynamic';
 
+import { generateWithAI, parseAIJson } from '@/lib/aiProvider';
+
 async function generateGlossaryArticle(term: GlossaryTerm, language: string): Promise<string> {
   const prompt = `Write a comprehensive, educational, and SEO-friendly science article of 350-500 words in language "${language}" explaining the scientific term "${term.term[language as SiteLanguage] || term.term.id}".
   Category: ${term.category}
@@ -23,58 +25,20 @@ async function generateGlossaryArticle(term: GlossaryTerm, language: string): Pr
 
   Return ONLY the raw HTML string, without wrapping it in markdown code blocks or any explanation.`;
 
-  const providers = [
-    {
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: process.env.GROQ_API_KEY,
-      model: 'llama-3.3-70b-versatile',
-    },
-    {
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: process.env.GROQ_BACKUP_API_KEY,
-      model: 'llama-3.1-8b-instant',
-    },
-    {
-      url: 'https://openrouter.ai/api/v1/chat/completions',
-      key: process.env.OPENROUTER_API_KEY,
-      model: 'meta-llama/llama-3.2-3b-instruct:free',
-    },
-  ];
-
-  for (const provider of providers) {
-    if (!provider.key) continue;
-    try {
-      const response = await fetch(provider.url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${provider.key}`,
-          'Content-Type': 'application/json',
-          ...(provider.url.includes('openrouter.ai')
-            ? { 'HTTP-Referer': getSiteUrl(), 'X-Title': 'Meteorit Indonesia Glossary Article Gen' }
-            : {}),
-        },
-        body: JSON.stringify({
-          model: provider.model,
-          messages: [
-            { role: 'system', content: 'You are an expert scientific writer and educator. You write highly engaging, premium quality articles in clean HTML.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.65
-        }),
-        signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(18000) : undefined,
-      });
-
-      if (!response.ok) continue;
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
-      if (content) {
-        return content.replace(/```html|```/gi, '').trim();
-      }
-    } catch {
-      // try next
-    }
+  try {
+    const result = await generateWithAI({
+      messages: [
+        { role: 'system', content: 'You are an expert scientific writer and educator. You write highly engaging, premium quality articles in clean HTML.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.65,
+      timeoutMs: 20000,
+    });
+    return result.content.replace(/```html|```/gi, '').trim();
+  } catch (err) {
+    console.warn('[Glossary Translate] generateGlossaryArticle failed:', err);
+    return '';
   }
-  return '';
 }
 
 async function translateGlossaryDetails(
@@ -89,67 +53,27 @@ async function translateGlossaryDetails(
 
   Provide the translation in raw JSON format with precisely the keys "term", "definition", and "example". Do not include any explanation or markdown formatting, just return raw JSON.`;
 
-  const providers = [
-    {
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: process.env.GROQ_API_KEY,
-      model: 'llama-3.1-8b-instant',
-    },
-    {
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: process.env.GROQ_BACKUP_API_KEY,
-      model: 'llama-3.1-8b-instant',
-    },
-    {
-      url: 'https://openrouter.ai/api/v1/chat/completions',
-      key: process.env.OPENROUTER_API_KEY,
-      model: 'meta-llama/llama-3.2-3b-instruct:free',
-    },
-  ];
+  try {
+    const result = await generateWithAI({
+      messages: [
+        { role: 'system', content: 'You are a professional scientific translator. Return ONLY a valid JSON object.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.2,
+      responseFormatJson: true,
+      timeoutMs: 15000,
+    });
 
-  for (const provider of providers) {
-    if (!provider.key) continue;
-    try {
-      const response = await fetch(provider.url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${provider.key}`,
-          'Content-Type': 'application/json',
-          ...(provider.url.includes('openrouter.ai')
-            ? { 'HTTP-Referer': getSiteUrl(), 'X-Title': 'Meteorit Indonesia Glossary Translate' }
-            : {}),
-        },
-        body: JSON.stringify({
-          model: provider.model,
-          messages: [
-            { role: 'system', content: 'You are a professional scientific translator. Return ONLY a valid JSON object.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.2,
-          response_format: { type: 'json_object' }
-        }),
-        signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(12000) : undefined,
-      });
-
-      if (!response.ok) continue;
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
-      if (content) {
-        const match = content.match(/\{[\s\S]*\}/);
-        if (match) {
-          const parsed = JSON.parse(match[0].trim());
-          if (parsed.term && parsed.definition && parsed.example) {
-            return {
-              term: parsed.term.trim(),
-              definition: parsed.definition.trim(),
-              example: parsed.example.trim()
-            };
-          }
-        }
-      }
-    } catch {
-      // try next
+    const parsed = parseAIJson(String(result.content));
+    if (parsed.term && parsed.definition && parsed.example) {
+      return {
+        term: String(parsed.term).trim(),
+        definition: String(parsed.definition).trim(),
+        example: String(parsed.example).trim()
+      };
     }
+  } catch (err) {
+    console.warn('[Glossary Translate] translateGlossaryDetails AI failed:', err);
   }
 
   // Fallbacks if translation fails, utilizing translateText central engine

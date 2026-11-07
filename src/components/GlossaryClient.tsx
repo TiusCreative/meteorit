@@ -157,6 +157,7 @@ const glossaryUI: Record<SiteLanguage, {
 };
 
 import { useLocalizedGlossary } from '@/lib/useLocalizedGlossary';
+import MobileFlipboardReader, { MobileReaderItem } from '@/components/MobileFlipboardReader';
 
 export default function GlossaryClient({ initialTerms }: { initialTerms: GlossaryTerm[] }) {
   const language = useSiteLanguage();
@@ -166,6 +167,17 @@ export default function GlossaryClient({ initialTerms }: { initialTerms: Glossar
   const [category, setCategory] = useState<GlossaryCategory | 'Semua'>('Semua');
   const [page, setPage] = useState(1);
   const [isListening, setIsListening] = useState(false);
+  const [readerMode, setReaderMode] = useState<'grid' | 'flipboard'>('grid');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('meteorit_reader_mode_glossarium');
+    if (saved === 'flipboard') setReaderMode('flipboard');
+  }, []);
+
+  const toggleReaderMode = (mode: 'grid' | 'flipboard') => {
+    setReaderMode(mode);
+    localStorage.setItem('meteorit_reader_mode_glossarium', mode);
+  };
 
   const filteredTerms = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -189,6 +201,23 @@ export default function GlossaryClient({ initialTerms }: { initialTerms: Glossar
 
   const totalPages = Math.max(1, Math.ceil(filteredTerms.length / PAGE_SIZE));
   const paginatedTerms = filteredTerms.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const flipboardItems: MobileReaderItem[] = filteredTerms.map((item) => {
+    const termTitle = item.term[language] || item.term.en || item.term.id;
+    const def = item.definition[language] || item.definition.en || item.definition.id;
+    const ex = item.example[language] || item.example.en || item.example.id;
+    const excerpt = `${def}${ex ? ` • Contoh: ${ex}` : ''}`;
+
+    return {
+      id: item.id,
+      title: termTitle,
+      excerpt: excerpt,
+      image: item.image,
+      category: item.category,
+      date: 'Glossarium',
+      link: `/glossarium/${item.id}`,
+    };
+  });
 
   useEffect(() => {
     setPage(1);
@@ -283,7 +312,43 @@ export default function GlossaryClient({ initialTerms }: { initialTerms: Glossar
 
   return (
     <main className="min-h-screen bg-slate-950 text-white py-12 print:bg-white print:text-black">
+      {/* Mobile Fullscreen Flipboard Reader Mode */}
+      {readerMode === 'flipboard' && (
+        <MobileFlipboardReader
+          items={flipboardItems}
+          title={ui.title || "Glossarium Sains"}
+          onSwitchToGrid={() => toggleReaderMode('grid')}
+        />
+      )}
+
       <div className="container mx-auto px-4 max-w-6xl">
+        {/* DUAL MODE READER SWITCHER TOGGLE (Mobile Only) */}
+        <div className="flex justify-center items-center gap-2 mb-6 print:hidden">
+          <div className="bg-slate-900/90 border border-cyan-900/40 p-1 rounded-2xl flex items-center shadow-lg">
+            <button
+              onClick={() => toggleReaderMode('grid')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                readerMode === 'grid'
+                  ? 'bg-amber-500 text-slate-950 shadow-md'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <span>📰</span>
+              <span>Mode Grid</span>
+            </button>
+            <button
+              onClick={() => toggleReaderMode('flipboard')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                readerMode === 'flipboard'
+                  ? 'bg-amber-500 text-slate-950 shadow-md'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <span>📱</span>
+              <span>Mode Swipe Feed</span>
+            </button>
+          </div>
+        </div>
         <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between print:hidden">
           <div className="text-left">
             <p className="text-xs font-black uppercase tracking-[0.25em] text-amber-300">{ui.badge}</p>

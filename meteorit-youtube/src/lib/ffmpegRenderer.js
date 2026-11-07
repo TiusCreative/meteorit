@@ -21,22 +21,22 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ASSETS_DIR = path.join(path.dirname(path.dirname(__dirname)), 'src', 'assets');
 
 // Konfigurasi video
-const VIDEO_WIDTH  = 1080;
+const VIDEO_WIDTH = 1080;
 const VIDEO_HEIGHT = 1920;
-const VIDEO_FPS    = 30;
+const VIDEO_FPS = 30;
 const VIDEO_DURATION = parseInt(process.env.VIDEO_DURATION_SEC || '55'); // detik
 
 // Durasi setiap kalimat narasi (detik)
 const LINE_DURATION = Math.floor((VIDEO_DURATION - 5) / 8); // ~6 detik per kalimat
 
 // Warna tema (dark space)
-const COLOR_BG        = '0x0a0a1a';  // dark navy
-const COLOR_HEADER    = '0x1a1a2e';  // dark blue
-const COLOR_CARD_BG   = '0x000000@0.7'; // transparan gelap
+const COLOR_BG = '0x0a0a1a';  // dark navy
+const COLOR_HEADER = '0x1a1a2e';  // dark blue
+const COLOR_CARD_BG = '0x000000@0.7'; // transparan gelap
 const COLOR_TEXT_MAIN = 'white';
 const COLOR_TEXT_GRAY = 'cccccc';
-const COLOR_ACCENT    = '00ff88';    // hijau neon
-const COLOR_PROGRESS  = '4fc3f7';   // biru muda
+const COLOR_ACCENT = '00ff88';    // hijau neon
+const COLOR_PROGRESS = '4fc3f7';   // biru muda
 
 /**
  * Cek apakah FFmpeg tersedia
@@ -179,7 +179,7 @@ export async function renderShorts({ imagePath, narrationLines, title, categoryE
   // Siapkan teks per kalimat dengan timing
   const drawTextFilters = narrationLines.map((line, i) => {
     const startSec = 3 + (i * LINE_DURATION);
-    const endSec   = startSec + LINE_DURATION;
+    const endSec = startSec + LINE_DURATION;
     const [line1, line2] = wrapText(line, 42);
 
     const l1 = escapeText(line1);
@@ -249,16 +249,16 @@ export async function renderShorts({ imagePath, narrationLines, title, categoryE
 
   // Video filter: scale & crop to 9:16 vertical -> pad to 16:9 landscape -> zoompan -> crop to 9:16 -> scale to target resolution.
   // This prevents stretching since zoompan only supports 16:9 aspect ratio correctly.
-  const inputScale    = `scale=608:1080:force_original_aspect_ratio=increase,crop=608:1080`;
-  const inputPad      = `pad=1920:1080:(ow-iw)/2:0:black`;
-  const setsar        = `setsar=1/1`;
-  const zoomFilter    = `zoompan=z='min(zoom+0.0007,1.08)':d=${VIDEO_DURATION * VIDEO_FPS}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1920x1080`;
-  const outputCrop    = `crop=608:1080:(iw-ow)/2:0`;
-  const outputScale   = `scale=${VIDEO_WIDTH}:${VIDEO_HEIGHT},setdar=9/16`;
+  const inputScale = `scale=608:1080:force_original_aspect_ratio=increase,crop=608:1080,format=yuv420p`; // <- Tambah format=yuv420p
+  const inputPad = `pad=1920:1080:(ow-iw)/2:0:black`;
+  const setsar = `setsar=1/1`;
+  const zoomFilter = `zoompan=z='min(zoom+0.0007,1.08)':d=${VIDEO_DURATION * VIDEO_FPS}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1920x1080`;
+  const outputCrop = `crop=608:1080:(iw-ow)/2:0`;
+  const outputScale = `scale=${VIDEO_WIDTH}:${VIDEO_HEIGHT},setdar=9/16`;
   const overlayFilter = `drawbox=x=0:y=0:w=iw:h=ih:color=black@0.12:t=fill`;
-  const headerBg      = `drawbox=x=0:y=0:w=iw:h=130:color=${COLOR_HEADER}@0.9:t=fill`;
-  const footerBg      = `drawbox=x=0:y=h-100:w=iw:h=100:color=${COLOR_HEADER}@0.85:t=fill`;
- 
+  const headerBg = `drawbox=x=0:y=0:w=iw:h=130:color=${COLOR_HEADER}@0.9:t=fill`;
+  const footerBg = `drawbox=x=0:y=h-100:w=iw:h=100:color=${COLOR_HEADER}@0.85:t=fill`;
+
   const vfChain = [
     inputScale,
     inputPad,
@@ -279,7 +279,7 @@ export async function renderShorts({ imagePath, narrationLines, title, categoryE
 
   // FFmpeg command
   const ffmpegCmd = [
-    'ffmpeg -y',
+    'ffmpeg -y -loglevel repeat+error', // <- Ubah ini agar FFmpeg tidak spamming teks error yang sama
     ...inputs,
     `-vf "${vfChain}"`,
     audioFilter,

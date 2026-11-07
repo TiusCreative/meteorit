@@ -3,6 +3,7 @@ import AdDisplay from '@/components/AdDisplay';
 import ArticleActions from '@/components/ArticleActions';
 import SafeImage from '@/components/SafeImage';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { fetchJsonFromR2 } from '@/lib/r2Client';
 import { cookies } from 'next/headers';
 import { isSiteLanguage, LANGUAGE_COOKIE_KEY, defaultLanguage } from '@/lib/i18n';
 import { pickLocalizedArticle, type ArticleTranslations } from '@/lib/articleLocalization';
@@ -47,27 +48,22 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
   };
 }
 
-const R2_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
-
 async function getPost(id: string): Promise<BlogPost | null> {
-  // 1. Coba fetch dari Cloudflare R2
+  // 1. Coba fetch dari Cloudflare R2 via authenticated S3 SDK
   try {
-    const res = await fetch(`${R2_URL}/data/blog/articles/${encodeURIComponent(id)}.json?t=${Date.now()}`, { cache: 'no-store' });
-    if (res.ok) {
-      const data: any = await res.json();
-      if (data && data.id) {
-        return {
-          id: data.id,
-          title: data.title || '',
-          category: data.category || 'Bola Api & Fireball',
-          date: data.date || new Date(data.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-          excerpt: data.excerpt || data.content?.substring(0, 150) + '...',
-          content: data.content || '',
-          image: data.image || '',
-          translations: data.translations || {},
-          fireball_data: data.fireball_data || null,
-        };
-      }
+    const data = await fetchJsonFromR2<any>(`data/blog/articles/${id}.json`);
+    if (data && data.id) {
+      return {
+        id: data.id,
+        title: data.title || '',
+        category: data.category || 'Bola Api & Fireball',
+        date: data.date || new Date(data.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+        excerpt: data.excerpt || data.content?.substring(0, 150) + '...',
+        content: data.content || '',
+        image: data.image || '',
+        translations: data.translations || {},
+        fireball_data: data.fireball_data || null,
+      };
     }
   } catch (err) {
     console.warn(`[Fireball Detail] Gagal fetch R2 artikel ${id}, mencoba Firestore...`, err);

@@ -1,11 +1,11 @@
 /**
  * Mengonversi gambar dari Buffer format apa saja (JPEG, PNG, dll)
- * menjadi format WebP dengan kualitas 75% (default).
+ * menjadi format WebP dengan kualitas 80% (default sesuai swap-mode.md).
  * Menggunakan dynamic import untuk sharp agar aman di environment serverless.
  */
 export async function convertToWebp(
   buffer: Buffer,
-  quality = 75
+  quality = 80
 ): Promise<{ buffer: Buffer; contentType: string; ext: string }> {
   try {
     const sharp = (await import('sharp')).default;

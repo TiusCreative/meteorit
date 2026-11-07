@@ -6,6 +6,7 @@ import SafeImage from '@/components/SafeImage';
 import { useSiteLanguage } from '@/lib/useSiteLanguage';
 import { landingText } from '@/lib/landingText';
 import type { AstronautProfile, AstronautStatus } from '@/lib/astronautData';
+import MobileFlipboardReader, { MobileReaderItem } from '@/components/MobileFlipboardReader';
 
 interface AstronautListClientProps {
   initialDataset: {
@@ -38,10 +39,10 @@ const roleDict: Record<string, Record<string, string>> = {
 };
 
 const countryDict: Record<string, Record<string, string>> = {
-  'Amerika Serikat': { en: 'United States', ms: 'Amerika Syarikat', zh: '美国', ja: 'アメリカ合衆国', id: 'Amerika Serikat' },
-  'Rusia': { en: 'Russia', ms: 'Rusia', zh: '俄罗斯', ja: 'ロシア', id: 'Rusia' },
+  'Amerika Serikat': { en: 'United States', ms: 'Amerika Syarikat', zh: '美国', ja: '美国', id: 'Amerika Serikat' },
+  'Rusia': { en: 'Russia', ms: 'Rusia', zh: '俄罗斯', ja: '俄罗斯', id: 'Rusia' },
   'Jepang': { en: 'Japan', ms: 'Jepun', zh: '日本', ja: '日本', id: 'Jepang' },
-  'Denmark': { en: 'Denmark', ms: 'Denmark', zh: '丹麦', ja: 'デンマーク', id: 'Denmark' },
+  'Denmark': { en: 'Denmark', ms: 'Denmark', zh: '丹麦', ja: '丹麦', id: 'Denmark' },
   'Tiongkok': { en: 'China', ms: 'China', zh: '中国', ja: '中国', id: 'Tiongkok' },
 };
 
@@ -115,6 +116,17 @@ export default function AstronautListClient({ initialDataset, translationsMap, d
   const t = landingText[language];
   const [activeTab, setActiveTab] = useState<AstronautStatus>(defaultTab);
   const [localTranslations, setLocalTranslations] = useState<typeof translationsMap>(translationsMap);
+  const [readerMode, setReaderMode] = useState<'grid' | 'flipboard'>('grid');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('meteorit_reader_mode_astronot');
+    if (saved === 'flipboard') setReaderMode('flipboard');
+  }, []);
+
+  const toggleReaderMode = (mode: 'grid' | 'flipboard') => {
+    setReaderMode(mode);
+    localStorage.setItem('meteorit_reader_mode_astronot', mode);
+  };
 
   // Sync initial translationsMap prop
   useEffect(() => {
@@ -220,10 +232,42 @@ export default function AstronautListClient({ initialDataset, translationsMap, d
     });
   }, [initialDataset.astronauts, activeTab, language, localTranslations]);
 
+  const flipboardItems: MobileReaderItem[] = localizedAstronauts.map((astro) => {
+    const days = calculateDays(astro.launchDate, astro.status === 'returned' ? astro.returnDate : undefined);
+    const statusLbl =
+      astro.status === 'active'
+        ? (t.astroStatusActive || 'Sedang Bertugas')
+        : astro.status === 'upcoming'
+          ? (t.astroStatusUpcoming || 'Misi Mendatang')
+          : (t.astroStatusReturned || 'Sudah Kembali');
+
+    const displayCountry = countryDict[astro.country]?.[language] || astro.country;
+    const excerpt = `${astro.biography || ''} • Misi: ${astro.mission || astro.craft} • Lembaga: ${astro.agency} (${displayCountry}) • Status: ${statusLbl} (${days} hari).`;
+
+    return {
+      id: astro.id,
+      title: astro.name,
+      excerpt: excerpt,
+      image: astro.imageUrl,
+      category: astro.status === 'active' ? '👨‍🚀 Kru Aktif' : astro.status === 'upcoming' ? '🚀 Misi Mendatang' : '🎖️ Alumni',
+      date: statusLbl,
+      link: `/astronot/${astro.id}`,
+    };
+  });
+
   const localeStr = language === 'en' ? 'en-US' : language === 'ja' ? 'ja-JP' : language === 'zh' ? 'zh-CN' : 'id-ID';
 
   return (
     <>
+      {/* Mobile Fullscreen Flipboard Reader Mode */}
+      {readerMode === 'flipboard' && (
+        <MobileFlipboardReader
+          items={flipboardItems}
+          title={t.astroPageTitle || "Profil Astronot"}
+          onSwitchToGrid={() => toggleReaderMode('grid')}
+        />
+      )}
+
       <style dangerouslySetInnerHTML={{ __html: `
         .astro-card {
           transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -246,6 +290,34 @@ export default function AstronautListClient({ initialDataset, translationsMap, d
             <div className="text-slate-650 dark:text-slate-400 text-sm md:text-base max-w-3xl mx-auto leading-relaxed space-y-4">
               <p>{t.astroPageDesc1 || 'Halaman ini merangkum profil astronot, kosmonot, dan taikonaut dalam tiga kelompok.'}</p>
               <p>{t.astroPageDesc2 || 'Kru aktif biasanya tinggal di ISS atau Tiangong selama berbulan-bulan untuk menjalankan eksperimen mikrogravitasi.'}</p>
+            </div>
+
+            {/* DUAL MODE READER SWITCHER TOGGLE (Mobile Only) */}
+            <div className="flex justify-center items-center gap-2 pt-2">
+              <div className="bg-slate-900/90 border border-cyan-900/40 p-1 rounded-2xl flex items-center shadow-lg">
+                <button
+                  onClick={() => toggleReaderMode('grid')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    readerMode === 'grid'
+                      ? 'bg-amber-500 text-slate-950 shadow-md'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <span>📰</span>
+                  <span>Mode Grid</span>
+                </button>
+                <button
+                  onClick={() => toggleReaderMode('flipboard')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    readerMode === 'flipboard'
+                      ? 'bg-amber-500 text-slate-950 shadow-md'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <span>📱</span>
+                  <span>Mode Swipe Feed</span>
+                </button>
+              </div>
             </div>
           </div>
 

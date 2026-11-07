@@ -25,12 +25,10 @@ async function callAI(prompt, systemPrompt = '') {
 
   const providers = [
     {
-      name: 'Groq Utama',
-      type: 'openai',
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: groqKeyPrimary,
-      // llama-3.3-70b-versatile & llama-3.1-8b-instant deprecated Aug 16 2026
-      models: ['meta-llama/llama-4-scout-17b-16e-instruct', 'llama3-8b-8192'],
+      name: 'Cloudflare Workers AI (AI Token)',
+      type: 'cloudflare',
+      key: cfAiToken,
+      models: ['@cf/meta/llama-3.1-8b-instruct'],
     },
     {
       name: 'OpenRouter Utama',
@@ -40,10 +38,11 @@ async function callAI(prompt, systemPrompt = '') {
       models: ['meta-llama/llama-3.3-70b-instruct', 'meta-llama/llama-3.2-3b-instruct:free', 'google/gemini-2.0-flash-lite-001'],
     },
     {
-      name: 'Cloudflare Workers AI (AI Token)',
-      type: 'cloudflare',
-      key: cfAiToken,
-      models: ['@cf/meta/llama-3.1-8b-instruct'],
+      name: 'Groq Utama',
+      type: 'openai',
+      url: 'https://api.groq.com/openai/v1/chat/completions',
+      key: groqKeyPrimary,
+      models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
     },
     {
       name: 'Cloudflare Workers AI (API Token)',
@@ -56,7 +55,7 @@ async function callAI(prompt, systemPrompt = '') {
       type: 'openai',
       url: 'https://api.groq.com/openai/v1/chat/completions',
       key: groqKeyBackup,
-      models: ['meta-llama/llama-4-scout-17b-16e-instruct', 'llama3-8b-8192'],
+      models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
     },
     {
       name: 'OpenRouter Backup',
@@ -66,11 +65,11 @@ async function callAI(prompt, systemPrompt = '') {
       models: ['meta-llama/llama-3.3-70b-instruct', 'meta-llama/llama-3.2-3b-instruct:free'],
     },
     {
-      name: 'Mistral (Opsi Terakhir)',
+      name: 'Mistral',
       type: 'mistral',
       url: 'https://api.mistral.ai/v1/chat/completions',
       key: mistralKey,
-      models: ['open-mistral-7b', 'mistral-tiny', 'mistral-small-latest'],
+      models: ['mistral-small-latest', 'ministral-8b-latest'],
     },
   ];
 

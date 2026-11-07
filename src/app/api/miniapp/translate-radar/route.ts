@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { parseAIJson } from '@/lib/aiProvider';
 import { getSiteUrl } from '@/lib/siteUrl';
 
 const LANG_LABELS: Record<string, string> = {
@@ -10,6 +11,8 @@ const LANG_LABELS: Record<string, string> = {
   fr: 'French',
 };
 
+import { generateWithAI } from '@/lib/aiProvider';
+
 async function translateRadarData(
   payload: {
     earthquake?: { region: string; tsunamiPotential: string; felt?: string };
@@ -17,54 +20,27 @@ async function translateRadarData(
   },
   langLabel: string
 ) {
-  const providers = [
-    {
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: process.env.GROQ_API_KEY,
-      // llama-3.1-8b-instant deprecated Aug 16 2026
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-    },
-  ];
-
-  for (const provider of providers) {
-    if (!provider.key) continue;
-    try {
-      const res = await fetch(provider.url, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${provider.key}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': getSiteUrl(),
-          'X-Title': 'Meteorit Indonesia Radar Translate',
+  try {
+    const result = await generateWithAI({
+      messages: [
+        {
+          role: 'system',
+          content: `You are a concise science translator. Translate all input fields into ${langLabel}. Return ONLY a JSON object with the exact same structure as the input.`,
         },
-        body: JSON.stringify({
-          model: provider.model,
-          temperature: 0.2,
-          response_format: { type: 'json_object' },
-          messages: [
-            {
-              role: 'system',
-              content: `You are a concise science translator. Translate all input fields into ${langLabel}. Return ONLY a JSON object with the exact same structure as the input.`,
-            },
-            {
-              role: 'user',
-              content: `Translate this JSON data into ${langLabel}:\n${JSON.stringify(payload)}`,
-            },
-          ],
-        }),
-        signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(10000) : undefined,
-      });
+        {
+          role: 'user',
+          content: `Translate this JSON data into ${langLabel}:\n${JSON.stringify(payload)}`,
+        },
+      ],
+      temperature: 0.2,
+      responseFormatJson: true,
+      timeoutMs: 6000,
+    });
 
-      if (!res.ok) continue;
-      const data = await res.json();
-      const raw = data.choices?.[0]?.message?.content;
-      if (!raw) continue;
-
-      const parsed = JSON.parse(String(raw).replace(/```json|```/g, '').trim());
-      return parsed;
-    } catch {
-      // try next
-    }
+    const parsed = parseAIJson(String(result.content));
+    return parsed;
+  } catch (err) {
+    console.warn(`[Radar Translate] AI translation failed for ${langLabel}:`, err instanceof Error ? err.message : String(err));
   }
   return null;
 }

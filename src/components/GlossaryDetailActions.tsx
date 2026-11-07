@@ -277,6 +277,35 @@ export default function GlossaryDetailActions({
   async function downloadShareCard() {
     if (!cardRef.current) return;
 
+    // Proxy images inside cardRef to avoid CORS/connection issues with html2canvas
+    const images = cardRef.current.getElementsByTagName('img');
+    const originalSrcs = new Map<HTMLImageElement, string>();
+    const imagePromises: Promise<void>[] = [];
+
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+      originalSrcs.set(img, img.src);
+      if (img.src && !img.src.startsWith('data:') && !img.src.startsWith(window.location.origin)) {
+        img.src = `/api/image-proxy?url=${encodeURIComponent(img.src)}`;
+      }
+      if (!img.complete) {
+        imagePromises.push(
+          new Promise((resolve) => {
+            img.onload = () => resolve();
+            img.onerror = () => {
+              img.src = 'https://placehold.co/600x400/020617/22d3ee?text=Glosarium';
+              resolve();
+            };
+          })
+        );
+      }
+    }
+
+    if (imagePromises.length > 0) {
+      await Promise.all(imagePromises);
+    }
+    await new Promise((r) => setTimeout(r, 100));
+
     try {
       const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(cardRef.current, {
@@ -292,6 +321,12 @@ export default function GlossaryDetailActions({
     } catch (error) {
       console.error('[Glossarium Detail] Gagal membuat share card:', error);
       alert(t.failCard);
+    } finally {
+      for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        const orig = originalSrcs.get(img);
+        if (orig) img.src = orig;
+      }
     }
   }
 

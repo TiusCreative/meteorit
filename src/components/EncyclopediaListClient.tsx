@@ -5,6 +5,8 @@ import Link from 'next/link';
 import AdDisplay from '@/components/AdDisplay';
 import { useSiteLanguage } from '@/lib/useSiteLanguage';
 import { landingText } from '@/lib/landingText';
+import MobileFlipboardReader, { MobileReaderItem } from '@/components/MobileFlipboardReader';
+import SafeImage from '@/components/SafeImage';
 
 interface Meteorite {
   id: string;
@@ -18,12 +20,17 @@ interface Meteorite {
   description: string;
   translated_description: string;
   image_url: string;
+  createdAt?: string;
   translations?: Record<string, { name: string; description: string }>;
 }
 
 interface EncyclopediaListClientProps {
   initialMeteorites: Meteorite[];
 }
+
+import DateFilterBar, { DateFilterValue } from '@/components/DateFilterBar';
+import { matchesDateFilter, parseItemDate } from '@/lib/dateFilterHelper';
+import { useMemo } from 'react';
 
 export default function EncyclopediaListClient({ initialMeteorites }: EncyclopediaListClientProps) {
   const language = useSiteLanguage();
@@ -32,8 +39,35 @@ export default function EncyclopediaListClient({ initialMeteorites }: Encycloped
   const [filteredMeteorites, setFilteredMeteorites] = useState<Meteorite[]>(initialMeteorites);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>({
+    startDate: '',
+    endDate: '',
+    selectedMonth: '',
+    selectedYear: '',
+  });
   const [currentPage, setCurrentPage] = useState(1);
+  const [readerMode, setReaderMode] = useState<'grid' | 'flipboard'>('grid');
   const itemsPerPage = 30;
+
+  // Extract all unique meteorite years dynamically for the year filter dropdown
+  const availableYears = useMemo(() => {
+    const set = new Set<number>();
+    initialMeteorites.forEach(m => {
+      const p = parseItemDate(m.year || (m as any).createdAt || m.id);
+      if (p?.year) set.add(p.year);
+    });
+    return Array.from(set).sort((a, b) => b - a);
+  }, [initialMeteorites]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('meteorit_reader_mode_ensiklopedia');
+    if (saved === 'flipboard') setReaderMode('flipboard');
+  }, []);
+
+  const toggleReaderMode = (mode: 'grid' | 'flipboard') => {
+    setReaderMode(mode);
+    localStorage.setItem('meteorit_reader_mode_ensiklopedia', mode);
+  };
 
   useEffect(() => {
     let result = initialMeteorites;
@@ -46,12 +80,16 @@ export default function EncyclopediaListClient({ initialMeteorites }: Encycloped
           ? (m.translated_name || m.name) 
           : (m.translations?.[language]?.name || m.name);
         return name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-               m.recclass.toLowerCase().includes(searchQuery.toLowerCase());
+               m.recclass.toLowerCase().includes(searchQuery.toLowerCase()) ||
+               (m.year && m.year.toLowerCase().includes(searchQuery.toLowerCase()));
       });
+    }
+    if (dateFilter.startDate || dateFilter.endDate || dateFilter.selectedMonth || dateFilter.selectedYear) {
+      result = result.filter(m => matchesDateFilter(m, dateFilter));
     }
     setFilteredMeteorites(result);
     setCurrentPage(1);
-  }, [searchQuery, selectedClass, initialMeteorites, language]);
+  }, [searchQuery, selectedClass, dateFilter, initialMeteorites, language]);
 
   // Extract unique classes
   const classesList = Array.from(new Set(initialMeteorites.map(m => m.recclass))).slice(0, 10);
@@ -62,19 +100,75 @@ export default function EncyclopediaListClient({ initialMeteorites }: Encycloped
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredMeteorites.slice(indexOfFirstItem, indexOfLastItem);
 
+  const flipboardItems: MobileReaderItem[] = filteredMeteorites.map((met) => {
+    const name = language === 'id' 
+      ? (met.translated_name || met.name) 
+      : (met.translations?.[language]?.name || met.name);
+    const desc = met.translated_description || met.description || '';
+    return {
+      id: met.id,
+      title: name,
+      excerpt: `Massa: ${met.mass} • Tahun Jatuh: ${met.year} • Koordinat: (${met.lat}, ${met.long}). ${desc}`,
+      image: met.image_url,
+      category: met.recclass || 'Meteorit',
+      date: met.year || 'Tidak diketahui',
+      link: `/ensiklopedia/${met.id}`,
+    };
+  });
+
   return (
     <div>
-        {/* Filter Toolbar */}
-        <div className="bg-slate-50 dark:bg-slate-900/60 backdrop-blur border border-slate-200 dark:border-cyan-900/30 p-6 rounded-2xl mb-12 flex flex-col md:flex-row gap-4 justify-between items-center shadow-lg transition-colors">
-          <div className="w-full md:w-1/3">
-            <input 
-              type="text"
-              placeholder={t.searchMeteoritePlaceholder || "Cari nama atau tipe meteorit..."}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-cyan-900/40 rounded-xl text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 transition-colors text-sm"
-            />
-          </div>
+      {/* Mobile Fullscreen Flipboard Reader Mode */}
+      {readerMode === 'flipboard' && (
+        <MobileFlipboardReader
+          items={flipboardItems}
+          title={t.catalogTitle || "Katalog Meteorit"}
+          onSwitchToGrid={() => toggleReaderMode('grid')}
+        />
+      )}
+
+      {/* DUAL MODE READER SWITCHER TOGGLE (Mobile Only) */}
+      <div className="flex justify-center items-center gap-2 mb-6">
+        <div className="bg-slate-900/90 border border-cyan-900/40 p-1 rounded-2xl flex items-center shadow-lg">
+          <button
+            onClick={() => toggleReaderMode('grid')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              readerMode === 'grid'
+                ? 'bg-amber-500 text-slate-950 shadow-md'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <span>📰</span>
+            <span>Mode Grid</span>
+          </button>
+          <button
+            onClick={() => toggleReaderMode('flipboard')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              readerMode === 'flipboard'
+                ? 'bg-amber-500 text-slate-950 shadow-md'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <span>📱</span>
+            <span>Mode Swipe Feed</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Date Filter Bar */}
+      <DateFilterBar value={dateFilter} onChange={setDateFilter} availableYears={availableYears} />
+
+      {/* Filter Toolbar */}
+      <div className="bg-slate-50 dark:bg-slate-900/60 backdrop-blur border border-slate-200 dark:border-cyan-900/30 p-6 rounded-2xl mb-12 flex flex-col md:flex-row gap-4 justify-between items-center shadow-lg transition-colors">
+        <div className="w-full md:w-1/3">
+          <input 
+            type="text"
+            placeholder={t.searchMeteoritePlaceholder || "Cari nama atau tipe meteorit..."}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-2.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-cyan-900/40 rounded-xl text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 transition-colors text-sm"
+          />
+        </div>
 
           <div className="w-full md:w-auto flex items-center gap-3 justify-end">
             <label className="text-slate-500 dark:text-gray-400 text-sm font-semibold shrink-0">{t.classificationLabel || "Klasifikasi:"}</label>
@@ -110,14 +204,11 @@ export default function EncyclopediaListClient({ initialMeteorites }: Encycloped
                 return (
                   <div key={met.id} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-cyan-950/30 rounded-2xl overflow-hidden shadow-xl hover:shadow-cyan-900/10 hover:border-cyan-500/30 transition-all duration-300 group flex flex-col h-full">
                     <div className="h-44 bg-slate-100 dark:bg-slate-950 overflow-hidden relative">
-                      <img 
+                      <SafeImage 
                         src={met.image_url} 
                         alt={name} 
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = 'https://placehold.co/600x400/020617/22d3ee?text=Meteorit';
-                        }}
+                        fallback="https://placehold.co/600x400/020617/22d3ee?text=Meteorit"
                       />
                       <div className="absolute top-3 right-3 bg-cyan-100 dark:bg-cyan-900/80 backdrop-blur text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/30 text-xs font-bold px-2 py-0.5 rounded uppercase">
                         {met.recclass}

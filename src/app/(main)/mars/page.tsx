@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { getAbsoluteUrl } from '@/lib/siteUrl';
+import { fetchJsonFromR2 } from '@/lib/r2Client';
 import MarsListClient from '@/components/MarsListClient';
 
 export const dynamic = 'force-dynamic';
@@ -41,23 +42,23 @@ interface MarsArticle {
   };
 }
 
-const R2_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+import JsonLd from '@/components/JsonLd';
+import { generateBreadcrumbSchema } from '@/lib/seoSchemas';
 
 export default async function MarsPage() {
   let posts: MarsArticle[] = [];
 
-  // 1. Coba fetch dari R2
+  // 1. Fetch data/blog/posts.json via authenticated R2 S3 SDK
   try {
-    const r2Res = await fetch(`${R2_URL}/data/blog/posts.json?t=${Date.now()}`, { cache: 'no-store' });
-    if (r2Res.ok) {
-      const data = await r2Res.json();
+    const data = await fetchJsonFromR2<MarsArticle[]>('data/blog/posts.json');
+    if (Array.isArray(data) && data.length > 0) {
       posts = data.filter((p: any) => p.category === 'Planet Mars');
     }
   } catch (err) {
-    console.warn("[Mars List] Gagal fetch R2 cache, mencoba Firestore...", err);
+    console.warn("[Mars List] Gagal fetch R2 S3, mencoba Firestore...", err);
   }
 
-  // 2. Fallback ke Firestore
+  // 2. Fallback ke Firestore jika R2 kosong
   if (posts.length === 0) {
     try {
       const snapshot = await adminDb
@@ -87,5 +88,27 @@ export default async function MarsPage() {
     }
   }
 
-  return <MarsListClient initialPosts={posts} />;
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Beranda', url: '/' },
+    { name: 'Planet Mars', url: '/mars' },
+  ]);
+
+  const itemListSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Kumpulan Artikel Planet Mars',
+    itemListElement: posts.slice(0, 10).map((post, idx) => ({
+      '@type': 'ListItem',
+      position: idx + 1,
+      name: post.title,
+      url: `https://www.meteorit.my.id/mars/${post.id}`,
+    })),
+  };
+
+  return (
+    <>
+      <JsonLd schema={[breadcrumbSchema, itemListSchema]} />
+      <MarsListClient initialPosts={posts} />
+    </>
+  );
 }

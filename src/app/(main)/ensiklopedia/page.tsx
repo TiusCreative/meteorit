@@ -1,5 +1,7 @@
 import EncyclopediaWithTabs from '@/components/EncyclopediaWithTabs';
 import { adminDb } from '@/lib/firebaseAdmin';
+import JsonLd from '@/components/JsonLd';
+import { generateBreadcrumbSchema, generateDatasetSchema } from '@/lib/seoSchemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +25,7 @@ interface Meteorite {
   description: string;
   translated_description: string;
   image_url: string;
+  createdAt?: string;
   translations?: Record<string, any>;
 }
 
@@ -39,14 +42,16 @@ export default async function EncyclopediaPage() {
     console.warn("Failed to fetch meteorites catalog from R2, falling back to Firestore:", err);
   }
 
-  // 2. Fallback ke Firestore
-  if (meteorites.length === 0) {
-    try {
-      const snapshot = await adminDb.collection('meteorites').get();
+  // 2. Jika Firestore memiliki data lebih baru / lebih banyak dari R2 cache
+  try {
+    const snapshot = await adminDb.collection('meteorites').get();
+    if (snapshot.size > meteorites.length) {
+      console.log(`[Encyclopedia Page] Firestore has ${snapshot.size} meteorites vs R2 ${meteorites.length}. Syncing full list...`);
+      const fullList: Meteorite[] = [];
       snapshot.forEach((doc: any) => {
         const data = doc.data();
-        meteorites.push({
-          id: doc.id,
+        fullList.push({
+          id: String(doc.id),
           name: data.name || '',
           translated_name: data.translated_name || data.name || '',
           mass: data.mass || 'Tidak diketahui',
@@ -58,12 +63,49 @@ export default async function EncyclopediaPage() {
           translated_description: data.translated_description || data.description || '',
           image_url: data.image_url || '',
           translations: data.translations || {},
+          createdAt: data.createdAt || data.created_at || '',
         });
       });
-    } catch (err) {
-      console.error("Failed to load meteorites from Firestore fallback:", err);
+      meteorites = fullList;
+
+      // Auto update R2 cache background
+      try {
+        const { uploadToR2 } = await import('@/lib/r2Client');
+        await uploadToR2('data/meteorites/catalog.json', JSON.stringify(fullList, null, 2), 'application/json');
+      } catch {}
     }
+  } catch (err) {
+    console.warn("Failed to check Firestore meteorites size:", err);
   }
 
-  return <EncyclopediaWithTabs initialMeteorites={meteorites} />;
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Beranda', url: '/' },
+    { name: 'Ensiklopedia', url: '/ensiklopedia' },
+  ]);
+
+  const datasetSchema = generateDatasetSchema({
+    name: 'Katalog Meteorit & Batu Luar Angkasa Meteorit Indonesia',
+    description: 'Database spasial, massa fisik, dan jenis klasifikasi meteorit yang telah tercatat jatuh dan ditemukan di Bumi.',
+    url: '/ensiklopedia',
+    keywords: ['meteorit', 'batu meteor', 'klasifikasi meteorit', 'astronomi indonesia'],
+  });
+
+  const itemListSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Daftar Sampel Meteorit Antariksa',
+    itemListElement: meteorites.slice(0, 15).map((item, idx) => ({
+      '@type': 'ListItem',
+      position: idx + 1,
+      name: `${item.translated_name || item.name} (${item.recclass})`,
+      url: `https://www.meteorit.my.id/ensiklopedia/${item.id}`,
+    })),
+  };
+
+  return (
+    <>
+      <JsonLd schema={[breadcrumbSchema, datasetSchema, itemListSchema]} />
+      <EncyclopediaWithTabs initialMeteorites={meteorites} />
+    </>
+  );
 }

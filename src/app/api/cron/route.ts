@@ -19,10 +19,37 @@ async function rebuildR2MeteoritesCache() {
     const list: any[] = [];
     snapshot.forEach((doc: any) => {
       const data = doc.data();
-      list.push({ id: doc.id, ...data });
+      list.push({ ...data, id: String(doc.id) });
     });
     await uploadToR2('data/meteorites/catalog.json', JSON.stringify(list, null, 2), 'application/json');
     console.log("Successfully rebuilt R2 meteorites catalog cache. Total items:", list.length);
+
+    // Sync to Cloudflare D1
+    try {
+      const { queryD1 } = await import('@/lib/d1Client');
+      for (const item of list) {
+        await queryD1(
+          `INSERT OR REPLACE INTO meteorites (
+            id, name, translated_name, mass, year, recclass, lat, long, description, translated_description, image_url
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+          [
+            String(item.id),
+            item.name || '',
+            item.translated_name || item.name || '',
+            item.mass || '',
+            item.year || '',
+            item.recclass || '',
+            item.lat || '0',
+            item.long || '0',
+            item.description || '',
+            item.translated_description || item.description || '',
+            item.image_url || ''
+          ]
+        );
+      }
+    } catch (d1Err) {
+      console.warn("Failed to sync meteorites to D1:", d1Err);
+    }
   } catch (err) {
     console.error("Failed to rebuild R2 meteorites cache:", err);
   }
@@ -66,6 +93,25 @@ export async function GET(request: Request) {
       media_type: "image"
     };
 
+async function rebuildR2ApodHistoryCache() {
+  try {
+    const snapApods = await adminDb.collection('apod_history')
+      .orderBy('id', 'desc')
+      .limit(100)
+      .get();
+    
+    const historyList: any[] = [];
+    snapApods.forEach((doc: any) => {
+      historyList.push({ id: doc.id, ...doc.data() });
+    });
+    
+    await uploadToR2('data/encyclopedia/history.json', JSON.stringify(historyList, null, 2), 'application/json');
+    console.log('[Cron Route] Successfully rebuilt APOD history cache in R2. Total:', historyList.length);
+  } catch (err) {
+    console.error('[Cron Route] Failed to rebuild APOD history cache:', err);
+  }
+}
+
     if (runApod) {
       try {
         const apodRes = await fetch(`https://api.nasa.gov/planetary/apod?api_key=${NASA_API_KEY}`);
@@ -78,7 +124,7 @@ export async function GET(request: Request) {
           const docSnap = await docRef.get();
 
           if (docSnap.exists) {
-            console.log(`APOD for date ${apodDate} already exists. Skipping Groq translation and R2 rebuild.`);
+            console.log(`APOD for date ${apodDate} already exists. Skipping Groq translation.`);
             formattedApod = docSnap.data() as typeof formattedApod;
           } else {
             // Translate APOD details with strict system instructions to avoid conversation prefixes
@@ -133,6 +179,9 @@ export async function GET(request: Request) {
             // Also backup APOD to Firestore
             await adminDb.collection('apod_history').doc(formattedApod.id).set(formattedApod);
           }
+
+          // Always ensure R2 history.json is rebuilt with the latest Firestore APOD collection
+          await rebuildR2ApodHistoryCache();
         }
       } catch (e) {
         console.warn("NASA APOD rate limited or unavailable, using fallback:", e);
@@ -259,16 +308,21 @@ export async function GET(request: Request) {
       const limit = settings.encyclopediaCronLimit || 20;
 
       try {
-        // Fetch NASA API with a 6-second timeout signal
+        // Fetch NASA API with random offset (0 to 30000) and a 6-second timeout signal
+        const randomOffset = Math.floor(Math.random() * 30000);
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 6000);
-        const meteoriteRes = await fetch(`https://data.nasa.gov/resource/y77d-th95.json?$limit=${limit}`, {
+        const meteoriteRes = await fetch(`https://data.nasa.gov/resource/y77d-th95.json?$limit=${limit}&$offset=${randomOffset}`, {
           signal: controller.signal
         });
         clearTimeout(timeoutId);
         
         if (meteoriteRes.ok) {
-          meteorites = await meteoriteRes.json();
+          const rawData = await meteoriteRes.json();
+          meteorites = rawData.map((f: any) => ({
+            ...f,
+            id: String(f.id)
+          }));
         } else {
           throw new Error(`NASA API returned status ${meteoriteRes.status}`);
         }
@@ -285,7 +339,7 @@ export async function GET(request: Request) {
               const slicedFeatures = fccData.features.slice(startIndex, startIndex + limit);
               
               meteorites = slicedFeatures.map((f: any) => ({
-                id: f.properties.id,
+                id: String(f.properties.id),
                 name: f.properties.name,
                 recclass: f.properties.recclass,
                 mass: f.properties.mass,
@@ -302,7 +356,7 @@ export async function GET(request: Request) {
       }
 
       if (!meteorites || meteorites.length === 0) {
-        meteorites = FALLBACK_METEORITES;
+        meteorites = FALLBACK_METEORITES.map(m => ({ ...m, id: String(m.id) }));
       }
 
       let processedMeteorites = [];
@@ -313,6 +367,7 @@ export async function GET(request: Request) {
 
       for (const met of meteorites) {
         // Formulate descriptive detail via Groq AI based on class and properties
+        const metId = String(met.id);
         const name = met.name || 'Unknown';
         const type = met.recclass || 'Meteorit';
         const mass = met.mass ? `${(parseFloat(met.mass) / 1000).toFixed(2)} kg` : 'Tidak diketahui';
@@ -350,12 +405,12 @@ Tuliskan langsung dalam format markdown yang rapi tanpa kata pengantar tambahan.
         }
 
         const promptText = `A high-quality realistic close-up photo of the famous ${name} meteorite, classified as ${type}. Showing its unique characteristics: ${classDescription}. Detailed texture, dark space background, scientific display.`;
-        const imagePath = `data/meteorites/images/${met.id}.jpg`;
+        const imagePath = `data/meteorites/images/${metId}.jpg`;
         const { generateImageWithFallback } = await import('@/lib/imageGenerator');
         const imageUrl = await generateImageWithFallback(promptText, imagePath);
 
         const metData = {
-          id: met.id,
+          id: metId,
           name: name,
           translated_name: name,
           mass: mass,
@@ -371,7 +426,7 @@ Tuliskan langsung dalam format markdown yang rapi tanpa kata pengantar tambahan.
         processedMeteorites.push(metData);
 
         // Check if this is a new meteorite
-        const docRef = adminDb.collection('meteorites').doc(met.id);
+        const docRef = adminDb.collection('meteorites').doc(metId);
         const docSnap = await docRef.get();
         const isNew = !docSnap.exists;
 
@@ -380,7 +435,7 @@ Tuliskan langsung dalam format markdown yang rapi tanpa kata pengantar tambahan.
           latestNewMeteoriteName = name;
 
           // Send auto-link to Telegram channel, Facebook, and Web Push
-          const postUrl = getAbsoluteUrl(`/ensiklopedia/${met.id}`);
+          const postUrl = getAbsoluteUrl(`/ensiklopedia/${metId}`);
           const channelMsg = `☄️ <b>Meteorit Baru Terdaftar di Ensiklopedia!</b>\n\n` +
             `<b>Nama:</b> ${name}\n` +
             `<b>Tipe / Kelas:</b> ${type}\n` +
@@ -392,7 +447,7 @@ Tuliskan langsung dalam format markdown yang rapi tanpa kata pengantar tambahan.
             title: `☄️ Meteorit Baru: ${name}`,
             body: `Meteorit Baru Terdaftar di Ensiklopedia!\nNama: ${name}\nTipe / Kelas: ${type}\nMassa: ${mass}\nTahun: ${year}`,
             telegramHtml: channelMsg,
-            link: `/ensiklopedia/${met.id}`,
+            link: `/ensiklopedia/${metId}`,
             imageUrl: metData.image_url
           });
         }

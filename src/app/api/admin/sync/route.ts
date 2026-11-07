@@ -74,7 +74,8 @@ export async function POST(request: Request) {
     const meteoritesSnapshot = await adminDb.collection('meteorites').get();
     const meteoritesList: any[] = [];
     meteoritesSnapshot.forEach((doc: any) => {
-      meteoritesList.push({ id: doc.id, ...doc.data() });
+      const data = doc.data();
+      meteoritesList.push({ ...data, id: String(doc.id) });
     });
     // Sort by name
     meteoritesList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));

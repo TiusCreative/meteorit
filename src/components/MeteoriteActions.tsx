@@ -207,6 +207,36 @@ export default function MeteoriteActions({ meteorite }: MeteoriteActionsProps) {
 
   const handleDownloadShareCard = async () => {
     if (!cardRef.current) return;
+
+    // Proxy images inside cardRef to avoid CORS/connection issues with html2canvas
+    const images = cardRef.current.getElementsByTagName('img');
+    const originalSrcs = new Map<HTMLImageElement, string>();
+    const imagePromises: Promise<void>[] = [];
+
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+      originalSrcs.set(img, img.src);
+      if (img.src && !img.src.startsWith('data:') && !img.src.startsWith(window.location.origin)) {
+        img.src = `/api/image-proxy?url=${encodeURIComponent(img.src)}`;
+      }
+      if (!img.complete) {
+        imagePromises.push(
+          new Promise((resolve) => {
+            img.onload = () => resolve();
+            img.onerror = () => {
+              img.src = 'https://placehold.co/600x400/020617/22d3ee?text=Meteorit';
+              resolve();
+            };
+          })
+        );
+      }
+    }
+
+    if (imagePromises.length > 0) {
+      await Promise.all(imagePromises);
+    }
+    await new Promise((r) => setTimeout(r, 100));
+
     try {
       const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(cardRef.current, {
@@ -223,6 +253,12 @@ export default function MeteoriteActions({ meteorite }: MeteoriteActionsProps) {
     } catch (error) {
       console.error("Gagal mendownload card vertical:", error);
       alert("Gagal membuat gambar vertical card untuk media sosial.");
+    } finally {
+      for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        const orig = originalSrcs.get(img);
+        if (orig) img.src = orig;
+      }
     }
   };
 
@@ -232,6 +268,10 @@ export default function MeteoriteActions({ meteorite }: MeteoriteActionsProps) {
       alert("Tautan meteorit berhasil disalin!");
     }
   };
+
+  // Truncate description text cleanly for share card
+  const rawDesc = meteorite.translated_description || meteorite.description || '';
+  const truncatedDesc = rawDesc.length > 280 ? rawDesc.substring(0, 280) + '...' : rawDesc;
 
   return (
     <div>
@@ -316,7 +356,15 @@ export default function MeteoriteActions({ meteorite }: MeteoriteActionsProps) {
           {/* Banner Image */}
           <div style={{ margin: '16px 24px 0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(8,47,73,0.5)', height: '200px', backgroundColor: '#0f172a', flexShrink: 0 }}>
             {meteorite.image_url ? (
-              <img src={meteorite.image_url} alt={meteorite.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img 
+                src={meteorite.image_url} 
+                alt={meteorite.name} 
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'https://placehold.co/600x400/020617/22d3ee?text=Meteorit';
+                }}
+              />
             ) : (
               <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(8,47,73,0.5)' }}>
                 <span style={{ fontSize: '48px', color: '#67e8f9' }}>🌌</span>
@@ -357,8 +405,18 @@ export default function MeteoriteActions({ meteorite }: MeteoriteActionsProps) {
               </table>
             </div>
 
-            <p style={{ fontSize: '11px', lineHeight: '1.7', color: '#cbd5e1', margin: 0 }}>
-              {meteorite.translated_description}
+            <p style={{ 
+              fontSize: '11px', 
+              lineHeight: '1.6', 
+              color: '#cbd5e1', 
+              margin: 0,
+              display: '-webkit-box',
+              WebkitLineClamp: 5,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {truncatedDesc}
             </p>
           </div>
 

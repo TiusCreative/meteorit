@@ -38,9 +38,15 @@ export async function GET(req: NextRequest) {
 
     const text = await res.text();
 
-    // Jika NASA mengembalikan pesan error teks, tangkap di sini
-    if (text.includes("invalid api call") || text.includes("error")) {
-      throw new Error(`NASA Response Error: ${text}`);
+    // Jika NASA mengembalikan pesan error teks (misal: "Invalid MAP_KEY."), tangani dengan aman
+    if (text.includes("Invalid MAP_KEY") || text.includes("invalid") || text.includes("error")) {
+      console.warn(`[API FIRMS] NASA FIRMS returned warning: ${text.trim()}. Returning safe empty hotspots list.`);
+      return NextResponse.json({
+        success: true,
+        count: 0,
+        hotspots: [],
+        updatedAt: new Date().toISOString()
+      });
     }
 
     const hotspots = parseCsvHotspots(text);
@@ -54,10 +60,12 @@ export async function GET(req: NextRequest) {
   } catch (err: any) {
     console.error('[API FIRMS] Error:', err);
     return NextResponse.json({
-      success: false,
-      error: 'Gagal memuat data titik api NASA FIRMS.',
-      details: err instanceof Error ? err.message : String(err)
-    }, { status: 500 });
+      success: true,
+      count: 0,
+      hotspots: [],
+      error: 'Data titik api NASA FIRMS sedang tidak tersedia.',
+      updatedAt: new Date().toISOString()
+    });
   }
 }
 

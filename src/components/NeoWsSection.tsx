@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { landingText } from '@/lib/landingText';
 import { useSiteLanguage } from '@/lib/useSiteLanguage';
+import MobileFlipboardReader, { MobileReaderItem } from '@/components/MobileFlipboardReader';
 
 interface NeoObject {
   id: string;
@@ -36,6 +37,17 @@ export default function NeoWsSection() {
   const [neoData, setNeoData] = useState<NeoObject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [readerMode, setReaderMode] = useState<'grid' | 'flipboard'>('grid');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('meteorit_reader_mode_komet');
+    if (saved === 'flipboard') setReaderMode('flipboard');
+  }, []);
+
+  const toggleReaderMode = (mode: 'grid' | 'flipboard') => {
+    setReaderMode(mode);
+    localStorage.setItem('meteorit_reader_mode_komet', mode);
+  };
 
   useEffect(() => {
     const fetchNeo = async () => {
@@ -185,8 +197,65 @@ export default function NeoWsSection() {
     );
   }
 
+  const flipboardItems: MobileReaderItem[] = neoData.map((neo) => {
+    const distKm = neo.miss_distance_km;
+    const distLunar = neo.miss_distance_km / 384400;
+    const speedKmh = neo.relative_velocity_km_per_h;
+    const diamMin = Math.round(neo.estimated_diameter_min_km * 1000);
+    const diamMax = Math.round(neo.estimated_diameter_max_km * 1000);
+    const isHazardous = neo.is_potentially_hazardous;
+    const cleanName = neo.name.replace(/[()]/g, '').trim();
+
+    return {
+      id: neo.id,
+      title: cleanName,
+      excerpt: `Melintas pada ${neo.close_approach_date || '7 hari ke depan'}. Jarak Aman: ${distLunar.toFixed(1)} LD (${(distKm/1000000).toFixed(2)} juta km). Ukuran Est: ${diamMin}-${diamMax}m. Kecepatan: ${(speedKmh/1000).toFixed(1)} ribu km/jam.${isHazardous ? ' ⚠️ Berpotensi Berbahaya bagi Bumi.' : ''}`,
+      image: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=800&auto=format&fit=crop&q=80',
+      category: isHazardous ? '⚠️ Hazard NEO' : '☄️ Komet / Asteroid',
+      date: neo.close_approach_date || '2026',
+      link: 'https://cneos.jpl.nasa.gov/',
+    };
+  });
+
   return (
     <div>
+      {/* Mobile Fullscreen Flipboard Reader Mode */}
+      {readerMode === 'flipboard' && (
+        <MobileFlipboardReader
+          items={flipboardItems}
+          title={lbl.title}
+          onSwitchToGrid={() => toggleReaderMode('grid')}
+        />
+      )}
+
+      {/* DUAL MODE READER SWITCHER TOGGLE (Mobile Only) */}
+      <div className="flex justify-center items-center gap-2 mb-6">
+        <div className="bg-slate-900/90 border border-cyan-900/40 p-1 rounded-2xl flex items-center shadow-lg">
+          <button
+            onClick={() => toggleReaderMode('grid')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              readerMode === 'grid'
+                ? 'bg-amber-500 text-slate-950 shadow-md'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <span>📰</span>
+            <span>Mode Grid</span>
+          </button>
+          <button
+            onClick={() => toggleReaderMode('flipboard')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              readerMode === 'flipboard'
+                ? 'bg-amber-500 text-slate-950 shadow-md'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <span>📱</span>
+            <span>Mode Swipe Feed</span>
+          </button>
+        </div>
+      </div>
+
       <div className="flex items-center gap-3 mb-6">
         <div>
           <h3 className="text-xl font-bold text-white">{lbl.title}</h3>

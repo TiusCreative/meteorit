@@ -92,7 +92,8 @@ export default function EncyclopediaHighlight({ initialData }: EncyclopediaHighl
   const title = (data.title as any)?.[language] || (data.title as any)?.id || (data.title as any)?.en;
   const dateLocale = language === 'en' ? 'en-US' : language === 'ja' ? 'ja-JP' : language === 'zh' ? 'zh-CN' : language === 'ms' ? 'ms-MY' : 'id-ID';
 
-  const isVideo = data.image_url.includes('youtube.com') ||
+  const isDirectVideo = data.image_url.includes('.mp4') || data.image_url.includes('.webm') || data.image_url.includes('.ogv');
+  const isIframeVideo = data.image_url.includes('youtube.com') ||
                   data.image_url.includes('youtu.be') ||
                   data.image_url.includes('vimeo.com') ||
                   data.image_url.includes('player.vimeo.com');
@@ -118,7 +119,19 @@ export default function EncyclopediaHighlight({ initialData }: EncyclopediaHighl
                 <span className="bg-amber-500/90 backdrop-blur text-black text-xs font-bold px-2.5 py-1 rounded-full">{t.nasaApodLabel}</span>
               </div>
               <div className="h-56 overflow-hidden bg-slate-950 relative w-full block">
-                {isVideo ? (
+                {isDirectVideo ? (
+                  <div className="w-full h-full aspect-video flex items-center justify-center bg-black">
+                    <video
+                      src={data.image_url}
+                      controls
+                      playsInline
+                      autoPlay
+                      muted
+                      loop
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : isIframeVideo ? (
                   <div className="w-full h-full aspect-video">
                     <iframe
                       src={data.image_url}

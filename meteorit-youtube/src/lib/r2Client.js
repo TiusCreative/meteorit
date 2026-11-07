@@ -10,11 +10,11 @@ import * as path from 'path';
 import * as https from 'https';
 import * as http from 'http';
 
-const R2_ACCOUNT_ID   = process.env.R2_ACCOUNT_ID;
-const R2_ACCESS_KEY   = process.env.R2_ACCESS_KEY_ID;
-const R2_SECRET_KEY   = process.env.R2_SECRET_ACCESS_KEY;
-const R2_BUCKET_NAME  = process.env.R2_BUCKET_NAME || 'meteorit-indonesia';
-const R2_PUBLIC_URL   = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
+const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY_ID;
+const R2_SECRET_KEY = process.env.R2_SECRET_ACCESS_KEY;
+const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'meteorit-indonesia';
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
 
 const s3 = new S3Client({
   region: 'auto',
@@ -96,7 +96,7 @@ export async function downloadImageFromUrl(imageUrl, destPath) {
         resolve(destPath);
       });
     }).on('error', (err) => {
-      fs.unlink(destPath, () => {});
+      fs.unlink(destPath, () => { });
       reject(err);
     });
   });

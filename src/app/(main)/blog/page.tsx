@@ -1,5 +1,8 @@
 import BlogListClient from '@/components/BlogListClient';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { fetchJsonFromR2 } from '@/lib/r2Client';
+import JsonLd from '@/components/JsonLd';
+import { generateBreadcrumbSchema } from '@/lib/seoSchemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,8 +11,6 @@ export const metadata = {
   description: 'Temukan berita sains terbaru, panduan praktis mengidentifikasi batu meteorit asli, dan trivia astronomi menarik dari luar angkasa.',
   keywords: ['blog astronomi', 'edukasi meteorit', 'berita antariksa', 'panduan batu meteor', 'sains populer astronomi', 'meteor jatuh indonesia'],
 };
-
-const R2_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
 
 interface BlogPost {
   id: string;
@@ -24,16 +25,14 @@ interface BlogPost {
 export default async function BlogPage() {
   let posts: BlogPost[] = [];
 
-  // 1. Coba fetch dari R2
+  // 1. Fetch data/blog/posts.json via authenticated R2 S3 SDK
   try {
-    const r2Res = await fetch(`${R2_URL}/data/blog/posts.json?t=${Date.now()}`, { cache: 'no-store' });
-    if (r2Res.ok) {
-      const data = await r2Res.json();
-      // Filter out Komet & Asteroid articles from the main blog list
+    const data = await fetchJsonFromR2<BlogPost[]>('data/blog/posts.json');
+    if (Array.isArray(data) && data.length > 0) {
       posts = data.filter((p: BlogPost) => p.category !== 'Komet & Asteroid');
     }
   } catch (err) {
-    console.warn("Failed to fetch blog posts from R2 cache, falling back to Firestore:", err);
+    console.warn("Failed to fetch blog posts from R2 S3, falling back to Firestore:", err);
   }
 
   // 2. Fallback ke Firestore jika R2 kosong/gagal
@@ -59,5 +58,27 @@ export default async function BlogPage() {
     }
   }
 
-  return <BlogListClient initialPosts={posts} />;
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Beranda', url: '/' },
+    { name: 'Blog', url: '/blog' },
+  ]);
+
+  const itemListSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Artikel & Blog Meteorit Indonesia',
+    itemListElement: posts.slice(0, 10).map((post, idx) => ({
+      '@type': 'ListItem',
+      position: idx + 1,
+      name: post.title,
+      url: `https://www.meteorit.my.id/blog/${post.id}`,
+    })),
+  };
+
+  return (
+    <>
+      <JsonLd schema={[breadcrumbSchema, itemListSchema]} />
+      <BlogListClient initialPosts={posts} />
+    </>
+  );
 }

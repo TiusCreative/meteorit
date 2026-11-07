@@ -6,7 +6,7 @@ interface SafeImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   fallback?: string;
 }
 
-function getProxiedUrl(originalSrc: string | undefined): string | undefined {
+export function getProxiedUrl(originalSrc: string | undefined): string | undefined {
   if (!originalSrc) return originalSrc;
   if (
     originalSrc.startsWith('/') ||
@@ -18,23 +18,30 @@ function getProxiedUrl(originalSrc: string | undefined): string | undefined {
   ) {
     return originalSrc;
   }
-  // Proxy all external images (NASA APIs, etc.)
   return `/api/image-proxy?url=${encodeURIComponent(originalSrc)}`;
 }
 
-export default function SafeImage({ src, fallback = 'https://placehold.co/600x400/020617/22d3ee?text=Image', alt, className, ...props }: SafeImageProps) {
-  const [imgSrc, setImgSrc] = useState(() => getProxiedUrl(src));
+export default function SafeImage({
+  src,
+  fallback = 'https://placehold.co/600x400/020617/22d3ee?text=Gambar',
+  alt,
+  className,
+  ...props
+}: SafeImageProps) {
+  const proxiedUrl = getProxiedUrl(src);
+  const [imgSrc, setImgSrc] = useState<string | undefined>(proxiedUrl);
 
   useEffect(() => {
-    setImgSrc(getProxiedUrl(src));
-  }, [src]);
+    setImgSrc(proxiedUrl);
+  }, [proxiedUrl]);
 
   return (
     <img
-      src={imgSrc}
+      src={imgSrc || proxiedUrl}
       alt={alt}
       className={className}
       onError={() => setImgSrc(fallback)}
+      suppressHydrationWarning
       {...props}
     />
   );

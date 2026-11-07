@@ -409,5 +409,37 @@ html.light .langit-malam-title {
   color: #1e1b4b !important; /* Deep indigo text */
 }
 
+/* 3D Magazine Page Slide Animations */
+@keyframes slideUp3D {
+  0% {
+    transform: translateY(100%) rotateX(-15deg);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(0%) rotateX(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown3D {
+  0% {
+    transform: translateY(-100%) rotateX(15deg);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(0%) rotateX(0deg);
+    opacity: 1;
+  }
+}
+
+.animate-slideUp3D {
+  animation: slideUp3D 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slideDown3D {
+  animation: slideDown3D 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+
 
 

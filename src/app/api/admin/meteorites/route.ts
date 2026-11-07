@@ -51,7 +51,7 @@ async function rebuildR2MeteoritesCache() {
   const list: any[] = [];
   snapshot.forEach((doc: any) => {
     const data = doc.data();
-    list.push({ id: doc.id, ...data });
+    list.push({ ...data, id: String(doc.id) });
   });
 
   // Save JSON array index list to Cloudflare R2

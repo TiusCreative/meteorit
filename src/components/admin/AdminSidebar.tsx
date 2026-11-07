@@ -52,6 +52,7 @@ export default function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onC
               { href: '/admin/dashboard', icon: '📊', label: 'Dashboard' },
               { href: '/admin/kirim-email', icon: '✉️', label: 'Kirim Email' },
               { href: '/admin/artikel', icon: '📝', label: 'Manajemen Artikel' },
+              { href: '/admin/apod', icon: '🌌', label: 'APOD (Foto Harian)' },
               { href: '/admin/astronot', icon: '👨‍🚀', label: 'Daftar Astronot' },
               { href: '/admin/ensiklopedia', icon: '🌠', label: 'Ensiklopedia' },
               { href: '/admin/glossarium', icon: '📚', label: 'Glossarium Sains' },

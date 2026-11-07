@@ -1,5 +1,8 @@
 import KometListClient from '@/components/KometListClient';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { fetchJsonFromR2 } from '@/lib/r2Client';
+import JsonLd from '@/components/JsonLd';
+import { generateBreadcrumbSchema } from '@/lib/seoSchemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,26 +22,22 @@ interface BlogPost {
   translations?: Record<string, any>;
 }
 
-const R2_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
-
 export default async function KometPage() {
   let posts: BlogPost[] = [];
 
-  // 1. Coba fetch dari R2
+  // 1. Fetch data/blog/posts.json via authenticated R2 S3 SDK
   try {
-    const r2Res = await fetch(`${R2_URL}/data/blog/posts.json?t=${Date.now()}`, { cache: 'no-store' });
-    if (r2Res.ok) {
-      const data = await r2Res.json();
+    const data = await fetchJsonFromR2<BlogPost[]>('data/blog/posts.json');
+    if (Array.isArray(data) && data.length > 0) {
       posts = data.filter((p: BlogPost) => p.category === 'Komet & Asteroid');
     }
   } catch (err) {
-    console.warn("[Komet List] Gagal fetch R2 cache, mencoba Firestore...", err);
+    console.warn("[Komet List] Gagal fetch R2 S3, mencoba Firestore...", err);
   }
 
-  // 2. Fallback ke Firestore
+  // 2. Fallback ke Firestore jika R2 kosong
   if (posts.length === 0) {
     try {
-      // Ambil semua artikel dengan kategori 'Komet & Asteroid' dari Firestore
       const snapshot = await adminDb
         .collection('articles')
         .where('category', '==', 'Komet & Asteroid')
@@ -60,12 +59,33 @@ export default async function KometPage() {
         }
       });
 
-      // Urutkan in-memory dari terbaru
       posts.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     } catch (err) {
       console.error("Failed to fetch komet articles from Firestore:", err);
     }
   }
 
-  return <KometListClient initialPosts={posts} />;
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Beranda', url: '/' },
+    { name: 'Komet & Asteroid', url: '/komet' },
+  ]);
+
+  const itemListSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Artikel Komet & Asteroid',
+    itemListElement: posts.slice(0, 10).map((post, idx) => ({
+      '@type': 'ListItem',
+      position: idx + 1,
+      name: post.title,
+      url: `https://www.meteorit.my.id/blog/${post.id}`,
+    })),
+  };
+
+  return (
+    <>
+      <JsonLd schema={[breadcrumbSchema, itemListSchema]} />
+      <KometListClient initialPosts={posts} />
+    </>
+  );
 }

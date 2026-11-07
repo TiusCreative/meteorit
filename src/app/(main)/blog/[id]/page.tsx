@@ -1,6 +1,9 @@
 import { adminDb } from '@/lib/firebaseAdmin';
+import { fetchJsonFromR2 } from '@/lib/r2Client';
 import ArticleContentClient from '@/components/ArticleContentClient';
 import type { ArticleTranslations } from '@/lib/articleLocalization';
+import JsonLd from '@/components/JsonLd';
+import { generateArticleSchema, generateBreadcrumbSchema } from '@/lib/seoSchemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,8 +18,6 @@ interface BlogPost {
   translations?: ArticleTranslations;
 }
 
-const R2_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
-
 // Dynamic SEO Metadata
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const post = await getBlogPost(params.id);
@@ -27,7 +28,8 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
     };
   }
   const url = `https://www.meteorit.my.id/blog/${post.id}`;
-  const shareImg = post.image || 'https://www.meteorit.my.id/logo.png';
+  const ogApiUrl = `https://www.meteorit.my.id/api/og?title=${encodeURIComponent(post.title)}&description=${encodeURIComponent(post.excerpt)}&category=${encodeURIComponent(post.category || 'ASTRONOMI')}`;
+  const shareImg = ogApiUrl;
   return {
     title: `${post.title} - Meteorit Indonesia`,
     description: post.excerpt,
@@ -44,7 +46,8 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
           url: shareImg,
           width: 1200,
           height: 630,
-          alt: post.title
+          alt: post.title,
+          type: 'image/png',
         }
       ]
     },
@@ -58,22 +61,18 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
 }
 
 async function getBlogPost(id: string): Promise<BlogPost | null> {
-  // 1. Coba dari R2 individual article JSON (lebih efisien dari posts.json catalog)
+  // 1. Coba dari R2 individual article JSON via authenticated R2 S3 SDK
   try {
-    const res = await fetch(`${R2_URL}/data/blog/articles/${encodeURIComponent(id)}.json?t=${Date.now()}`, { cache: 'no-store' });
-    if (res.ok) {
-      const data: any = await res.json();
-      if (data && data.id) return data as BlogPost;
-    }
+    const data = await fetchJsonFromR2<BlogPost>(`data/blog/articles/${id}.json`);
+    if (data && data.id) return data;
   } catch (err) {
     console.warn(`[Blog Detail] Gagal fetch R2 artikel individual ${id}, mencoba catalog...`, err);
   }
 
-  // 2. Fallback ke posts.json catalog (artikel lama yang belum punya file individual)
+  // 2. Fallback ke posts.json catalog via authenticated R2 S3 SDK
   try {
-    const res = await fetch(`${R2_URL}/data/blog/posts.json?t=${Date.now()}`, { cache: 'no-store' });
-    if (res.ok) {
-      const list: BlogPost[] = await res.json();
+    const list = await fetchJsonFromR2<BlogPost[]>('data/blog/posts.json');
+    if (Array.isArray(list)) {
       const matched = list.find(p => p.id === id);
       if (matched) return matched;
     }
@@ -81,7 +80,7 @@ async function getBlogPost(id: string): Promise<BlogPost | null> {
     console.warn(`[Blog Detail] Gagal fetch catalog R2, mencoba Firestore...`, err);
   }
 
-  // 3. Fallback terakhir ke Firestore (backward compatibility artikel sangat lama)
+  // 3. Fallback terakhir ke Firestore
   try {
     const docRef = adminDb.collection('articles').doc(id);
     const snap = await docRef.get();
@@ -119,32 +118,25 @@ export default async function BlogDetailPage({ params }: { params: { id: string 
     );
   }
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: post.title,
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Beranda', url: '/' },
+    { name: 'Blog', url: '/blog' },
+    { name: post.title, url: `/blog/${post.id}` },
+  ]);
+
+  const articleSchema = generateArticleSchema({
+    title: post.title,
     description: post.excerpt,
-    image: post.image || 'https://www.meteorit.my.id/logo.png',
-    author: {
-      '@type': 'Organization',
-      name: 'Meteorit Indonesia'
-    },
-    publisher: {
-      '@type': 'Organization',
-      name: 'Meteorit Indonesia',
-      logo: {
-        '@type': 'ImageObject',
-        url: 'https://www.meteorit.my.id/logo.png'
-      }
-    },
-    mainEntityOfPage: `https://www.meteorit.my.id/blog/${post.id}`
-  };
+    url: `/blog/${post.id}`,
+    image: post.image,
+    datePublished: post.date,
+    category: post.category,
+  });
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <JsonLd schema={[breadcrumbSchema, articleSchema]} />
       <ArticleContentClient post={post} backHref="/blog" />
     </>
   );
 }
-

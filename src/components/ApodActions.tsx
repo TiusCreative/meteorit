@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { FaPinterest } from 'react-icons/fa';
 import { getSiteHost } from '@/lib/siteUrl';
 import { useUserRole } from '@/lib/useUserRole';
+import { getProxiedUrl } from '@/components/SafeImage';
 
 interface Apod {
   id: string;
@@ -243,13 +244,46 @@ export default function ApodActions({ apod }: ApodActionsProps) {
       }
     }
   };
-
   const handleDownloadShareCard = async () => {
     if (!cardRef.current) return;
+
+    // Proxy images inside cardRef to avoid CORS/connection issues with html2canvas
+    const images = cardRef.current.getElementsByTagName('img');
+    const originalSrcs = new Map<HTMLImageElement, string>();
+    const imagePromises: Promise<void>[] = [];
+
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+      originalSrcs.set(img, img.src);
+      img.crossOrigin = 'anonymous';
+
+      if (img.src && !img.src.startsWith('data:') && !img.src.includes('/api/image-proxy')) {
+        img.src = `/api/image-proxy?url=${encodeURIComponent(img.src)}`;
+      }
+
+      if (!img.complete) {
+        imagePromises.push(
+          new Promise((resolve) => {
+            img.onload = () => resolve();
+            img.onerror = () => {
+              img.src = '/api/image-proxy';
+              resolve();
+            };
+          })
+        );
+      }
+    }
+
+    if (imagePromises.length > 0) {
+      await Promise.all(imagePromises);
+    }
+    await new Promise((r) => setTimeout(r, 150));
+
     try {
       const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(cardRef.current, {
         useCORS: true,
+        allowTaint: true,
         scale: 3, // High-quality resolution
         logging: false,
         backgroundColor: '#020617'
@@ -262,6 +296,12 @@ export default function ApodActions({ apod }: ApodActionsProps) {
     } catch (error) {
       console.error("Gagal mendownload card vertical:", error);
       alert("Gagal membuat gambar vertical card untuk media sosial.");
+    } finally {
+      for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        const orig = originalSrcs.get(img);
+        if (orig) img.src = orig;
+      }
     }
   };
 
@@ -273,7 +313,8 @@ export default function ApodActions({ apod }: ApodActionsProps) {
   };
 
   const title = apod.title?.id || apod.title?.en || 'Foto Antariksa';
-  const explanation = apod.explanation?.id || apod.explanation?.en || '';
+  const rawExplanation = apod.explanation?.id || apod.explanation?.en || '';
+  const explanation = rawExplanation.length > 280 ? rawExplanation.substring(0, 280) + '...' : rawExplanation;
 
   return (
     <div>
@@ -358,12 +399,13 @@ export default function ApodActions({ apod }: ApodActionsProps) {
           {/* Banner Image */}
           <div style={{ margin: '16px 24px 0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(8,47,73,0.5)', height: '200px', backgroundColor: '#0f172a', flexShrink: 0 }}>
             <img 
-              src={getThumbnailUrl(apod.image_url)} 
+              src={getProxiedUrl(getThumbnailUrl(apod.image_url))} 
               alt={title} 
+              crossOrigin="anonymous"
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.src = 'https://placehold.co/600x400/020617/22d3ee?text=NASA+APOD';
+                target.src = '/api/image-proxy';
               }}
             />
           </div>
@@ -391,7 +433,17 @@ export default function ApodActions({ apod }: ApodActionsProps) {
               </table>
             </div>
 
-            <p style={{ fontSize: '11px', lineHeight: '1.7', color: '#cbd5e1', margin: 0 }}>
+            <p style={{ 
+              fontSize: '11px', 
+              lineHeight: '1.6', 
+              color: '#cbd5e1', 
+              margin: 0,
+              display: '-webkit-box',
+              WebkitLineClamp: 5,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
               {explanation}
             </p>
           </div>

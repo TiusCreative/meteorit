@@ -5,6 +5,7 @@ import AdDisplay from '@/components/AdDisplay';
 import MarsArticleActions from '@/components/MarsArticleActions';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { getAbsoluteUrl } from '@/lib/siteUrl';
+import { fetchJsonFromR2 } from '@/lib/r2Client';
 
 import { cookies } from 'next/headers';
 import { isSiteLanguage, LANGUAGE_COOKIE_KEY, defaultLanguage } from '@/lib/i18n';
@@ -45,26 +46,21 @@ function stripHtml(str: string) {
   return str.replace(/<[^>]*>/g, '').trim();
 }
 
-const R2_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
-
 async function getMarsArticle(id: string): Promise<MarsArticle | null> {
-  // 1. Coba fetch dari Cloudflare R2
+  // 1. Coba fetch dari Cloudflare R2 via authenticated S3 SDK
   try {
-    const res = await fetch(`${R2_URL}/data/blog/articles/${encodeURIComponent(id)}.json?t=${Date.now()}`, { cache: 'no-store' });
-    if (res.ok) {
-      const data: any = await res.json();
-      if (data && data.id) {
-        return {
-          id: data.id,
-          title: data.title || '',
-          excerpt: data.excerpt || '',
-          content: data.content || '',
-          date: data.date || new Date(data.createdAt).toLocaleDateString('id-ID'),
-          image: data.image || DEFAULT_IMAGE,
-          translations: data.translations || {},
-          mars_data: data.mars_data || {}
-        };
-      }
+    const data = await fetchJsonFromR2<any>(`data/blog/articles/${id}.json`);
+    if (data && data.id) {
+      return {
+        id: data.id,
+        title: data.title || '',
+        excerpt: data.excerpt || '',
+        content: data.content || '',
+        date: data.date || new Date(data.createdAt).toLocaleDateString('id-ID'),
+        image: data.image || DEFAULT_IMAGE,
+        translations: data.translations || {},
+        mars_data: data.mars_data || {}
+      };
     }
   } catch (err) {
     console.warn(`[Mars Detail] Gagal fetch R2 artikel ${id}, mencoba Firestore...`, err);
@@ -104,6 +100,9 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   }
 
   const url = getAbsoluteUrl(`/mars/${article.id}`);
+  const ogApiUrl = getAbsoluteUrl(`/api/og?title=${encodeURIComponent(article.title)}&description=${encodeURIComponent(stripHtml(article.excerpt))}&category=PLANET MARS`);
+  const shareImg = ogApiUrl;
+
   return {
     title: `${article.title} - Meteorit Indonesia`,
     description: stripHtml(article.excerpt),
@@ -123,10 +122,11 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
       siteName: 'Meteorit Indonesia',
       images: [
         {
-          url: article.image || DEFAULT_IMAGE,
+          url: shareImg,
           width: 1200,
           height: 630,
-          alt: article.title
+          alt: article.title,
+          type: 'image/png',
         }
       ]
     },
@@ -134,11 +134,13 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
       card: 'summary_large_image',
       title: article.title,
       description: article.excerpt,
-      images: [article.image || DEFAULT_IMAGE]
+      images: [shareImg]
     }
   };
 }
 
+import JsonLd from '@/components/JsonLd';
+import { generateArticleSchema, generateBreadcrumbSchema } from '@/lib/seoSchemas';
 import MarsArticleClient from '@/components/MarsArticleClient';
 
 export default async function MarsArticlePage({ params }: { params: { id: string } }) {
@@ -159,30 +161,25 @@ export default async function MarsArticlePage({ params }: { params: { id: string
   }
 
   const localizedArticle = pickLocalizedArticle(article as any, locale);
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: localizedArticle.title,
+
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Beranda', url: '/' },
+    { name: 'Planet Mars', url: '/mars' },
+    { name: localizedArticle.title, url: `/mars/${localizedArticle.id}` },
+  ]);
+
+  const articleSchema = generateArticleSchema({
+    title: localizedArticle.title,
     description: localizedArticle.excerpt,
+    url: `/mars/${localizedArticle.id}`,
     image: localizedArticle.image || DEFAULT_IMAGE,
-    author: {
-      '@type': 'Organization',
-      name: 'Meteorit Indonesia'
-    },
-    publisher: {
-      '@type': 'Organization',
-      name: 'Meteorit Indonesia',
-      logo: {
-        '@type': 'ImageObject',
-        url: getAbsoluteUrl('/logo.png')
-      }
-    },
-    mainEntityOfPage: getAbsoluteUrl(`/mars/${localizedArticle.id}`)
-  };
+    datePublished: localizedArticle.date,
+    category: 'Planet Mars',
+  });
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <JsonLd schema={[breadcrumbSchema, articleSchema]} />
       <MarsArticleClient article={article} />
     </>
   );

@@ -412,6 +412,9 @@ export default function MapLibreDisasterMap({ records, centerLatLng, language }:
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
+  // Mobile: kolom pencarian di-collapse menjadi icon saja, expand saat diklik
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+
 
   // Copy system
   const [showCopyMenu, setShowCopyMenu] = useState(false);
@@ -1535,28 +1538,86 @@ export default function MapLibreDisasterMap({ records, centerLatLng, language }:
 
         {/* ─── Floating POI Search Input ───────────────────────────────────── */}
         {navMode === 'none' && (
-          <div className="absolute top-3 right-12 z-10 w-56 max-w-[calc(100vw-180px)]">
-            <form onSubmit={handleSearch} className="flex bg-white border border-slate-300 rounded-xl overflow-hidden shadow-xl">
-              <input
-                type="text"
-                placeholder={lang.searchPlaceholder}
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="bg-transparent text-slate-900 px-3 py-2 text-[10px] focus:outline-none w-full font-bold placeholder:text-slate-400"
-              />
-              <button type="submit" className="bg-cyan-500 text-slate-950 px-2.5 flex items-center hover:bg-cyan-400 transition-all">
-                {searching ? <div className="w-3 h-3 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" /> : <Search className="w-3 h-3" />}
-              </button>
-            </form>
-            {searchResults.length > 0 && (
-              <div className="absolute top-full mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-2xl max-h-44 overflow-y-auto z-20 divide-y divide-slate-100">
-                {searchResults.map((item, i) => (
-                  <button key={i} onClick={() => handleSelectPlace(item)} className="w-full text-left px-3 py-2 text-[10px] text-slate-700 hover:bg-slate-50 font-bold transition-colors">
-                    📍 {item.display_name.split(',').slice(0, 3).join(', ')}
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="absolute top-3 right-12 z-10">
+            {/* === MOBILE: hanya icon, expand saat klik === */}
+            <div className="flex sm:hidden items-center gap-1">
+              {mobileSearchOpen ? (
+                /* Expanded mobile search */
+                <div className="flex flex-col">
+                  <form
+                    onSubmit={e => { handleSearch(e); }}
+                    className="flex bg-white border border-slate-300 rounded-xl overflow-hidden shadow-xl"
+                  >
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder={lang.searchPlaceholder}
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      className="bg-transparent text-slate-900 px-3 py-2 text-[10px] focus:outline-none w-44 font-bold placeholder:text-slate-400"
+                    />
+                    <button type="submit" className="bg-cyan-500 text-slate-950 px-2.5 flex items-center hover:bg-cyan-400 transition-all">
+                      {searching
+                        ? <div className="w-3 h-3 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                        : <Search className="w-3 h-3" />}
+                    </button>
+                    {/* Tombol tutup */}
+                    <button
+                      type="button"
+                      onClick={() => { setMobileSearchOpen(false); setSearchResults([]); setSearchQuery(''); }}
+                      className="bg-slate-200 text-slate-700 px-2 flex items-center hover:bg-slate-300 transition-all text-[10px] font-bold"
+                    >
+                      ✕
+                    </button>
+                  </form>
+                  {searchResults.length > 0 && (
+                    <div className="absolute top-full mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-2xl max-h-44 overflow-y-auto z-20 divide-y divide-slate-100">
+                      {searchResults.map((item, i) => (
+                        <button key={i} onClick={() => { handleSelectPlace(item); setMobileSearchOpen(false); }} className="w-full text-left px-3 py-2 text-[10px] text-slate-700 hover:bg-slate-50 font-bold transition-colors">
+                          📍 {item.display_name.split(',').slice(0, 3).join(', ')}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Collapsed mobile — hanya icon kaca pembesar */
+                <button
+                  onClick={() => setMobileSearchOpen(true)}
+                  className="bg-white border border-slate-300 rounded-xl shadow-xl p-2 flex items-center justify-center hover:bg-slate-50 active:scale-95 transition-all"
+                  aria-label="Cari lokasi"
+                >
+                  <Search className="w-4 h-4 text-slate-700" />
+                </button>
+              )}
+            </div>
+
+            {/* === DESKTOP: selalu tampil full === */}
+            <div className="hidden sm:block w-56 max-w-[calc(100vw-180px)]">
+              <form onSubmit={handleSearch} className="flex bg-white border border-slate-300 rounded-xl overflow-hidden shadow-xl">
+                <input
+                  type="text"
+                  placeholder={lang.searchPlaceholder}
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="bg-transparent text-slate-900 px-3 py-2 text-[10px] focus:outline-none w-full font-bold placeholder:text-slate-400"
+                />
+                <button type="submit" className="bg-cyan-500 text-slate-950 px-2.5 flex items-center hover:bg-cyan-400 transition-all">
+                  {searching
+                    ? <div className="w-3 h-3 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                    : <Search className="w-3 h-3" />}
+                </button>
+              </form>
+              {searchResults.length > 0 && (
+                <div className="absolute top-full mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-44 overflow-y-auto z-20 divide-y divide-slate-100">
+                  {searchResults.map((item, i) => (
+                    <button key={i} onClick={() => handleSelectPlace(item)} className="w-full text-left px-3 py-2 text-[10px] text-slate-700 hover:bg-slate-50 font-bold transition-colors">
+                      📍 {item.display_name.split(',').slice(0, 3).join(', ')}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

@@ -1,5 +1,8 @@
 import { adminDb } from '@/lib/firebaseAdmin';
+import { fetchJsonFromR2 } from '@/lib/r2Client';
 import FireballListClient from '@/components/FireballListClient';
+import JsonLd from '@/components/JsonLd';
+import { generateBreadcrumbSchema, generateDatasetSchema } from '@/lib/seoSchemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,28 +23,25 @@ interface BlogPost {
   translations?: Record<string, any>;
 }
 
-const R2_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
-
 export default async function FireballPage() {
   let posts: BlogPost[] = [];
 
-  // 1. Coba fetch dari R2
+  // 1. Fetch data/blog/posts.json via authenticated R2 S3 SDK
   try {
-    const r2Res = await fetch(`${R2_URL}/data/blog/posts.json?t=${Date.now()}`, { cache: 'no-store' });
-    if (r2Res.ok) {
-      const data = await r2Res.json();
-      posts = data.filter((p: BlogPost) => p.category === 'Bola Api & Fireball');
+    const data = await fetchJsonFromR2<BlogPost[]>('data/blog/posts.json');
+    if (Array.isArray(data) && data.length > 0) {
+      posts = data.filter((p: BlogPost) => p.category === 'Bola Api & Fireball' || p.category === 'Fireball' || p.category === 'Bola Api');
     }
   } catch (err) {
-    console.warn("[Fireball List] Gagal fetch R2 cache, mencoba Firestore...", err);
+    console.warn("[Fireball List] Gagal fetch R2 S3, mencoba Firestore...", err);
   }
 
-  // 2. Fallback ke Firestore
+  // 2. Fallback ke Firestore jika R2 kosong
   if (posts.length === 0) {
     try {
       const snapshot = await adminDb
         .collection('articles')
-        .where('category', '==', 'Bola Api & Fireball')
+        .where('category', 'in', ['Bola Api & Fireball', 'Fireball', 'Bola Api'])
         .get();
 
       snapshot.forEach((doc: any) => {
@@ -66,5 +66,34 @@ export default async function FireballPage() {
     }
   }
 
-  return <FireballListClient initialPosts={posts} />;
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Beranda', url: '/' },
+    { name: 'Fireball & Bola Api', url: '/fireball' },
+  ]);
+
+  const datasetSchema = generateDatasetSchema({
+    name: 'Data Peristiwa Bola Api (Fireball) NASA CNEOS',
+    description: 'Catatan empiris dan analisis energi radiasi ledakan meteor bola api yang melintas di atmosfer.',
+    url: '/fireball',
+    keywords: ['fireball', 'bola api meteor', 'nasa cneos', 'deteksi meteor'],
+  });
+
+  const itemListSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Laporan Deteksi Fireball Terbaru',
+    itemListElement: posts.slice(0, 10).map((post, idx) => ({
+      '@type': 'ListItem',
+      position: idx + 1,
+      name: post.title,
+      url: `https://www.meteorit.my.id/fireball/${post.id}`,
+    })),
+  };
+
+  return (
+    <>
+      <JsonLd schema={[breadcrumbSchema, datasetSchema, itemListSchema]} />
+      <FireballListClient initialPosts={posts} />
+    </>
+  );
 }

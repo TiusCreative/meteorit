@@ -6,6 +6,7 @@ import { getSiteHost } from '@/lib/siteUrl';
 import { landingText } from '@/lib/landingText';
 import { useSiteLanguage } from '@/lib/useSiteLanguage';
 import { useUserRole } from '@/lib/useUserRole';
+import { getProxiedUrl } from '@/components/SafeImage';
 
 interface BlogPost {
   id: string;
@@ -199,10 +200,45 @@ export default function ArticleActions({ post }: ArticleActionsProps) {
 
   const handleDownloadShareCard = async () => {
     if (!cardRef.current) return;
+
+    // Proxy images inside cardRef to avoid CORS/connection issues with html2canvas
+    const images = cardRef.current.getElementsByTagName('img');
+    const originalSrcs = new Map<HTMLImageElement, string>();
+    const imagePromises: Promise<void>[] = [];
+
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+      originalSrcs.set(img, img.src);
+      img.crossOrigin = 'anonymous';
+
+      if (img.src && !img.src.startsWith('data:') && !img.src.includes('/api/image-proxy')) {
+        img.src = `/api/image-proxy?url=${encodeURIComponent(img.src)}`;
+      }
+
+      if (!img.complete) {
+        imagePromises.push(
+          new Promise((resolve) => {
+            img.onload = () => resolve();
+            img.onerror = () => {
+              // Use local same-origin proxy fallback so canvas is NEVER tainted
+              img.src = '/api/image-proxy';
+              resolve();
+            };
+          })
+        );
+      }
+    }
+
+    if (imagePromises.length > 0) {
+      await Promise.all(imagePromises);
+    }
+    await new Promise((r) => setTimeout(r, 150));
+
     try {
       const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(cardRef.current, {
         useCORS: true,
+        allowTaint: true,
         scale: 3, // High-quality resolution
         logging: false,
         backgroundColor: '#020617'
@@ -215,6 +251,12 @@ export default function ArticleActions({ post }: ArticleActionsProps) {
     } catch (error) {
       console.error("Gagal mendownload card vertical:", error);
       alert("Gagal membuat gambar vertical card untuk media sosial.");
+    } finally {
+      for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        const orig = originalSrcs.get(img);
+        if (orig) img.src = orig;
+      }
     }
   };
 
@@ -224,6 +266,9 @@ export default function ArticleActions({ post }: ArticleActionsProps) {
       alert(t.linkCopied || "Tautan artikel berhasil disalin!");
     }
   };
+
+  const rawExcerpt = post.excerpt || '';
+  const truncatedExcerpt = rawExcerpt.length > 280 ? rawExcerpt.substring(0, 280) + '...' : rawExcerpt;
 
   return (
     <div>
@@ -308,7 +353,16 @@ export default function ArticleActions({ post }: ArticleActionsProps) {
           {/* Banner Image */}
           <div style={{ margin: '16px 24px 0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(8,47,73,0.5)', height: '200px', backgroundColor: '#0f172a', flexShrink: 0 }}>
             {post.image ? (
-              <img src={post.image} alt={post.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img 
+                src={getProxiedUrl(post.image)} 
+                alt={post.title} 
+                crossOrigin="anonymous"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/api/image-proxy';
+                }}
+              />
             ) : (
               <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(8,47,73,0.5)' }}>
                 <span style={{ fontSize: '48px', color: '#67e8f9' }}>🌌</span>
@@ -322,8 +376,18 @@ export default function ArticleActions({ post }: ArticleActionsProps) {
             <h2 style={{ fontSize: '20px', fontWeight: 800, lineHeight: '1.3', color: '#fbbf24', margin: 0 }}>
               {post.title}
             </h2>
-            <p style={{ fontSize: '12px', lineHeight: '1.7', color: '#cbd5e1', margin: 0 }}>
-              {post.excerpt}
+            <p style={{ 
+              fontSize: '12px', 
+              lineHeight: '1.6', 
+              color: '#cbd5e1', 
+              margin: 0,
+              display: '-webkit-box',
+              WebkitLineClamp: 5,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {truncatedExcerpt}
             </p>
           </div>
 

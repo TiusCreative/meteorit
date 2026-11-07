@@ -6,6 +6,7 @@ import { landingText } from '@/lib/landingText';
 import { useSiteLanguage } from '@/lib/useSiteLanguage';
 import { localizeArticle, localizeCategory } from '@/lib/clientArticleLocalization';
 import { useLocalizedArticles } from '@/lib/useLocalizedArticles';
+import SafeImage from '@/components/SafeImage';
 
 interface BlogPost {
   id: string;
@@ -65,10 +66,12 @@ export default function BlogSection({ initialPosts }: BlogSectionProps) {
                   <article key={localizedPost.id} className="bg-slate-900/40 border border-cyan-950/30 p-6 rounded-2xl flex flex-col md:flex-row gap-6 hover:border-cyan-500/30 transition-all shadow-xl">
                     {localizedPost.image && (
                       <div className="h-32 md:w-44 w-full shrink-0 rounded-xl overflow-hidden bg-slate-950">
-                        <img src={localizedPost.image} alt={localizedPost.title} className="w-full h-full object-cover" onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = 'https://placehold.co/400x300/020617/22d3ee?text=Space';
-                        }} />
+                        <SafeImage 
+                          src={localizedPost.image} 
+                          alt={localizedPost.title} 
+                          className="w-full h-full object-cover" 
+                          fallback="https://placehold.co/400x300/020617/22d3ee?text=Space" 
+                        />
                       </div>
                     )}
                     <div className="flex-grow flex flex-col">

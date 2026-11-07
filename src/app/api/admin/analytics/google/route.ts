@@ -142,11 +142,11 @@ export async function GET() {
       updatedAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('[Google Analytics] report error:', error);
+    console.warn('[Google Analytics] report warning:', error instanceof Error ? error.message : String(error));
     return NextResponse.json({
       success: false,
-      configured: true,
-      message: error instanceof Error ? error.message : 'Gagal membaca Google Analytics.',
-    }, { status: 500 });
+      configured: false,
+      message: error instanceof Error ? error.message : 'Gagal membaca Google Analytics. Pastikan Service Account memiliki akses ke Property ID.',
+    }, { status: 200 });
   }
 }

@@ -1,5 +1,8 @@
 import { adminDb } from '@/lib/firebaseAdmin';
+import { fetchJsonFromR2 } from '@/lib/r2Client';
 import EonetListClient from '@/components/EonetListClient';
+import JsonLd from '@/components/JsonLd';
+import { generateBreadcrumbSchema, generateDatasetSchema } from '@/lib/seoSchemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,28 +23,25 @@ interface BlogPost {
   translations?: Record<string, any>;
 }
 
-const R2_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
-
 export default async function EonetPage() {
   let posts: BlogPost[] = [];
 
-  // 1. Coba fetch dari R2
+  // 1. Fetch data/blog/posts.json via authenticated R2 S3 SDK
   try {
-    const r2Res = await fetch(`${R2_URL}/data/blog/posts.json?t=${Date.now()}`, { cache: 'no-store' });
-    if (r2Res.ok) {
-      const data = await r2Res.json();
-      posts = data.filter((p: BlogPost) => p.category === 'Peristiwa Alam');
+    const data = await fetchJsonFromR2<BlogPost[]>('data/blog/posts.json');
+    if (Array.isArray(data) && data.length > 0) {
+      posts = data.filter((p: BlogPost) => p.category === 'Peristiwa Alam' || p.category === 'EONET' || p.category === 'Bencana Alam');
     }
   } catch (err) {
-    console.warn("[EONET List] Gagal fetch R2 cache, mencoba Firestore...", err);
+    console.warn("[EONET List] Gagal fetch R2 S3, mencoba Firestore...", err);
   }
 
-  // 2. Fallback ke Firestore
+  // 2. Fallback ke Firestore jika R2 kosong
   if (posts.length === 0) {
     try {
       const snapshot = await adminDb
         .collection('articles')
-        .where('category', '==', 'Peristiwa Alam')
+        .where('category', 'in', ['Peristiwa Alam', 'EONET', 'Bencana Alam'])
         .get();
 
       snapshot.forEach((doc: any) => {
@@ -66,5 +66,34 @@ export default async function EonetPage() {
     }
   }
 
-  return <EonetListClient initialPosts={posts} />;
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Beranda', url: '/' },
+    { name: 'EONET & Peristiwa Alam', url: '/eonet' },
+  ]);
+
+  const datasetSchema = generateDatasetSchema({
+    name: 'NASA EONET (Earth Observatory Natural Event Tracker)',
+    description: 'Pemantauan satelit real-time terhadap fenomena dan bencana alam alam semesta.',
+    url: '/eonet',
+    keywords: ['eonet', 'nasa eonet', 'bencana alam', 'kebakaran hutan', 'gunung berapi'],
+  });
+
+  const itemListSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Laporan Peristiwa Alam Aktif NASA EONET',
+    itemListElement: posts.slice(0, 10).map((post, idx) => ({
+      '@type': 'ListItem',
+      position: idx + 1,
+      name: post.title,
+      url: `https://www.meteorit.my.id/eonet/${post.id}`,
+    })),
+  };
+
+  return (
+    <>
+      <JsonLd schema={[breadcrumbSchema, datasetSchema, itemListSchema]} />
+      <EonetListClient initialPosts={posts} />
+    </>
+  );
 }

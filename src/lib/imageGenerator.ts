@@ -2,19 +2,20 @@ import { uploadToR2 } from './r2Client';
 import { convertToWebp } from './imageConverter';
 
 /**
- * Generates an image using Pollinations AI with a fallback to Cloudflare Workers AI.
- * The generated image is uploaded to R2, and the R2 public URL is returned.
+ * Generates a unique image using Pollinations AI with a fallback to Cloudflare Workers AI.
+ * The generated image is converted to WebP, uploaded to Cloudflare R2, and the R2 URL is returned.
  * 
- * @param prompt The prompt to generate the image for
- * @param r2Path The path to upload the image to in R2 (e.g. 'data/blog/images/xyz.jpg')
+ * @param prompt The prompt describing the desired image
+ * @param r2Path The path to upload the image to in R2 (e.g. 'data/blog/images/xyz.webp')
  */
 export async function generateImageWithFallback(prompt: string, r2Path: string): Promise<string> {
+  const seed = Math.floor(Math.random() * 1000000);
   const encodedPrompt = encodeURIComponent(prompt);
-  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=500&nologo=true`;
+  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=500&nologo=true&seed=${seed}&enhance=true`;
 
-  console.log(`[ImageGen] Generating image. Prompt: "${prompt}"`);
+  console.log(`[ImageGen] Generating unique image (seed: ${seed}). Prompt: "${prompt}"`);
   
-  // 1. Try Pollinations AI
+  // 1. Try Pollinations AI with a strict 5s timeout
   try {
     console.log(`[ImageGen] Attempting Pollinations AI...`);
     const res = await fetch(pollinationsUrl, {
@@ -22,12 +23,13 @@ export async function generateImageWithFallback(prompt: string, r2Path: string):
       headers: {
         'Accept': 'image/*'
       },
+      signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(5000) : undefined,
       next: { revalidate: 0 }
     });
 
     if (res.ok) {
       let buffer: Buffer = Buffer.from(await res.arrayBuffer()) as any;
-      if (buffer.length > 5000) { // Verify it's a real image buffer and not a tiny text error
+      if (buffer.length > 5000) { // Verify it's a real image buffer
         let finalContentType = 'image/jpeg';
         let finalPath = r2Path;
 
@@ -63,7 +65,11 @@ export async function generateImageWithFallback(prompt: string, r2Path: string):
         'Authorization': `Bearer ${cfAiToken}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ 
+        prompt: `${prompt}, high quality, realistic space photography, seed ${seed}`,
+        seed
+      }),
+      signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(5000) : undefined,
       next: { revalidate: 0 }
     });
 
@@ -93,7 +99,6 @@ export async function generateImageWithFallback(prompt: string, r2Path: string):
     return publicUrl;
   } catch (err) {
     console.error(`[ImageGen] Cloudflare Workers AI fallback failed:`, err);
-    // Return the original static placeholder as final fallback
     return `https://placehold.co/800x500/020617/f59e0b?text=${encodeURIComponent(prompt.substring(0, 15))}`;
   }
 }
