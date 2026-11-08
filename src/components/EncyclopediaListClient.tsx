@@ -208,7 +208,7 @@ export default function EncyclopediaListClient({ initialMeteorites }: Encycloped
                         src={met.image_url} 
                         alt={name} 
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        fallback="https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev/data/glossary/images/nasa-meteorite.webp"
+                        fallback="https://cdn.meteorit.my.id/data/glossary/images/nasa-meteorite.webp"
                       />
                       <div className="absolute top-3 right-3 bg-cyan-100 dark:bg-cyan-900/80 backdrop-blur text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/30 text-xs font-bold px-2 py-0.5 rounded uppercase">
                         {met.recclass}

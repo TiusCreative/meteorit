@@ -29,7 +29,7 @@ export async function GET() {
   } catch (error) {
     console.error('[Podcast-EN.xml GET] Failed to fetch podcast-en.xml from R2, serving fallback:', error);
 
-    const logoUrl = 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev/logo-meteor-spotify.png';
+    const logoUrl = 'https://cdn.meteorit.my.id/logo-meteor-spotify.png';
     const fallbackXml = `<?xml version="1.0" encoding="UTF-8" ?>
 <rss version="2.0" 
      xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
@@ -63,7 +63,7 @@ export async function GET() {
     <itunes:summary>Introduction to space monitoring platform and astronomy science education.</itunes:summary>
     <pubDate>Wed, 22 Jul 2026 11:00:00 GMT</pubDate>
     <guid isPermaLink="false">fallback-welcome-episode-en</guid>
-    <enclosure url="https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev/fallback.mp3" length="1024" type="audio/mpeg" />
+    <enclosure url="https://cdn.meteorit.my.id/fallback.mp3" length="1024" type="audio/mpeg" />
     <itunes:duration>10</itunes:duration>
     <itunes:explicit>no</itunes:explicit>
     <itunes:author>Meteorit Indonesia</itunes:author>

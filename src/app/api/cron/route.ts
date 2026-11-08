@@ -20,7 +20,7 @@ async function rebuildR2MeteoritesCache() {
 
     // 1. Prioritas: baca catalog.json yang sudah ada di R2 (berisi image_url AI yang valid)
     //    Ini WAJIB diutamakan karena Firestore di Edge Runtime selalu return empty (dummyFirestore)
-    const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+    const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://cdn.meteorit.my.id';
     try {
       const r2Res = await fetch(`${R2_PUBLIC_URL}/data/meteorites/catalog.json?_t=${Date.now()}`, {
         signal: AbortSignal.timeout(5000)
@@ -517,7 +517,7 @@ Tuliskan langsung dalam format markdown yang rapi tanpa kata pengantar tambahan.
       // Merge meteorit yang baru diproses dengan R2 catalog yang sudah ada (preserve image_url lama)
       // rebuildR2MeteoritesCache() kini baca R2 existing dulu → merge → update R2 & D1
       if (processedMeteorites.length > 0) {
-        const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+        const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://cdn.meteorit.my.id';
         try {
           const catalogRes = await fetch(`${R2_PUBLIC_URL}/data/meteorites/catalog.json?_t=${Date.now()}`, {
             signal: AbortSignal.timeout(5000)

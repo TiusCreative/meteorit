@@ -12,7 +12,7 @@ export const metadata = {
   keywords: ['katalog meteorit', 'klasifikasi meteorit', 'jenis meteorit', 'komet asteroid', 'NASA NeoWs', 'pendaratan meteorit', 'database meteorit'],
 };
 
-const R2_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+const R2_URL = process.env.R2_PUBLIC_URL || 'https://cdn.meteorit.my.id';
 
 interface Meteorite {
   id: string;

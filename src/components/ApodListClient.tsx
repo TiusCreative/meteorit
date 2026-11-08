@@ -59,7 +59,7 @@ const isVideoUrl = (url: string, mediaType?: string) => {
   return isDirectVideoUrl(url) || url.includes('youtube.com') || url.includes('youtu.be') || url.includes('vimeo.com') || url.includes('player.vimeo.com');
 };
 
-const R2_SPACE_FALLBACK = 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev/data/glossary/images/nasa-apod.webp';
+const R2_SPACE_FALLBACK = 'https://cdn.meteorit.my.id/data/glossary/images/nasa-apod.webp';
 
 const getThumbnailUrl = (url: string) => {
   if (!url) return R2_SPACE_FALLBACK;

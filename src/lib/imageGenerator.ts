@@ -100,7 +100,7 @@ export async function generateImageWithFallback(prompt: string, r2Path: string):
     console.error(`[ImageGen] Cloudflare Workers AI fallback failed:`, err);
     // JANGAN return placehold.co — gunakan R2 static fallback
     // yang pasti ada (sudah pre-upload) agar banner tidak blank
-    const R2_PUBLIC = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+    const R2_PUBLIC = process.env.R2_PUBLIC_URL || 'https://cdn.meteorit.my.id';
     return `${R2_PUBLIC}/data/glossary/images/nasa-apod.webp`;
   }
 }

@@ -7,7 +7,7 @@ import { queryD1 } from '@/lib/d1Client';
 
 export const dynamic = 'force-dynamic';
 
-const R2_PUBLIC = 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+const R2_PUBLIC = 'https://cdn.meteorit.my.id';
 
 /** Daftar istilah baru yang akan diterbitkan satu per satu setiap 4 hari */
 const NEW_TERMS_QUEUE = [

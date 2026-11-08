@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-const R2_FALLBACK_METEORITE = 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev/data/glossary/images/nasa-meteorite.webp';
-const R2_FALLBACK_SPACE = 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev/data/glossary/images/nasa-apod.webp';
+const R2_FALLBACK_METEORITE = 'https://cdn.meteorit.my.id/data/glossary/images/nasa-meteorite.webp';
+const R2_FALLBACK_SPACE = 'https://cdn.meteorit.my.id/data/glossary/images/nasa-apod.webp';
 
 function getRealisticFallbackUrl(labelOrUrl: string): string {
   const lower = labelOrUrl.toLowerCase();
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(R2_FALLBACK_SPACE, 302);
   }
 
-  // Jika URL mengarah ke r2.dev (yang sering diblokir ISP Indonesia), arahkan ke domain kustom CDN cdn.meteorit.my.id
+  // Jika URL masih menggunakan domain r2.dev lama, arahkan ke CDN custom domain
   let targetUrl = imageUrl;
   if (targetUrl.includes('pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev')) {
     targetUrl = targetUrl.replace('pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev', 'cdn.meteorit.my.id');

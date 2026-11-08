@@ -9,6 +9,7 @@ const nextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: '**.r2.dev' },
       { protocol: 'https', hostname: 'pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev' },
+      { protocol: 'https', hostname: 'cdn.meteorit.my.id' },
       { protocol: 'https', hostname: 'assets.science.nasa.gov' },
       { protocol: 'https', hostname: 'science.nasa.gov' },
       { protocol: 'https', hostname: 'apod.nasa.gov' },

@@ -21,9 +21,9 @@ export function getProxiedUrl(originalSrc: string | undefined): string | undefin
   return `/api/image-proxy?url=${encodeURIComponent(originalSrc)}`;
 }
 
-const DEFAULT_FALLBACK_IMAGE = 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev/data/glossary/images/nasa-apod.webp';
+const DEFAULT_FALLBACK_IMAGE = 'https://cdn.meteorit.my.id/data/glossary/images/nasa-apod.webp';
 
-const R2_BASE = 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+const R2_BASE = 'https://cdn.meteorit.my.id';
 
 /**
  * Membuat fallback chain untuk gambar R2 glossary / umum:

@@ -73,7 +73,7 @@ export async function GET(request: Request) {
     const rawArticles = articlesJson.result?.[0]?.results || [];
 
     const siteUrl = getSiteUrl();
-    const r2PublicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL || process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+    const r2PublicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL || process.env.R2_PUBLIC_URL || 'https://cdn.meteorit.my.id';
 
     // 4. Formatkan Data Respon
     const formattedArticles = rawArticles.map((art: any) => {

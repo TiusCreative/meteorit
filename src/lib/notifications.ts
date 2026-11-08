@@ -31,7 +31,7 @@ export async function sendBroadcastNotification({
     if (articleIdMatch) {
       const id = articleIdMatch[2];
       try {
-        const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+        const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://cdn.meteorit.my.id';
         const res = await fetch(`${R2_PUBLIC_URL}/data/blog/articles/${encodeURIComponent(id)}.json`);
         if (res.ok) {
           const articleData = await res.json();

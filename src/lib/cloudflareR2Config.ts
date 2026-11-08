@@ -6,7 +6,7 @@ const R2_CONFIG = {
   accessKeyId: process.env.R2_ACCESS_KEY_ID || "cd3b2f027722b69c38f2f9ebf3663228",
   secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "a0ed04760361869f55ebf6a109ddeda9d3de431cefa27faaaf05a2a0f8f5a5d7",
   bucketName: process.env.R2_BUCKET_NAME || "meteorit-indonesia",
-  publicUrl: process.env.R2_PUBLIC_URL || "https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev",
+  publicUrl: process.env.R2_PUBLIC_URL || "https://cdn.meteorit.my.id",
   s3Endpoint: process.env.R2_S3_ENDPOINT || "https://5f29e48300ae379ebe15c20185d15ac8.r2.cloudflarestorage.com"
 };
 

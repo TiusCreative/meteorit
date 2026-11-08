@@ -47,7 +47,7 @@ function formatLocalizedDate(dateStr: string, locale: string) {
   return dateStr;
 }
 
-const R2_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+const R2_URL = process.env.R2_PUBLIC_URL || 'https://cdn.meteorit.my.id';
 
 // Fetch APOD Data
 async function getApod(id: string): Promise<Apod | null> {

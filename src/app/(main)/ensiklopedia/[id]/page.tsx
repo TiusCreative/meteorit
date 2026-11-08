@@ -24,7 +24,7 @@ interface Meteorite {
   image_url: string;
 }
 
-const R2_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+const R2_URL = process.env.R2_PUBLIC_URL || 'https://cdn.meteorit.my.id';
 
 // Dynamic SEO Metadata
 export async function generateMetadata({ params }: { params: { id: string } }) {

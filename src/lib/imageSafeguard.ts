@@ -12,7 +12,7 @@
  * 5. Placehold.co sebagai LAST RESORT (harus tetap return string valid)
  */
 
-const R2_PUBLIC = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+const R2_PUBLIC = process.env.R2_PUBLIC_URL || 'https://cdn.meteorit.my.id';
 
 /** Daftar gambar kategori statis yang sudah ada di R2 sebagai fallback per kategori */
 const CATEGORY_FALLBACKS: Record<string, string> = {

@@ -41,7 +41,7 @@ export async function fetchJsonFromR2<T>(key: string): Promise<T | null> {
   // 1. Primary: Direct high-speed Edge HTTP fetch via CDN (0ms CPU, prevents Cloudflare Error 1102)
   try {
     const cdnBase = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.meteorit.my.id';
-    const publicBase = R2_CONFIG.publicUrl || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+    const publicBase = R2_CONFIG.publicUrl || 'https://cdn.meteorit.my.id';
     
     // Coba via CDN custom domain dulu, fallback ke public r2.dev
     let res = await fetch(`${cdnBase}/${key}`, { signal: AbortSignal.timeout(3000) });

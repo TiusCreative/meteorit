@@ -428,7 +428,7 @@ const GLOSSARY_PHOTOS: Record<string, string> = {
   'spectrometer': 'https://images.unsplash.com/photo-1507499739999-097706ad8914?auto=format&fit=crop&w=1000&q=80',
 };
 
-const R2_BASE = 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+const R2_BASE = 'https://cdn.meteorit.my.id';
 
 function getTermPhoto(key: string, category: GlossaryCategory): string {
   const prefix = category.toLowerCase();

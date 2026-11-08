@@ -66,7 +66,7 @@ export default function ArtikelManagement() {
 
     try {
       // 2. Fallback ke R2 cache jika database gagal diakses
-      const r2PublicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+      const r2PublicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL || 'https://cdn.meteorit.my.id';
       const res = await fetch(`${r2PublicUrl}/data/blog/posts.json?t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
