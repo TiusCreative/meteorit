@@ -92,44 +92,59 @@ async function fetchApodFromWordPress(date: string): Promise<{
     const d = new Date(date + 'T00:00:00Z');
     const month = MONTH_NAMES[d.getUTCMonth()];
     const day = d.getUTCDate();
+    const dayStr = String(day).padStart(2, '0');
     const year = d.getUTCFullYear();
-    const slugPrefix = `apod-${year}-${month}-${day}`;
 
-    const wpUrl = `https://science.nasa.gov/wp-json/wp/v2/image-article?search=${slugPrefix}&per_page=3&orderby=date&order=desc`;
-    const wpRes = await fetchWithRetry(wpUrl, {}, 2, 1500);
-    if (!wpRes.ok) return null;
+    const searchVariants = [
+      `${year}-${month}-${day}`,
+      `${year}-${month}-${dayStr}`,
+      `apod-${year}-${month}-${day}`,
+      `apod-${year}-${month}-${dayStr}`
+    ];
 
-    const wpData = await wpRes.json();
-    if (!Array.isArray(wpData) || wpData.length === 0) return null;
+    for (const term of searchVariants) {
+      try {
+        const wpUrl = `https://science.nasa.gov/wp-json/wp/v2/image-article?search=${encodeURIComponent(term)}&per_page=10`;
+        const wpRes = await fetchWithRetry(wpUrl, {}, 2, 1500);
+        if (!wpRes.ok) continue;
 
-    const matched = wpData.find((item: any) => item.slug?.startsWith(slugPrefix)) || wpData[0];
-    if (!matched) return null;
+        const wpData = await wpRes.json();
+        if (!Array.isArray(wpData) || wpData.length === 0) continue;
 
-    // Ambil judul bersih (tanpa HTML entities)
-    const rawTitle = matched.title?.rendered || '';
-    const title = rawTitle
-      .replace(/APOD: \d{4} \w+ \d+ – /i, '')  // Hapus prefix "APOD: 2026 October 10 – "
-      .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#8217;/g, "'").trim();
+        const matched = wpData.find((item: any) => {
+          const s = item.slug || '';
+          const t = (item.title?.rendered || '').toLowerCase();
+          const matchesDate = s.includes(`${year}-${month}-${day}`) || s.includes(`${year}-${month}-${dayStr}`);
+          return matchesDate && !t.includes('nasa science');
+        });
 
-    // Ambil excerpt/explanation
-    const rawExcerpt = matched.excerpt?.rendered || '';
-    const explanation = rawExcerpt
-      .replace(/<[^>]+>/g, '')   // Strip HTML tags
-      .replace(/\[&hellip;\]/g, '...')
-      .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#8217;/g, "'")
-      .replace(/&#8220;/g, '"').replace(/&#8221;/g, '"').trim();
+        if (matched) {
+          const rawTitle = (matched.title?.rendered || '')
+            .replace(/APOD:\s*\d{4}\s*\w+\s*\d+\s*[–—\-]\s*/i, '')
+            .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#8217;/g, "'").replace(/&#8211;/g, '-').trim();
 
-    // Ambil URL gambar: prioritas featured_image.file > featured_image_url
-    let imageUrl: string | null = null;
-    const fi = matched.featured_image;
-    if (fi?.file && fi.file.startsWith('http') && !isNasaLogoPlaceholder(fi.file)) {
-      imageUrl = fi.file;
-    } else if (matched.featured_image_url && !isNasaLogoPlaceholder(matched.featured_image_url)) {
-      imageUrl = matched.featured_image_url;
+          const rawExcerpt = (matched.excerpt?.rendered || matched.caption || '')
+            .replace(/<[^>]+>/g, '')
+            .replace(/\[&hellip;\]/g, '...')
+            .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#8217;/g, "'").replace(/&#8211;/g, '-').trim();
+
+          let imageUrl: string | null = null;
+          const fi = matched.featured_image;
+          if (fi?.file && fi.file.startsWith('http') && !isNasaLogoPlaceholder(fi.file)) {
+            imageUrl = fi.file;
+          } else if (matched.featured_image_url && !isNasaLogoPlaceholder(matched.featured_image_url)) {
+            imageUrl = matched.featured_image_url;
+          }
+
+          if (imageUrl) {
+            console.log(`[APOD Cron] WordPress API matched for ${date}: title="${rawTitle}", imageUrl=${imageUrl}`);
+            return { title: rawTitle, explanation: rawExcerpt, imageUrl, copyright: 'NASA Public Domain', mediaType: 'image' };
+          }
+        }
+      } catch {}
     }
 
-    console.log(`[APOD Cron] WordPress API data for ${date}: title="${title}", imageUrl=${imageUrl}`);
-    return { title, explanation, imageUrl, copyright: 'NASA Public Domain', mediaType: 'image' };
+    return null;
   } catch (err) {
     console.warn('[APOD Cron] WordPress API fetch failed:', err);
     return null;
