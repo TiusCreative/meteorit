@@ -1,6 +1,8 @@
+export const runtime = 'edge';
 import ApodListClient from '@/components/ApodListClient';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { fetchJsonFromR2 } from '@/lib/r2Client';
+import { queryD1 } from '@/lib/d1Client';
 import JsonLd from '@/components/JsonLd';
 import { generateBreadcrumbSchema } from '@/lib/seoSchemas';
 
@@ -39,26 +41,21 @@ export default async function ApodPage() {
     console.warn("[APOD List] Gagal mengambil riwayat APOD dari R2, mencoba Firestore...", err);
   }
 
-  // 2. Fallback ke Firestore
+  // 2. Fallback ke Cloudflare D1
   if (apods.length === 0) {
     try {
-      const snapshot = await adminDb.collection('apod_history')
-        .orderBy('id', 'desc')
-        .limit(100)
-        .get();
-
-      snapshot.forEach((doc: any) => {
-        const data = doc.data();
-        apods.push({
-          id: doc.id,
-          title: data.title || {},
-          explanation: data.explanation || {},
-          image_url: data.image_url || '',
-          copyright: data.copyright || 'NASA Public Domain'
-        });
-      });
+      const d1Res = await queryD1('SELECT id, date, title, explanation, image_url, copyright FROM apod_history ORDER BY id DESC LIMIT 100');
+      if (d1Res?.results?.length) {
+        apods = d1Res.results.map((r: any) => ({
+          id: r.id,
+          title: typeof r.title === 'string' && r.title.startsWith('{') ? JSON.parse(r.title) : { en: r.title, id: r.title },
+          explanation: typeof r.explanation === 'string' && r.explanation.startsWith('{') ? JSON.parse(r.explanation) : { en: r.explanation, id: r.explanation },
+          image_url: r.image_url,
+          copyright: r.copyright || 'NASA Public Domain'
+        }));
+      }
     } catch (err) {
-      console.error("Gagal mengambil riwayat APOD dari Firestore:", err);
+      console.error("Gagal mengambil riwayat APOD dari D1:", err);
     }
   }
 

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import R2_CONFIG from '@/lib/cloudflareR2Config';
 
@@ -15,7 +16,7 @@ function fixUnescapedAmpersands(xmlString: string): string {
 export async function GET() {
   try {
     const r2Url = `${R2_CONFIG.publicUrl}/rss.xml`;
-    const res = await fetch(r2Url, { cache: 'no-store' });
+    const res = await fetch(r2Url);
 
     if (!res.ok) {
       throw new Error(`R2 returned status ${res.status}`);

@@ -1,20 +1,11 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { uploadToR2, fetchJsonFromR2 } from '@/lib/r2Client';
 import { queryD1 } from '@/lib/d1Client';
+import { verifyAdmin } from '@/lib/verifyAdminToken';
 
 export const dynamic = 'force-dynamic';
-
-async function verifyAdmin(request: Request): Promise<boolean> {
-  const adminUid = request.headers.get('x-admin-uid');
-  if (!adminUid) return false;
-  try {
-    const userSnap = await adminDb.collection('users').doc(adminUid).get();
-    return userSnap.exists && userSnap.data()?.role === 'admin';
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Rebuild R2 posts.json index from D1 database

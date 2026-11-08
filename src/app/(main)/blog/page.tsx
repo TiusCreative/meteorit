@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import BlogListClient from '@/components/BlogListClient';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { fetchJsonFromR2 } from '@/lib/r2Client';

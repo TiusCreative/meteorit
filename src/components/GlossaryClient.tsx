@@ -158,6 +158,7 @@ const glossaryUI: Record<SiteLanguage, {
 
 import { useLocalizedGlossary } from '@/lib/useLocalizedGlossary';
 import MobileFlipboardReader, { MobileReaderItem } from '@/components/MobileFlipboardReader';
+import SafeImage from '@/components/SafeImage';
 
 export default function GlossaryClient({ initialTerms }: { initialTerms: GlossaryTerm[] }) {
   const language = useSiteLanguage();
@@ -408,7 +409,7 @@ export default function GlossaryClient({ initialTerms }: { initialTerms: Glossar
               <article key={item.id} className="overflow-hidden rounded-xl border border-slate-700 bg-slate-950/60 text-left transition-colors hover:border-cyan-500 print:border-gray-300 print:bg-white">
                 <Link href={`/glossarium/${item.id}`} className="block">
                   <div className="h-40 bg-slate-900">
-                    <img
+                    <SafeImage
                       src={item.image}
                       alt={item.term[language] || item.term.en || item.term.id}
                       className="h-full w-full object-cover"

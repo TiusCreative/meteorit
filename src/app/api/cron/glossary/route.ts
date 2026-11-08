@@ -1,6 +1,8 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { uploadToR2 } from '@/lib/r2Client';
+import { queryD1 } from '@/lib/d1Client';
 import { getGlossarySeed } from '@/lib/glossaryData';
 
 export const dynamic = 'force-dynamic';
@@ -27,6 +29,18 @@ export async function GET(request: Request) {
     await batch.commit();
 
     await uploadToR2('data/glossary/terms.json', JSON.stringify(terms, null, 2), 'application/json');
+
+    // Sync to Cloudflare D1
+    try {
+      for (const t of terms) {
+        await queryD1(
+          'INSERT OR REPLACE INTO glossary_terms (id, term, definition, translations) VALUES (?, ?, ?, ?)',
+          [t.id, t.term.id || t.term.en, t.definition.id || t.definition.en, JSON.stringify(t)]
+        );
+      }
+    } catch (d1Err) {
+      console.warn('[Cron Glossary] D1 sync error:', d1Err);
+    }
 
     return NextResponse.json({
       success: true,

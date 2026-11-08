@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import GlossaryClient from '@/components/GlossaryClient';
 import { fetchJsonFromR2 } from '@/lib/r2Client';
 import { getGlossarySeed, type GlossaryTerm } from '@/lib/glossaryData';

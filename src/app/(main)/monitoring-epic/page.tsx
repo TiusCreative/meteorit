@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import type { Metadata } from 'next';
 import EpicEarth from '@/components/monitoring/EpicEarth';
 import { cookies } from 'next/headers';

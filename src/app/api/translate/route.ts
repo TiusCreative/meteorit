@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { translateText } from '@/lib/translator';
 
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
           if (!t || t.trim() === '' || target === 'id') return t;
           try {
             const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(t)}`;
-            const res = await fetch(url, { cache: 'no-store' });
+            const res = await fetch(url);
             if (res.ok) {
               const json = await res.json();
               const sentences = json[0];
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
     // Direct Google Translate for clean neural translation
     try {
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
-      const res = await fetch(url, { cache: 'no-store' });
+      const res = await fetch(url);
       if (res.ok) {
         const json = await res.json();
         const sentences = json[0];
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest) {
     ) {
       try {
         const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
-        const gRes = await fetch(url, { cache: 'no-store' });
+        const gRes = await fetch(url);
         if (gRes.ok) {
           const gJson = await gRes.json();
           const sentences = gJson[0];

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -27,8 +28,7 @@ export async function GET() {
     // Try fetching NOAA Scales
     try {
       const res = await fetch('https://services.swpc.noaa.gov/products/noaa-scales.json', {
-        cache: 'no-store',
-        signal: AbortSignal.timeout(4000),
+                signal: AbortSignal.timeout(4000),
       });
       if (res.ok) {
         const scales = await res.json();
@@ -60,8 +60,7 @@ export async function GET() {
     // Try fetching NOAA Solar Wind Speed
     try {
       const res = await fetch('https://services.swpc.noaa.gov/products/summary/solar-wind-speed.json', {
-        cache: 'no-store',
-        signal: AbortSignal.timeout(4000),
+                signal: AbortSignal.timeout(4000),
       });
       if (res.ok) {
         const wind = await res.json();

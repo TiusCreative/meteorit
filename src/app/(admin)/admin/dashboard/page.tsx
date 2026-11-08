@@ -77,7 +77,7 @@ export default function AdminDashboard() {
           });
         }
 
-        const googleRes = await fetch('/api/admin/analytics/google', { cache: 'no-store' });
+        const googleRes = await fetch('/api/admin/analytics/google');
         const googleData = await googleRes.json();
         if (googleRes.ok && googleData.success) {
           setGoogleStats(googleData.stats);

@@ -71,7 +71,7 @@ export default function HeroSection() {
     // Fetch live data via API internal supaya browser tidak langsung memanggil Open Notify.
     const fetchLiveData = async () => {
       try {
-        const res = await fetch('/api/space/live', { cache: 'no-store' });
+        const res = await fetch('/api/space/live');
         if (!res.ok) throw new Error('Live data belum tersedia.');
         const data = await res.json();
         const astronotCount = data.astronautCount || 7;

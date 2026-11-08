@@ -53,7 +53,7 @@ export default function ArtikelManagement() {
     setIsLoading(true);
     try {
       // 1. Coba ambil data ter-update dari database lokal (Firestore API)
-      const dbRes = await fetch(`/api/articles?limit=200&t=${Date.now()}`, { cache: 'no-store' });
+      const dbRes = await fetch(`/api/articles?limit=200&t=${Date.now()}`);
       if (dbRes.ok) {
         const data = await dbRes.json();
         setArticles(data.articles || []);
@@ -67,7 +67,7 @@ export default function ArtikelManagement() {
     try {
       // 2. Fallback ke R2 cache jika database gagal diakses
       const r2PublicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
-      const res = await fetch(`${r2PublicUrl}/data/blog/posts.json?t=${Date.now()}`, { cache: 'no-store' });
+      const res = await fetch(`${r2PublicUrl}/data/blog/posts.json?t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         setArticles(data);

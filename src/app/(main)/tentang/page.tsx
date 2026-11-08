@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { cookies } from 'next/headers';
 import { getGlobalSettings } from '@/lib/settings';
 import { getSiteHost } from '@/lib/siteUrl';

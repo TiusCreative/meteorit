@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { uploadToR2, fetchJsonFromR2 } from '@/lib/r2Client';
 import { sendTelegramMessage } from '@/lib/telegram';
@@ -86,8 +87,7 @@ export async function GET(request: Request) {
 
     // 1. Fetch NASA EONET v3 (no API key needed)
     const eonetRes = await fetch(
-      'https://eonet.gsfc.nasa.gov/api/v3/events?limit=20&status=open',
-      { next: { revalidate: 0 } }
+      'https://eonet.gsfc.nasa.gov/api/v3/events?limit=20&status=open'
     );
 
     if (!eonetRes.ok) {

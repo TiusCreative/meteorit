@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
       url += `&minlatitude=-11&maxlatitude=6&minlongitude=95&maxlongitude=141`;
     }
 
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`USGS API returned status ${res.status}`);
     }

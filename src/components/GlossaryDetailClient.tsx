@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import GlossaryDetailActions from '@/components/GlossaryDetailActions';
+import SafeImage from '@/components/SafeImage';
 import { useSiteLanguage } from '@/lib/useSiteLanguage';
 import { landingText } from '@/lib/landingText';
 import type { GlossaryTerm } from '@/lib/glossaryData';
@@ -88,7 +89,7 @@ export default function GlossaryDetailClient({ initialTerm, initialLanguage }: G
 
         <article id="glossary-detail-pdf" className="overflow-hidden rounded-2xl border border-slate-200 dark:border-cyan-900/30 bg-slate-50 dark:bg-slate-900/50 transition-all print:border-0 print:bg-white">
           <div className="h-72 bg-slate-900 md:h-[430px]">
-            <img src={term.image} alt={currentTitle} className="h-full w-full object-cover" />
+            <SafeImage src={term.image} alt={currentTitle} className="h-full w-full object-cover" />
           </div>
 
           <div className="p-6 md:p-10">

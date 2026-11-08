@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { uploadToR2 } from '@/lib/r2Client';
@@ -5,6 +6,7 @@ import { sendTelegramMessage } from '@/lib/telegram';
 import { sendBroadcastNotification } from '@/lib/notifications';
 import { buildAstronautDataset, FALLBACK_ASTRONAUTS, type AstronautProfile } from '@/lib/astronautData';
 import { getAbsoluteUrl, getSiteUrl } from '@/lib/siteUrl';
+import { ensureImageUrl } from '@/lib/imageSafeguard';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 80;
@@ -264,9 +266,10 @@ export async function GET(request: Request) {
         }
       }
 
-      // Generate photo via Pollinations
+      // Generate photo via Pollinations with fallback safeguard
       const photoPrompt = encodeURIComponent(`professional official portrait photo astronaut ${name} in space suit NASA realistic high quality`);
-      const imageUrl = `https://image.pollinations.ai/prompt/${photoPrompt}?width=400&height=500&nologo=true&seed=${slug.length * 17}`;
+      const rawImageUrl = `https://image.pollinations.ai/prompt/${photoPrompt}?width=400&height=500&nologo=true&seed=${slug.length * 17}`;
+      const imageUrl = await ensureImageUrl(rawImageUrl, 'astronot');
 
       const attribution = '\n\nSource: NASA Open Data APIs\nSumber Data: Pusat Data Publik Antariksa';
       const astronautDoc = {

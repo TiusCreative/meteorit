@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { getAbsoluteUrl } from '@/lib/siteUrl';
@@ -92,8 +93,7 @@ export async function GET(request: Request) {
       const kometUrl = getAbsoluteUrl(`/api/cron/komet?secret=${encodeURIComponent(secret)}&bypass=true`);
       const kometRes = await fetch(kometUrl, { 
         headers: { 'Authorization': `Bearer ${secret}` },
-        cache: 'no-store'
-      });
+              });
       if (kometRes.ok) {
         kometArticleTriggered = true;
         kometArticleResult = await kometRes.json();

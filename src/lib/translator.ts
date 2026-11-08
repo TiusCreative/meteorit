@@ -40,7 +40,7 @@ export async function translateText(
   try {
     const targetLang = locale === 'zh' ? 'zh-CN' : locale;
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
-    const response = await fetch(url, { cache: 'no-store' });
+    const response = await fetch(url);
     if (response.ok) {
       const json = await response.json();
       const sentences = json[0];

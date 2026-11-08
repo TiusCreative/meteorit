@@ -1,20 +1,11 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { buildArticleTranslations } from '@/lib/articleLocalization';
 import { uploadToR2 } from '@/lib/r2Client';
+import { verifyAdmin } from '@/lib/verifyAdminToken';
 
 export const dynamic = 'force-dynamic';
-
-async function verifyAdmin(request: Request): Promise<boolean> {
-  const adminUid = request.headers.get('x-admin-uid');
-  if (!adminUid) return false;
-  try {
-    const userSnap = await adminDb.collection('users').doc(adminUid).get();
-    return userSnap.exists && userSnap.data()?.role === 'admin';
-  } catch {
-    return false;
-  }
-}
 
 async function rebuildR2BlogCache() {
   const allArticlesSnapshot = await adminDb.collection('articles').get();

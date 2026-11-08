@@ -143,7 +143,7 @@ function LocationSearch({ t, onResult }: { t: Record<string, string>; onResult: 
     setMessage('');
 
     try {
-      const response = await fetch(`/api/earth-monitoring/location?q=${encodeURIComponent(normalizedQuery)}`, { cache: 'no-store' });
+      const response = await fetch(`/api/earth-monitoring/location?q=${encodeURIComponent(normalizedQuery)}`);
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.error || (t.weatherSearchFail || 'Lokasi belum dapat dimuat.'));
@@ -604,8 +604,7 @@ function WeatherPanel({ t }: { t: Record<string, string> }) {
     setExtremeWarning(null);
     try {
       const res = await fetch(`/api/nasa/openweather?lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}`, {
-        cache: 'no-store',
-      });
+              });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || (t.weatherOwError || 'Gagal fetch OpenWeather.'));
       const weatherInfo = json.data;
@@ -634,8 +633,7 @@ function WeatherPanel({ t }: { t: Record<string, string> }) {
         const { latitude, longitude } = position.coords;
         try {
           const response = await fetch(
-            `/api/earth-monitoring/location?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`,
-            { cache: 'no-store' }
+            `/api/earth-monitoring/location?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`
           );
           const data = await response.json();
           if (!response.ok) throw new Error(data.error || 'Lokasi tidak dapat dimuat.');
@@ -938,8 +936,7 @@ function EnergyPanel({ t }: { t: Record<string, string> }) {
         const { latitude, longitude } = position.coords;
         try {
           const response = await fetch(
-            `/api/earth-monitoring/location?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`,
-            { cache: 'no-store' }
+            `/api/earth-monitoring/location?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`
           );
           const data = await response.json();
           if (!response.ok) throw new Error(data.error || 'Lokasi tidak dapat dimuat.');
@@ -1080,7 +1077,7 @@ export default function EarthMonitoringSimulator() {
     setError('');
 
     try {
-      const response = await fetch('/api/earth-monitoring/quake', { cache: 'no-store' });
+      const response = await fetch('/api/earth-monitoring/quake');
       if (!response.ok) {
         throw new Error('Data BMKG belum dapat dimuat.');
       }

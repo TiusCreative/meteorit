@@ -8,7 +8,8 @@ export async function convertToWebp(
   quality = 80
 ): Promise<{ buffer: Buffer; contentType: string; ext: string }> {
   try {
-    const sharp = (await import('sharp')).default;
+    const nodeRequire = eval('require');
+    const sharp = nodeRequire('sharp');
     const webpBuffer = await sharp(buffer)
       .webp({ quality })
       .toBuffer();

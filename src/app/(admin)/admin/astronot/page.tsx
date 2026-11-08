@@ -35,7 +35,7 @@ export default function AstronautAdminPage() {
   async function loadAstronauts() {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/astronauts?t=${Date.now()}`, { cache: 'no-store' });
+      const res = await fetch(`/api/astronauts?t=${Date.now()}`);
       const data = await res.json();
       setAstronauts(data.astronauts || []);
       setSummary(data.summary || { active: 0, upcoming: 0, returned: 0, total: 0 });
@@ -60,7 +60,7 @@ export default function AstronautAdminPage() {
   const handleTriggerAstronauts = async () => {
     setIsTriggering(true);
     try {
-      const res = await fetch(`/api/cron/astronot?secret=${encodeURIComponent(SECRET)}`, { cache: 'no-store' });
+      const res = await fetch(`/api/cron/astronot?secret=${encodeURIComponent(SECRET)}`);
       const data = await res.json();
       if (!res.ok) {
         alert(`Gagal memperbarui daftar astronot: ${data.details || data.error || 'Terjadi kesalahan'}`);

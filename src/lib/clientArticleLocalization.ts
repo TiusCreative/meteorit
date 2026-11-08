@@ -49,8 +49,7 @@ export async function fetchArticleTranslation(
 ): Promise<{ title: string; excerpt: string } | null> {
   try {
     const res = await fetch(
-      `/api/articles/translate?id=${encodeURIComponent(articleId)}&locale=${language}&collection=${encodeURIComponent(collection)}`,
-      { cache: 'no-store' }
+      `/api/articles/translate?id=${encodeURIComponent(articleId)}&locale=${language}&collection=${encodeURIComponent(collection)}`
     );
     if (!res.ok) return null;
     const data = await res.json();

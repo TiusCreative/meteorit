@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { loadAstronautDataset } from '@/lib/astronautData';
 
@@ -13,8 +14,7 @@ const ISS_FALLBACK_POSITION = {
 async function fetchIssPosition() {
   try {
     const res = await fetch('https://api.wheretheiss.at/v1/satellites/25544', {
-      cache: 'no-store',
-      headers: { Accept: 'application/json' },
+            headers: { Accept: 'application/json' },
       signal: AbortSignal.timeout(4500),
     });
 
@@ -30,8 +30,7 @@ async function fetchIssPosition() {
   } catch {
     try {
       const res = await fetch('https://api.open-notify.org/iss-now.json', {
-        cache: 'no-store',
-        headers: { Accept: 'application/json' },
+                headers: { Accept: 'application/json' },
         signal: AbortSignal.timeout(4500),
       });
 

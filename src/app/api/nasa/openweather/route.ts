@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { fetchAndCacheWeather } from '@/lib/openweather';
 
@@ -68,8 +69,7 @@ async function reverseCoordinateLabel(location: ResolvedLocation) {
     reverseUrl.searchParams.set('addressdetails', '1');
 
     const response = await fetch(reverseUrl, {
-      cache: 'no-store',
-      headers: {
+            headers: {
         Accept: 'application/json',
         'Accept-Language': 'id,en;q=0.8',
         'User-Agent': 'MeteoritIndonesia/1.0 (https://meteorit.my.id)',
@@ -100,8 +100,7 @@ async function geocodeWithOpenStreetMap(query: string): Promise<ResolvedLocation
     }
 
     const response = await fetch(url, {
-      cache: 'no-store',
-      headers: {
+            headers: {
         Accept: 'application/json',
         'Accept-Language': 'id,en;q=0.8',
         'User-Agent': 'MeteoritIndonesia/1.0 (https://meteorit.my.id)',
@@ -141,8 +140,7 @@ async function geocodeWithOpenMeteo(query: string): Promise<ResolvedLocation | n
     geocodeUrl.searchParams.set('format', 'json');
 
     const geocodeRes = await fetch(geocodeUrl, {
-      cache: 'no-store',
-      headers: { Accept: 'application/json' },
+            headers: { Accept: 'application/json' },
       signal: AbortSignal.timeout(7000),
     });
 
@@ -171,7 +169,7 @@ async function geocodeWithOpenMeteo(query: string): Promise<ResolvedLocation | n
 async function fetchWeatherDirectlyWithOpenWeatherQuery(q: string, lang: string) {
   const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY || 'c5d9548ca431c734f6a6f9beda41a9a1';
   const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(q)}&appid=${OPENWEATHER_API_KEY}&units=metric&lang=${lang}`;
-  const res = await fetch(url, { cache: 'no-store' });
+  const res = await fetch(url);
   
   if (!res.ok) {
     return NextResponse.json({ success: false, error: `Lokasi "${q}" tidak ditemukan.` }, { status: 404 });

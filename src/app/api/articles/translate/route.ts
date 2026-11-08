@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadToR2, fetchJsonFromR2 } from '@/lib/r2Client';
 import { getSiteUrl } from '@/lib/siteUrl';
@@ -71,7 +72,7 @@ async function translateFields(
     const translateSingle = async (t: string) => {
       if (!t || t.trim() === '') return '';
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(t)}`;
-      const res = await fetch(url, { cache: 'no-store' });
+      const res = await fetch(url);
       if (res.ok) {
         const json = await res.json();
         const sentences = json[0];
@@ -120,7 +121,7 @@ export async function GET(req: NextRequest) {
     // 2. Jika tidak ada di R2, cari di posts.json catalog (artikel lama)
     if (!articleData) {
       try {
-        const res = await fetch(`${R2_PUBLIC_URL}/data/blog/posts.json?t=${Date.now()}`, { cache: 'no-store' });
+        const res = await fetch(`${R2_PUBLIC_URL}/data/blog/posts.json?t=${Date.now()}`);
         if (res.ok) {
           const list: any[] = await res.json();
           articleData = list.find((p: any) => p.id === id) || null;

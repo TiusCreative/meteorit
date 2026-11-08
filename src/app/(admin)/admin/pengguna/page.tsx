@@ -90,8 +90,7 @@ export default function UserManagementPage() {
       });
       const res = await fetch(`/api/admin/users?${params}`, {
         headers: { 'x-admin-uid': currentUser.uid },
-        cache: 'no-store',
-      });
+              });
       if (res.ok) {
         const data = await res.json();
         setUsers(data.users || []);

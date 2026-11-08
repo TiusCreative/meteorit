@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import type { Metadata } from 'next';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { getAbsoluteUrl } from '@/lib/siteUrl';

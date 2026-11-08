@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { queryD1 } from '@/lib/d1Client';
 import { uploadToR2 } from '@/lib/r2Client';
@@ -50,8 +51,7 @@ export async function GET(req: NextRequest) {
     // Fetch VONA directly
     try {
       const res = await fetch('https://magma.esdm.go.id/v1/api/vona', {
-        cache: 'no-store',
-        signal: AbortSignal.timeout(6000)
+                signal: AbortSignal.timeout(6000)
       });
       if (res.ok) {
         const json = await res.json();
@@ -64,8 +64,7 @@ export async function GET(req: NextRequest) {
     // Fetch activities directly
     try {
       const res = await fetch('https://magma.esdm.go.id/v1/api/gunungapi/aktivitas', {
-        cache: 'no-store',
-        signal: AbortSignal.timeout(6000)
+                signal: AbortSignal.timeout(6000)
       });
       if (res.ok) {
         const json = await res.json();

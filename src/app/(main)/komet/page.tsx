@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import KometListClient from '@/components/KometListClient';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { fetchJsonFromR2 } from '@/lib/r2Client';

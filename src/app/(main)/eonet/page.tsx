@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { fetchJsonFromR2 } from '@/lib/r2Client';
 import EonetListClient from '@/components/EonetListClient';

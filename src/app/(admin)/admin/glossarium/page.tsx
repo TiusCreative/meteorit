@@ -20,8 +20,7 @@ export default function AdminGlossariumPage() {
     try {
       const secret = 'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU=';
       const res = await fetch(`/api/cron/glossary?secret=${encodeURIComponent(secret)}`, {
-        cache: 'no-store',
-      });
+              });
       const data = await res.json();
       if (!res.ok) throw new Error(data.details || data.error || 'Gagal menjalankan cron glossarium.');
       setReport(`Sukses: ${data.total} istilah diperbarui ke R2 (${data.r2Key}).`);

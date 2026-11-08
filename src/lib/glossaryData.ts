@@ -385,6 +385,61 @@ function toDefinition(language: SiteLanguage, text: string) {
   return text;
 }
 
+const GLOSSARY_PHOTOS: Record<string, string> = {
+  // BMKG Weather & Meteorology
+  'hujan-ringan': 'https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?auto=format&fit=crop&w=1000&q=80',
+  'hujan-sedang': 'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?auto=format&fit=crop&w=1000&q=80',
+  'hujan-lebat': 'https://images.unsplash.com/photo-1514632595-4944383f2737?auto=format&fit=crop&w=1000&q=80',
+  'hujan-rintik': 'https://images.unsplash.com/photo-1501999635878-71cb5379c2d8?auto=format&fit=crop&w=1000&q=80',
+  'awan-cumulonimbus': 'https://images.unsplash.com/photo-1534088568595-a066f410bcda?auto=format&fit=crop&w=1000&q=80',
+  'angin-kencang': 'https://images.unsplash.com/photo-1505672678857-9f44b413697e?auto=format&fit=crop&w=1000&q=80',
+  'gelombang-tinggi': 'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?auto=format&fit=crop&w=1000&q=80',
+  'suhu-maksimum': 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80',
+  'kelembapan': 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?auto=format&fit=crop&w=1000&q=80',
+  'tekanan-udara': 'https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?auto=format&fit=crop&w=1000&q=80',
+  'gempa-tektonik': 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1000&q=80',
+  'magnitudo': 'https://images.unsplash.com/photo-1508873696983-2df5703bc2a0?auto=format&fit=crop&w=1000&q=80',
+  'episenter': 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1000&q=80',
+  'hiposenter': 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1000&q=80',
+  'tsunami': 'https://images.unsplash.com/photo-1498084393753-b411b2d26b34?auto=format&fit=crop&w=1000&q=80',
+  'pmm': 'https://images.unsplash.com/photo-1470240731273-7821a6eeb6bd?auto=format&fit=crop&w=1000&q=80',
+  'el-nino': 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80',
+  'la-nina': 'https://images.unsplash.com/photo-1498084393753-b411b2d26b34?auto=format&fit=crop&w=1000&q=80',
+  'mjo': 'https://images.unsplash.com/photo-1534088568595-a066f410bcda?auto=format&fit=crop&w=1000&q=80',
+  'indeks-uv': 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80',
+  'jarak-pandang': 'https://images.unsplash.com/photo-1487621167305-5d248087c724?auto=format&fit=crop&w=1000&q=80',
+  'puting-beliung': 'https://images.unsplash.com/photo-1527482797697-8795b05a13fe?auto=format&fit=crop&w=1000&q=80',
+  'cuaca-ekstrem': 'https://images.unsplash.com/photo-1605727216801-e27ce1d0cc28?auto=format&fit=crop&w=1000&q=80',
+  'petir': 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1000&q=80',
+
+  // NASA Astronomy & Spaceflight
+  'apod': 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=1000&q=80',
+  'neo': 'https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&w=1000&q=80',
+  'neos': 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1000&q=80',
+  'aphelion': 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=1000&q=80',
+  'perihelion': 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1000&q=80',
+  'asteroid': 'https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&w=1000&q=80',
+  'comet': 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=1000&q=80',
+  'meteor': 'https://images.unsplash.com/photo-1516339901601-2e1b62dc0c45?auto=format&fit=crop&w=1000&q=80',
+  'meteorite': 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1000&q=80',
+  'meteoroid': 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=1000&q=80',
+  'rover': 'https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&w=1000&q=80',
+  'sol': 'https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&w=1000&q=80',
+  'spectrometer': 'https://images.unsplash.com/photo-1507499739999-097706ad8914?auto=format&fit=crop&w=1000&q=80',
+};
+
+const R2_BASE = 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+
+function getTermPhoto(key: string, category: GlossaryCategory): string {
+  const prefix = category.toLowerCase();
+  // Coba WebP terlebih dahulu (hasil cron glossary-ai), lalu JPG (batch generate),
+  // lalu Unsplash sebagai fallback terakhir.
+  // Di runtime (Edge), kita kembalikan WebP jika ada di R2; komponen SafeImage
+  // sudah handle onError fallback ke URL berikutnya.
+  const webpUrl = `${R2_BASE}/data/glossary/images/${prefix}-${key}.webp`;
+  return webpUrl;
+}
+
 function mapRows(rows: string[][], category: GlossaryCategory, source: string): GlossaryTerm[] {
   return rows.map((row) => ({
     id: `${category.toLowerCase()}-${row[0]}`,
@@ -416,7 +471,7 @@ function mapRows(rows: string[][], category: GlossaryCategory, source: string): 
       ru: glossaryExsRu[row[2]] || row[7],
       fr: glossaryExsFr[row[2]] || row[7],
     },
-    image: `https://image.pollinations.ai/prompt/${encodeURIComponent(`${category} science glossary illustration ${row[2]} meteorology astronomy educational poster realistic`)}?width=1000&height=620&nologo=true&seed=${encodeURIComponent(`${category}-${row[0]}`)}`,
+    image: getTermPhoto(row[0], category),
     source,
     updatedAt,
   }));

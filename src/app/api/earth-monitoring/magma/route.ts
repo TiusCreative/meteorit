@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -15,8 +16,7 @@ export async function GET(req: NextRequest) {
     if (type === 'all' || type === 'vona') {
       try {
         const res = await fetch('https://magma.esdm.go.id/v1/api/vona', {
-          cache: 'no-store',
-          signal: AbortSignal.timeout(6000)
+                    signal: AbortSignal.timeout(6000)
         });
         if (res.ok) {
           const json = await res.json();
@@ -32,8 +32,7 @@ export async function GET(req: NextRequest) {
     if (type === 'all' || type === 'activities') {
       try {
         const res = await fetch('https://magma.esdm.go.id/v1/api/gunungapi/aktivitas', {
-          cache: 'no-store',
-          signal: AbortSignal.timeout(6000)
+                    signal: AbortSignal.timeout(6000)
         });
         if (res.ok) {
           const json = await res.json();

@@ -1,4 +1,3 @@
-import { getMessaging } from 'firebase-admin/messaging';
 import adminApp, { adminDb } from './firebaseAdmin';
 import { getSiteUrl } from './siteUrl';
 
@@ -25,6 +24,8 @@ export async function sendPushNotificationToAll(title: string, body: string, rel
       return false;
     }
 
+    const nodeRequire = eval('require');
+    const { getMessaging } = nodeRequire('firebase-admin/messaging');
     const messaging = getMessaging(adminApp);
     const clickAction = relativePath ? `${getSiteUrl()}${relativePath.startsWith('/') ? '' : '/'}${relativePath}` : getSiteUrl();
 
@@ -73,7 +74,7 @@ export async function sendPushNotificationToAll(title: string, body: string, rel
       // Clean up invalid/expired tokens from Firestore
       const startIdx = batchIdx * batchSize;
       if (res.responses && res.responses.length > 0) {
-        res.responses.forEach((resp, idx) => {
+        res.responses.forEach((resp: any, idx: number) => {
           if (!resp.success) {
             const errCode = resp.error?.code;
             if (errCode === 'messaging/invalid-registration-token' || errCode === 'messaging/registration-token-not-registered') {

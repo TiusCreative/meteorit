@@ -1,79 +1,7 @@
-import { cert, initializeApp as initializeAdminApp, getApps, App } from 'firebase-admin/app'
-import { getFirestore } from 'firebase-admin/firestore'
-import { getStorage } from 'firebase-admin/storage'
-
 export let firebaseInitError: string | null = null;
+let adminApp: any = null;
 
-// Check if admin app is already initialized
-let adminApp: App | null = null
-
-if (!getApps().length) {
-  if (process.env.FIREBASE_ADMIN_PROJECT_ID && process.env.FIREBASE_ADMIN_PRIVATE_KEY) {
-    try {
-      let privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY.trim();
-      
-      // Remove any leading/trailing quotes (single, double, escaped) recursively
-      while (
-        privateKey.startsWith('"') || 
-        privateKey.startsWith("'") || 
-        privateKey.startsWith('\\"') || 
-        privateKey.startsWith("\\'")
-      ) {
-        if (privateKey.startsWith('\\"') || privateKey.startsWith("\\'")) {
-          privateKey = privateKey.slice(2);
-        } else {
-          privateKey = privateKey.slice(1);
-        }
-      }
-      while (
-        privateKey.endsWith('"') || 
-        privateKey.endsWith("'") || 
-        privateKey.endsWith('\\"') || 
-        privateKey.endsWith("\\'")
-      ) {
-        if (privateKey.endsWith('\\"') || privateKey.endsWith("\\'")) {
-          privateKey = privateKey.slice(0, -2);
-        } else {
-          privateKey = privateKey.slice(0, -1);
-        }
-      }
-      
-      privateKey = privateKey.trim();
-      // Replace literal escaped newlines with actual newlines
-      privateKey = privateKey.replace(/\\n/g, '\n');
-      // Replace carriage returns
-      privateKey = privateKey.replace(/\\r/g, '').replace(/\r/g, '');
-
-      // Ensure it starts with the header
-      if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
-        privateKey = '-----BEGIN PRIVATE KEY-----\n' + privateKey;
-      }
-      // Ensure it ends with the footer (in case it was cut off during paste on Vercel)
-      if (!privateKey.includes('-----END PRIVATE KEY-----')) {
-        privateKey = privateKey.trim() + '\n-----END PRIVATE KEY-----';
-      }
-
-      adminApp = initializeAdminApp({
-        credential: cert({
-          projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-          privateKey,
-        }),
-        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-      })
-    } catch (err) {
-      console.error("Failed to initialize Firebase Admin SDK:", err);
-      firebaseInitError = err instanceof Error ? err.message : String(err);
-    }
-  } else {
-    firebaseInitError = `Missing credentials: ProjectID=${!!process.env.FIREBASE_ADMIN_PROJECT_ID}, PrivateKey=${!!process.env.FIREBASE_ADMIN_PRIVATE_KEY}`;
-    console.warn("⚠️ Firebase Admin credentials missing. Admin SDK operations will use fallback dummy objects.")
-  }
-} else {
-  adminApp = getApps()[0]
-}
-
-// Dummy mock objects to prevent build failures during static generation
+// Dummy mock objects to prevent build failures during static generation and on Cloudflare Edge
 const dummyFirestore = {
   collection: () => {
     const query: any = {
@@ -108,8 +36,56 @@ const dummyStorage = {
   })
 } as any;
 
-export const adminDb = adminApp ? getFirestore(adminApp) : dummyFirestore;
-export const adminStorage = adminApp ? getStorage(adminApp) : dummyStorage;
+let dbInstance = dummyFirestore;
+let storageInstance = dummyStorage;
+
+// Only initialize Firebase Admin if running in a Node.js server environment (not Edge/Cloudflare)
+if (typeof process !== 'undefined' && process.env?.NEXT_RUNTIME !== 'edge' && typeof window === 'undefined') {
+  if (process.env.FIREBASE_ADMIN_PROJECT_ID && process.env.FIREBASE_ADMIN_PRIVATE_KEY) {
+    try {
+      // Dynamic require via eval to prevent Webpack from bundling gRPC/stream in edge/client
+      const nodeRequire = eval('require');
+      const { cert, initializeApp: initializeAdminApp, getApps } = nodeRequire('firebase-admin/app');
+      const { getFirestore } = nodeRequire('firebase-admin/firestore');
+      const { getStorage } = nodeRequire('firebase-admin/storage');
+
+      if (!getApps().length) {
+        let privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY.trim();
+        while (privateKey.startsWith('"') || privateKey.startsWith("'")) privateKey = privateKey.slice(1);
+        while (privateKey.endsWith('"') || privateKey.endsWith("'")) privateKey = privateKey.slice(0, -1);
+        privateKey = privateKey.trim().replace(/\\n/g, '\n').replace(/\\r/g, '').replace(/\r/g, '');
+        if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+          privateKey = '-----BEGIN PRIVATE KEY-----\n' + privateKey;
+        }
+        if (!privateKey.includes('-----END PRIVATE KEY-----')) {
+          privateKey = privateKey.trim() + '\n-----END PRIVATE KEY-----';
+        }
+
+        adminApp = initializeAdminApp({
+          credential: cert({
+            projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+            clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+            privateKey,
+          }),
+          storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        });
+      } else {
+        adminApp = getApps()[0];
+      }
+
+      if (adminApp) {
+        dbInstance = getFirestore(adminApp);
+        storageInstance = getStorage(adminApp);
+      }
+    } catch (err: any) {
+      console.warn("Firebase Admin SDK disabled on this runtime:", err?.message || err);
+      firebaseInitError = err instanceof Error ? err.message : String(err);
+    }
+  }
+}
+
+export const adminDb = dbInstance;
+export const adminStorage = storageInstance;
 export const isFirebaseMocked = !adminApp;
 
 export default adminApp;

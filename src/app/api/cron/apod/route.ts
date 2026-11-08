@@ -1,11 +1,14 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
-import { uploadToR2 } from '@/lib/r2Client';
+import { uploadToR2, fetchJsonFromR2 } from '@/lib/r2Client';
+import { queryD1 } from '@/lib/d1Client';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { sendBroadcastNotification } from '@/lib/notifications';
 import { getAbsoluteUrl } from '@/lib/siteUrl';
 import { isValidCronRequest } from '@/lib/cronAuth';
 import { translateText } from '@/lib/translator';
+import { ensureImageUrl } from '@/lib/imageSafeguard';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -93,7 +96,7 @@ async function fetchApodFromWordPress(date: string): Promise<{
     const slugPrefix = `apod-${year}-${month}-${day}`;
 
     const wpUrl = `https://science.nasa.gov/wp-json/wp/v2/image-article?search=${slugPrefix}&per_page=3&orderby=date&order=desc`;
-    const wpRes = await fetchWithRetry(wpUrl, { cache: 'no-store' }, 2, 1500);
+    const wpRes = await fetchWithRetry(wpUrl, {}, 2, 1500);
     if (!wpRes.ok) return null;
 
     const wpData = await wpRes.json();
@@ -138,22 +141,62 @@ async function translateWithGroq(text: string, systemPrompt: string): Promise<st
   return await translateText(text, systemPrompt);
 }
 
-async function rebuildR2ApodHistoryCache() {
+async function rebuildR2ApodHistoryCache(newEntry?: any) {
   try {
-    const snapApods = await adminDb.collection('apod_history')
-      .orderBy('id', 'desc')
-      .limit(100)
-      .get();
-    
-    const historyList: any[] = [];
-    snapApods.forEach((doc: any) => {
-      historyList.push({ id: doc.id, ...doc.data() });
-    });
-    
-    await uploadToR2('data/encyclopedia/history.json', JSON.stringify(historyList, null, 2), 'application/json');
-    console.log('[APOD Cron] Rebuilt APOD history cache in R2. Total:', historyList.length);
+    let historyList: any[] = [];
+    try {
+      const existing = await fetchJsonFromR2<any[]>('data/encyclopedia/history.json');
+      if (Array.isArray(existing) && existing.length > 0) {
+        historyList = existing;
+      }
+    } catch {}
+
+    // Fallback to D1 if R2 history was empty
+    if (historyList.length === 0) {
+      try {
+        const d1Res = await queryD1('SELECT id, date, title, explanation, image_url, copyright FROM apod_history ORDER BY id DESC LIMIT 150');
+        if (d1Res?.results?.length) {
+          historyList = d1Res.results.map((r: any) => ({
+            id: r.id,
+            title: typeof r.title === 'string' && r.title.startsWith('{') ? JSON.parse(r.title) : { en: r.title, id: r.title },
+            explanation: typeof r.explanation === 'string' && r.explanation.startsWith('{') ? JSON.parse(r.explanation) : { en: r.explanation, id: r.explanation },
+            image_url: r.image_url,
+            copyright: r.copyright || 'NASA Public Domain',
+            media_type: 'image'
+          }));
+        }
+      } catch (d1Err) {
+        console.warn('[APOD Cron] D1 fallback failed:', d1Err);
+      }
+    }
+
+    if (newEntry) {
+      const idx = historyList.findIndex(item => item.id === newEntry.id);
+      if (idx >= 0) {
+        historyList[idx] = newEntry;
+      } else {
+        historyList.unshift(newEntry);
+      }
+
+      // Also persist newEntry into D1
+      try {
+        const titleStr = typeof newEntry.title === 'object' ? JSON.stringify(newEntry.title) : String(newEntry.title || '');
+        const expStr = typeof newEntry.explanation === 'object' ? JSON.stringify(newEntry.explanation) : String(newEntry.explanation || '');
+        await queryD1(
+          'INSERT OR REPLACE INTO apod_history (id, date, title, explanation, image_url, translations, processedAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [newEntry.id, newEntry.id, titleStr, expStr, newEntry.image_url || '', JSON.stringify(newEntry.translations || {}), newEntry.processedAt || new Date().toISOString()]
+        );
+      } catch (d1SaveErr) {
+        console.warn('[APOD Cron] Failed to save newEntry to D1:', d1SaveErr);
+      }
+    }
+
+    if (historyList.length > 0) {
+      await uploadToR2('data/encyclopedia/history.json', JSON.stringify(historyList, null, 2), 'application/json');
+      console.log('[APOD Cron] Updated APOD history cache in R2. Total:', historyList.length);
+    }
   } catch (err) {
-    console.error('[APOD Cron] Failed to rebuild APOD history cache:', err);
+    console.error('[APOD Cron] Failed to update APOD history cache:', err);
   }
 }
 
@@ -172,12 +215,31 @@ export async function GET(request: Request) {
   const targetDate = dateParam || today;
 
   try {
-    // ─── STEP 1: Cek cache Firestore dulu ─────────────────────────────────────
-    const docRef = adminDb.collection('apod_history').doc(targetDate);
-    const docSnap = await docRef.get();
+    // ─── STEP 1: Cek cache D1 & Firestore dulu ─────────────────────────────
+    let existing: any = null;
+    try {
+      const d1Res = await queryD1('SELECT id, date, title, explanation, image_url, copyright FROM apod_history WHERE id = ? LIMIT 1', [targetDate]);
+      if (d1Res?.results?.length) {
+        const row = d1Res.results[0];
+        existing = {
+          id: row.id,
+          title: typeof row.title === 'string' && row.title.startsWith('{') ? JSON.parse(row.title) : { en: row.title, id: row.title },
+          image_url: row.image_url,
+        };
+      }
+    } catch (d1Err) {
+      console.warn('[APOD Cron] D1 check error:', d1Err);
+    }
 
-    if (docSnap.exists && !force) {
-      const existing = docSnap.data() as any;
+    if (!existing) {
+      const docRef = adminDb.collection('apod_history').doc(targetDate);
+      const docSnap = await docRef.get();
+      if (docSnap.exists) {
+        existing = docSnap.data();
+      }
+    }
+
+    if (existing && !force) {
       // Jika sudah ada tapi gambarnya masih placeholder, lanjut proses ulang
       if (!isNasaLogoPlaceholder(existing.image_url || '')) {
         console.log(`[APOD Cron] APOD ${targetDate} sudah ada & valid. Rebuilding R2 history cache.`);
@@ -190,7 +252,7 @@ export async function GET(request: Request) {
           date: targetDate,
         });
       }
-      console.warn(`[APOD Cron] APOD ${targetDate} ada di Firestore tapi gambarnya placeholder. Memproses ulang...`);
+      console.warn(`[APOD Cron] APOD ${targetDate} ada tapi gambarnya placeholder. Memproses ulang...`);
     }
 
     // ─── STEP 2: Coba NASA API dulu (dengan retry) ────────────────────────────
@@ -208,7 +270,7 @@ export async function GET(request: Request) {
         : `https://api.nasa.gov/planetary/apod?api_key=${NASA_API_KEY}`;
 
       console.log(`[APOD Cron] Fetching NASA API: ${nasaUrl.replace(NASA_API_KEY, 'API_KEY_HIDDEN')}`);
-      const apodRes = await fetchWithRetry(nasaUrl, { cache: 'no-store' }, 3, 2000);
+      const apodRes = await fetchWithRetry(nasaUrl, {}, 3, 2000);
 
       if (apodRes.ok) {
         const apodData = await apodRes.json();
@@ -294,6 +356,9 @@ export async function GET(request: Request) {
       }
     }
 
+    // Pastikan finalImageUrl tidak pernah kosong
+    finalImageUrl = await ensureImageUrl(finalImageUrl, 'apod');
+
     // ─── STEP 6: Simpan ke Firestore & R2 ────────────────────────────────────
     const attribution = '\n\nSource: NASA Open Data APIs\nSumber Data: Pusat Data Publik Antariksa';
     const formattedApod = {
@@ -317,7 +382,7 @@ export async function GET(request: Request) {
     await Promise.all([
       docRefFinal.set(formattedApod),
       uploadToR2('data/encyclopedia/latest.json', JSON.stringify(formattedApod, null, 2), 'application/json'),
-      rebuildR2ApodHistoryCache(),
+      rebuildR2ApodHistoryCache(formattedApod),
     ]);
 
     // ─── STEP 7: Kirim notifikasi Telegram ───────────────────────────────────

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { getSiteUrl } from '@/lib/siteUrl';
 
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
     // 2. Menyiapkan Konfigurasi Cloudflare D1 REST API
     const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || '5f29e48300ae379ebe15c20185d15ac8';
     const databaseId = process.env.CLOUDFLARE_D1_ID || 'c0ad9039-d1e4-4c01-856d-5d5971514255';
-    const apiToken = process.env.CLOUDFLARE_API_TOKEN || ('cfut_' + 'JMaDehJX' + 'izoOPdqu' + 's9yTVXbT' + 'C2lx4lip' + '58EVlKuN' + 'd874dec0');
+    const apiToken = process.env.CLOUDFLARE_API_TOKEN || '';
 
     const d1Endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}/query`;
 
@@ -44,8 +45,7 @@ export async function GET(request: Request) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ sql: countSql }),
-        cache: 'no-store'
-      }),
+              }),
       fetch(d1Endpoint, {
         method: 'POST',
         headers: {
@@ -53,8 +53,7 @@ export async function GET(request: Request) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ sql: articlesSql }),
-        cache: 'no-store'
-      })
+              })
     ]);
 
     if (!countResponse.ok || !articlesResponse.ok) {
@@ -81,6 +80,9 @@ export async function GET(request: Request) {
       let imageUrl = art.image || art.r2_path || '';
       if (imageUrl && !imageUrl.startsWith('http')) {
         imageUrl = `${r2PublicUrl}/${imageUrl.replace(/^\//, '')}`;
+      }
+      if (!imageUrl || imageUrl.includes('placeholder') || imageUrl.includes('placehold.co')) {
+        imageUrl = `${r2PublicUrl}/data/glossary/images/nasa-apod.webp`;
       }
 
       return {

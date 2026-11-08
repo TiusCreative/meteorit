@@ -1,7 +1,7 @@
+export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebaseAdmin';
-import { uploadToR2 } from '@/lib/r2Client';
-import { type GlossaryTerm } from '@/lib/glossaryData';
+import { uploadToR2, fetchJsonFromR2 } from '@/lib/r2Client';
+import { type GlossaryTerm, getGlossarySeed } from '@/lib/glossaryData';
 import { type SiteLanguage } from '@/lib/i18n';
 import { translateText } from '@/lib/translator';
 
@@ -108,14 +108,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Missing id or locale' }, { status: 400 });
     }
 
-    const docRef = adminDb.collection('glossary_terms').doc(id);
-    const docSnap = await docRef.get();
+    // Ambil data istilah dari R2 atau fallback seed lokal
+    const r2Terms = await fetchJsonFromR2<GlossaryTerm[]>('data/glossary/terms.json');
+    const allTerms = (Array.isArray(r2Terms) && r2Terms.length > 0) ? r2Terms : getGlossarySeed();
+    const term = allTerms.find(t => t.id === id);
 
-    if (!docSnap.exists) {
+    if (!term) {
       return NextResponse.json({ error: 'Term not found' }, { status: 404 });
     }
 
-    const term = docSnap.data() as GlossaryTerm;
     let didChange = false;
 
     // 1. Terjemahkan detail istilah jika belum ada atau jika terjemahannya masih berupa bahasa Indonesia/Inggris (fallback palsu)
@@ -144,18 +145,11 @@ export async function GET(req: NextRequest) {
       didChange = true;
     }
 
-    // 3. Simpan perubahan ke Firestore & R2 jika ada perubahan
+    // 3. Simpan perubahan ke R2 jika ada perubahan
     if (didChange) {
       term.updatedAt = new Date().toISOString();
-      await docRef.set(term);
-
-      // Rebuild R2 cache
-      const allTermsSnapshot = await adminDb.collection('glossary_terms').get();
-      const termsList: any[] = [];
-      allTermsSnapshot.forEach((doc: any) => {
-        termsList.push(doc.data());
-      });
-      await uploadToR2('data/glossary/terms.json', JSON.stringify(termsList, null, 2), 'application/json');
+      const updatedList = allTerms.map(t => t.id === term.id ? term : t);
+      await uploadToR2('data/glossary/terms.json', JSON.stringify(updatedList, null, 2), 'application/json');
     }
 
     return NextResponse.json({

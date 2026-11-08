@@ -1,5 +1,6 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
-import crypto from 'crypto';
+const crypto = typeof globalThis !== 'undefined' && (globalThis as any).crypto ? (globalThis as any).crypto : eval('require')('crypto');
 import { uploadToR2, fetchJsonFromR2 } from '@/lib/r2Client';
 import { Resend } from 'resend';
 

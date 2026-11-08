@@ -21,6 +21,7 @@ const nextConfig = {
       { protocol: 'https', hostname: '**.wp.com' },
       { protocol: 'https', hostname: 'www.nasa.gov' },
       { protocol: 'https', hostname: '**.imgur.com' },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
     ],
     // Fallback untuk URL yang tidak terdaftar (agar tidak error)
     dangerouslyAllowSVG: false,
@@ -55,14 +56,29 @@ const nextConfig = {
             key: 'Cache-Control',
             value: 'public, s-maxage=300, stale-while-revalidate=600',
           },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin-allow-popups',
+          },
         ],
       },
     ];
   },
-  webpack: (config, { dev }) => {
+  webpack: (config, { dev, isServer }) => {
     if (!dev) {
       config.devtool = false;
     }
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      stream: false,
+      net: false,
+      tls: false,
+      fs: false,
+      child_process: false,
+      http2: false,
+      dns: false,
+      '@react-email/render': false,
+    };
     return config;
   },
 };

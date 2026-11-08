@@ -1,19 +1,11 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { uploadToR2 } from '@/lib/r2Client';
+import { verifyAdmin } from '@/lib/verifyAdminToken';
+import { queryD1 } from '@/lib/d1Client';
 
 export const dynamic = 'force-dynamic';
-
-async function verifyAdmin(request: Request): Promise<boolean> {
-  const adminUid = request.headers.get('x-admin-uid');
-  if (!adminUid) return false;
-  try {
-    const userSnap = await adminDb.collection('users').doc(adminUid).get();
-    return userSnap.exists && userSnap.data()?.role === 'admin';
-  } catch {
-    return false;
-  }
-}
 
 // GET: Ambil daftar meteorit lengkap langsung dari Firestore
 export async function GET(request: Request) {
@@ -22,11 +14,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Tidak diizinkan. Khusus Administrator.' }, { status: 403 });
     }
 
-    // Try deleting the bad APOD entry 2026-06-23 if it exists (one-time cleanup)
+    // 1. Ambil dari D1 jika tersedia
     try {
-      await adminDb.collection('apod_history').doc('2026-06-23').delete();
-    } catch (cleanupErr) {
-      console.warn("Failed to delete 2026-06-23 APOD entry:", cleanupErr);
+      const d1Res = await queryD1('SELECT * FROM meteorites ORDER BY name ASC');
+      if (d1Res?.results?.length) {
+        return NextResponse.json(d1Res.results);
+      }
+    } catch (d1Err) {
+      console.warn('[API Meteorites GET] D1 query failed, trying Firestore:', d1Err);
     }
 
     const snapshot = await adminDb.collection('meteorites').get();

@@ -1,30 +1,46 @@
+export const runtime = 'edge';
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { getAbsoluteUrl } from "@/lib/siteUrl";
 import { grantPremiumByDonation } from "@/lib/premiumUtils";
 
-// Lazily initialize Midtrans to avoid build-time errors if env vars are missing
-function getSnapClient() {
-  // @ts-ignore
-  const midtransClient = require("midtrans-client");
-
+// Midtrans Snap REST API Helper (100% Edge runtime compatible)
+async function createMidtransTransactionToken(parameter: any): Promise<string> {
   const serverKey = process.env.MIDTRANS_SERVER_KEY;
-  const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY;
   const isProduction = process.env.MIDTRANS_IS_PRODUCTION === "true";
 
   if (!serverKey) {
-    throw new Error("MIDTRANS_SERVER_KEY tidak dikonfigurasi di environment variables Vercel.");
-  }
-  if (!clientKey) {
-    throw new Error("NEXT_PUBLIC_MIDTRANS_CLIENT_KEY tidak dikonfigurasi di environment variables Vercel.");
+    throw new Error("MIDTRANS_SERVER_KEY tidak dikonfigurasi.");
   }
 
-  return new midtransClient.Snap({
-    isProduction,
-    serverKey,
-    clientKey,
+  const endpoint = isProduction
+    ? "https://app.midtrans.com/snap/v1/transactions"
+    : "https://app.sandbox.midtrans.com/snap/v1/transactions";
+
+  const authHeader = `Basic ${Buffer.from(serverKey + ':').toString('base64')}`;
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "Authorization": authHeader,
+    },
+    body: JSON.stringify(parameter),
   });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Midtrans API error (${res.status}): ${errText}`);
+  }
+
+  const data = await res.json();
+  if (!data.token) {
+    throw new Error("Midtrans API tidak mengembalikan snap token.");
+  }
+
+  return data.token;
 }
 
 // GET: Retrieve donation history (for admin dashboard)
@@ -134,19 +150,6 @@ export async function POST(request: Request) {
 
     const orderId = `DONATION-${Date.now()}`;
 
-    // Initialize Midtrans snap client (will throw if env vars missing)
-    let snap: any;
-    try {
-      snap = getSnapClient();
-    } catch (envErr) {
-      const msg = envErr instanceof Error ? envErr.message : String(envErr);
-      console.error("Midtrans init error:", msg);
-      return NextResponse.json(
-        { error: "Konfigurasi pembayaran belum lengkap. Hubungi administrator.", details: msg },
-        { status: 503 }
-      );
-    }
-
     const parameter = {
       transaction_details: {
         order_id: orderId,
@@ -161,7 +164,17 @@ export async function POST(request: Request) {
     };
 
     console.log("[donations] Creating Midtrans transaction:", orderId, "Amount:", amount);
-    const snapToken = await snap.createTransactionToken(parameter);
+    let snapToken: string;
+    try {
+      snapToken = await createMidtransTransactionToken(parameter);
+    } catch (midtransErr) {
+      const msg = midtransErr instanceof Error ? midtransErr.message : String(midtransErr);
+      console.error("[donations] Midtrans error:", msg);
+      return NextResponse.json(
+        { error: "Gagal memproses pembayaran Midtrans. Coba beberapa saat lagi.", details: msg },
+        { status: 503 }
+      );
+    }
     console.log("[donations] Snap token created for:", orderId);
 
     // Save pending transaction to Firestore

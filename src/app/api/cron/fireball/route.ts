@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { uploadToR2, fetchJsonFromR2 } from '@/lib/r2Client';
 import { sendTelegramMessage } from '@/lib/telegram';
@@ -87,8 +88,7 @@ export async function GET(request: Request) {
 
     // 1. Fetch data JPL Fireball API (no API key needed)
     const firestoreRes = await fetch(
-      'https://ssd-api.jpl.nasa.gov/fireball.api?limit=30&sort=-date',
-      { next: { revalidate: 0 } }
+      'https://ssd-api.jpl.nasa.gov/fireball.api?limit=30&sort=-date'
     );
 
     if (!firestoreRes.ok) {

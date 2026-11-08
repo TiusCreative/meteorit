@@ -43,7 +43,7 @@ export default function EncyclopediaHighlight({ initialData }: EncyclopediaHighl
   useEffect(() => {
     const fetchEpic = async () => {
       try {
-        const res = await fetch('/api/nasa/epic', { cache: 'no-store' });
+        const res = await fetch('/api/nasa/epic');
         if (res.ok) {
           const epicResponse = await res.json();
           const latestEpic = epicResponse?.data?.[0];

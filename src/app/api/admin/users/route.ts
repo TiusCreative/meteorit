@@ -1,18 +1,10 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { verifyAdmin } from '@/lib/verifyAdminToken';
+import { queryD1 } from '@/lib/d1Client';
 
 export const dynamic = 'force-dynamic';
-
-async function verifyAdmin(request: Request): Promise<boolean> {
-  const adminUid = request.headers.get('x-admin-uid');
-  if (!adminUid) return false;
-  try {
-    const userSnap = await adminDb.collection('users').doc(adminUid).get();
-    return userSnap.exists && userSnap.data()?.role === 'admin';
-  } catch {
-    return false;
-  }
-}
 
 /**
  * GET /api/admin/users
@@ -31,25 +23,48 @@ export async function GET(request: Request) {
     const search = searchParams.get('search')?.toLowerCase().trim() || '';
     const tab = searchParams.get('tab') || 'all'; // all | premium | admin
 
-    // Ambil semua users dari Firestore (tanpa server-side pagination karena Firestore tidak punya full-text search)
-    const snapshot = await adminDb.collection('users').get();
     let allUsers: any[] = [];
 
-    snapshot.forEach((doc: any) => {
-      const data = doc.data();
-      allUsers.push({
-        uid: doc.id,
-        email: data.email || '',
-        displayName: data.displayName || '',
-        photoURL: data.photoURL || '',
-        role: data.role || 'user',
-        premiumExpiry: data.premiumExpiry || null,
-        premiumGrantedAt: data.premiumGrantedAt || null,
-        premiumGrantedByDonation: data.premiumGrantedByDonation || null,
-        lastLogin: data.lastLogin || '',
-        createdAt: data.createdAt || data.lastLogin || '',
+    // 1. Ambil dari Cloudflare D1
+    try {
+      const d1Res = await queryD1('SELECT uid, email, displayName, photoURL, role, lastLogin FROM users');
+      if (d1Res?.results?.length) {
+        allUsers = d1Res.results.map((u: any) => ({
+          uid: u.uid,
+          email: u.email || '',
+          displayName: u.displayName || '',
+          photoURL: u.photoURL || '',
+          role: u.role || 'user',
+          premiumExpiry: null,
+          premiumGrantedAt: null,
+          premiumGrantedByDonation: null,
+          lastLogin: u.lastLogin || '',
+          createdAt: u.lastLogin || '',
+        }));
+      }
+    } catch (d1Err) {
+      console.warn('[Admin Users] D1 fetch failed:', d1Err);
+    }
+
+    // 2. Fallback ke Firestore jika D1 kosong
+    if (allUsers.length === 0) {
+      const snapshot = await adminDb.collection('users').get();
+      snapshot.forEach((doc: any) => {
+        const data = doc.data();
+        allUsers.push({
+          uid: doc.id,
+          email: data.email || '',
+          displayName: data.displayName || '',
+          photoURL: data.photoURL || '',
+          role: data.role || 'user',
+          premiumExpiry: data.premiumExpiry || null,
+          premiumGrantedAt: data.premiumGrantedAt || null,
+          premiumGrantedByDonation: data.premiumGrantedByDonation || null,
+          lastLogin: data.lastLogin || '',
+          createdAt: data.createdAt || data.lastLogin || '',
+        });
       });
-    });
+    }
 
     // Filter by tab
     if (tab === 'premium') {
@@ -122,34 +137,40 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Role tidak valid. Harus salah satu dari: ${validRoles.join(', ')}.` }, { status: 400 });
     }
 
+    // Update D1
+    try {
+      await queryD1('UPDATE users SET role = ? WHERE uid = ?', [role, uid]);
+    } catch (d1Err) {
+      console.warn('[Admin Users PUT] D1 update failed:', d1Err);
+    }
+
     const userRef = adminDb.collection('users').doc(uid);
-    const userSnap = await userRef.get();
-    if (!userSnap.exists) {
-      return NextResponse.json({ error: 'User tidak ditemukan.' }, { status: 404 });
-    }
+    try {
+      const userSnap = await userRef.get();
+      if (userSnap.exists) {
+        const updateData: any = {
+          role,
+          updatedAt: new Date().toISOString(),
+        };
 
-    const updateData: any = {
-      role,
-      updatedAt: new Date().toISOString(),
-    };
+        if (role === 'premium' && premiumDays !== undefined) {
+          if (premiumDays === 0) {
+            updateData.premiumExpiry = new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString();
+            updateData.premiumNote = 'Unlimited (Manual Admin)';
+          } else if (premiumDays > 0) {
+            updateData.premiumExpiry = new Date(Date.now() + premiumDays * 24 * 60 * 60 * 1000).toISOString();
+          }
+          updateData.premiumGrantedAt = new Date().toISOString();
+          updateData.premiumGrantedByAdmin = true;
+        } else if (role !== 'premium') {
+          updateData.premiumExpiry = null;
+        }
 
-    // Hitung premiumExpiry jika role premium dengan durasi
-    if (role === 'premium' && premiumDays !== undefined) {
-      if (premiumDays === 0) {
-        // Unlimited: set expiry 100 tahun ke depan
-        updateData.premiumExpiry = new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString();
-        updateData.premiumNote = 'Unlimited (Manual Admin)';
-      } else if (premiumDays > 0) {
-        updateData.premiumExpiry = new Date(Date.now() + premiumDays * 24 * 60 * 60 * 1000).toISOString();
+        await userRef.update(updateData);
       }
-      updateData.premiumGrantedAt = new Date().toISOString();
-      updateData.premiumGrantedByAdmin = true;
-    } else if (role !== 'premium') {
-      // Jika di-downgrade dari premium, hapus expiry
-      updateData.premiumExpiry = null;
+    } catch (fsErr) {
+      console.warn('[Admin Users PUT] Firestore update failed (Edge):', fsErr);
     }
-
-    await userRef.update(updateData);
 
     return NextResponse.json({
       success: true,

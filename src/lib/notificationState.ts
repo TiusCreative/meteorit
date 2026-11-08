@@ -1,4 +1,4 @@
-import { adminDb } from './firebaseAdmin';
+import { queryD1 } from './d1Client';
 
 export type NotificationEventType =
   | 'earthquake_alert'
@@ -15,23 +15,38 @@ export interface NotificationEventState {
   sent?: boolean;
 }
 
-const STATE_COLLECTION = 'system';
-const STATE_DOCUMENT = 'earth-monitoring-alerts';
-
 export async function getNotificationState(eventType: NotificationEventType): Promise<NotificationEventState> {
-  const snapshot = await adminDb.collection(STATE_COLLECTION).doc(STATE_DOCUMENT).get();
-  const data = snapshot.exists ? snapshot.data() : null;
-  return data?.eventStates?.[eventType] || {};
+  try {
+    const res = await queryD1('SELECT value FROM system_state WHERE key = ? LIMIT 1', [`notify-${eventType}`]);
+    const row = res?.results?.[0];
+    if (row?.value) {
+      return JSON.parse(row.value);
+    }
+  } catch (err) {
+    console.warn(`[NotificationState] Gagal membaca state ${eventType} dari D1:`, err);
+  }
+  return {};
 }
 
 export async function markNotificationChecked(
   eventType: NotificationEventType,
   signature?: string
 ) {
-  await adminDb.collection(STATE_COLLECTION).doc(STATE_DOCUMENT).set({
-    [`eventStates.${eventType}.checkedAt`]: new Date().toISOString(),
-    ...(signature ? { [`eventStates.${eventType}.signature`]: signature } : {}),
-  }, { merge: true });
+  try {
+    const currentState = await getNotificationState(eventType);
+    const updated = {
+      ...currentState,
+      checkedAt: new Date().toISOString(),
+      ...(signature ? { signature } : {}),
+    };
+    await queryD1('INSERT OR REPLACE INTO system_state (key, value, updated_at) VALUES (?, ?, ?)', [
+      `notify-${eventType}`,
+      JSON.stringify(updated),
+      new Date().toISOString()
+    ]);
+  } catch (err) {
+    console.warn(`[NotificationState] Gagal update checked state ${eventType}:`, err);
+  }
 }
 
 export async function markNotificationSent(
@@ -39,11 +54,22 @@ export async function markNotificationSent(
   signature: string,
   sent: boolean
 ) {
-  await adminDb.collection(STATE_COLLECTION).doc(STATE_DOCUMENT).set({
-    [`eventStates.${eventType}.signature`]: signature,
-    [`eventStates.${eventType}.sentAt`]: new Date().toISOString(),
-    [`eventStates.${eventType}.sent`]: sent,
-  }, { merge: true });
+  try {
+    const currentState = await getNotificationState(eventType);
+    const updated = {
+      ...currentState,
+      signature,
+      sentAt: new Date().toISOString(),
+      sent,
+    };
+    await queryD1('INSERT OR REPLACE INTO system_state (key, value, updated_at) VALUES (?, ?, ?)', [
+      `notify-${eventType}`,
+      JSON.stringify(updated),
+      new Date().toISOString()
+    ]);
+  } catch (err) {
+    console.warn(`[NotificationState] Gagal update sent state ${eventType}:`, err);
+  }
 }
 
 export function shouldSendStatefulNotification(

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import Link from 'next/link';
 import AdDisplay from '@/components/AdDisplay';
 import ApodActions from '@/components/ApodActions';
@@ -7,6 +8,7 @@ import { cookies } from 'next/headers';
 import { isSiteLanguage, LANGUAGE_COOKIE_KEY, defaultLanguage } from '@/lib/i18n';
 import { landingText } from '@/lib/landingText';
 import { fetchJsonFromR2, uploadToR2 } from '@/lib/r2Client';
+import { queryD1 } from '@/lib/d1Client';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,21 +62,21 @@ async function getApod(id: string): Promise<Apod | null> {
     console.warn("Failed to fetch APOD from R2 history cache, trying Firestore...", err);
   }
 
-  // 2. Coba dari Firestore
+  // 2. Coba dari Cloudflare D1
   try {
-    const docSnap = await adminDb.collection('apod_history').doc(id).get();
-    if (docSnap.exists) {
-      const data = docSnap.data();
+    const d1Res = await queryD1('SELECT id, date, title, explanation, image_url, copyright FROM apod_history WHERE id = ? LIMIT 1', [id]);
+    if (d1Res?.results?.length) {
+      const data = d1Res.results[0];
       return {
-        id: docSnap.id,
-        title: data.title || { en: '', id: '' },
-        explanation: data.explanation || { en: '', id: '' },
+        id: data.id,
+        title: typeof data.title === 'string' && data.title.startsWith('{') ? JSON.parse(data.title) : { en: data.title, id: data.title },
+        explanation: typeof data.explanation === 'string' && data.explanation.startsWith('{') ? JSON.parse(data.explanation) : { en: data.explanation, id: data.explanation },
         image_url: data.image_url || '',
         copyright: data.copyright || 'NASA Public Domain'
       };
     }
   } catch (err) {
-    console.warn("Failed to fetch APOD from Firestore database, falling back to NASA API:", err);
+    console.warn("Failed to fetch APOD from D1 database, falling back to NASA API:", err);
   }
 
   // 3. Fallback: Fetch langsung dari NASA API jika di-request tanggal yang belum di-cache
@@ -100,8 +102,7 @@ async function getApod(id: string): Promise<Apod | null> {
           const monthNames = ['january','february','march','april','may','june','july','august','september','october','november','december'];
           const slugPrefix = `apod-${d.getUTCFullYear()}-${monthNames[d.getUTCMonth()]}-${d.getUTCDate()}`;
           const wpRes = await fetch(
-            `https://science.nasa.gov/wp-json/wp/v2/image-article?search=${slugPrefix}&per_page=3&orderby=date&order=desc`,
-            { cache: 'no-store' }
+            `https://science.nasa.gov/wp-json/wp/v2/image-article?search=${slugPrefix}&per_page=3&orderby=date&order=desc`
           );
           if (wpRes.ok) {
             const wpData = await wpRes.json();

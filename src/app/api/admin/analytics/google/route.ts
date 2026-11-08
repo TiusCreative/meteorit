@@ -1,12 +1,24 @@
 import { NextResponse } from 'next/server';
-import { createSign } from 'crypto';
 import { getGlobalSettings } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GA_SCOPE = 'https://www.googleapis.com/auth/analytics.readonly';
+
+function getCryptoSign(unsignedJwt: string, privateKey: string): string {
+  try {
+    const crypto = eval('require')('crypto');
+    const signature = crypto.createSign('RSA-SHA256')
+      .update(unsignedJwt)
+      .sign(normalizePrivateKey(privateKey));
+    return base64Url(signature);
+  } catch (e) {
+    console.error('Error signing JWT for Google Analytics:', e);
+    return '';
+  }
+}
 
 function base64Url(input: string | Buffer) {
   return Buffer.from(input)
@@ -39,10 +51,8 @@ async function getAccessToken(clientEmail: string, privateKey: string) {
     iat: now,
   }));
   const unsignedJwt = `${header}.${payload}`;
-  const signature = createSign('RSA-SHA256')
-    .update(unsignedJwt)
-    .sign(normalizePrivateKey(privateKey));
-  const jwt = `${unsignedJwt}.${base64Url(signature)}`;
+  const signed = getCryptoSign(unsignedJwt, privateKey);
+  const jwt = `${unsignedJwt}.${signed}`;
 
   const res = await fetch(TOKEN_URL, {
     method: 'POST',
@@ -69,8 +79,7 @@ async function gaRequest(propertyId: string, accessToken: string, endpoint: 'run
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
-    cache: 'no-store',
-  });
+      });
 
   const data = await res.json();
   if (!res.ok) {

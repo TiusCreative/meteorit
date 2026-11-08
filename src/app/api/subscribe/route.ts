@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getSiteHost, getSiteUrl } from "@/lib/siteUrl";
 
-export const runtime = "nodejs";
+export const runtime = "edge";
 
 const SENDER_API_KEY = process.env.SENDER_API_KEY || "";
 const SENDER_FROM_EMAIL = process.env.SENDER_FROM_EMAIL || `noreply@${getSiteHost()}`;
@@ -20,7 +20,7 @@ async function sendSmtpEmail(toEmail: string, htmlBody: string): Promise<{ ok: b
   }
 
   try {
-    const nodemailer = await import("nodemailer");
+    const nodemailer = eval('require')("nodemailer");
     const transporter = nodemailer.createTransport({
       host: SMTP_HOST,
       port: SMTP_PORT,

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import EncyclopediaWithTabs from '@/components/EncyclopediaWithTabs';
 import { adminDb } from '@/lib/firebaseAdmin';
 import JsonLd from '@/components/JsonLd';
@@ -34,7 +35,7 @@ export default async function EncyclopediaPage() {
 
   // 1. Coba dari R2
   try {
-    const res = await fetch(`${R2_URL}/data/meteorites/catalog.json?t=${Date.now()}`, { cache: 'no-store' });
+    const res = await fetch(`${R2_URL}/data/meteorites/catalog.json?t=${Date.now()}`);
     if (res.ok) {
       meteorites = await res.json();
     }

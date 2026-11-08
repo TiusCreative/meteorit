@@ -39,7 +39,7 @@ export default function FireballEonetSection({ fireballPosts: initialFireballPos
   useEffect(() => {
     async function fetchLive() {
       try {
-        const res = await fetch('/api/nasa/fireball', { cache: 'no-store' });
+        const res = await fetch('/api/nasa/fireball');
         if (res.ok) {
           const data = await res.json();
           setLiveFireball((data.data || []).slice(0, 5));

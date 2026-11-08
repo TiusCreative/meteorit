@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -6,8 +7,7 @@ export async function GET() {
   try {
     const url = 'https://www.cpc.ncep.noaa.gov/data/indices/sstoi.indices';
     const res = await fetch(url, {
-      cache: 'no-store',
-      signal: AbortSignal.timeout(8000)
+            signal: AbortSignal.timeout(8000)
     });
 
     if (!res.ok) {

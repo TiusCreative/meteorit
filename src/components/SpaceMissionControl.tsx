@@ -131,7 +131,7 @@ export default function SpaceMissionControl() {
     const fetchISS = () => {
       const controllerISS = new AbortController();
       const idISS = setTimeout(() => controllerISS.abort(), 4000);
-      fetch('/api/space/live', { signal: controllerISS.signal, cache: 'no-store' })
+      fetch('/api/space/live', { signal: controllerISS.signal,  })
         .then(r => r.json())
         .then(data => {
           clearTimeout(idISS);

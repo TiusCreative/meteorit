@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { sendTelegramMessage } from '@/lib/telegram';
@@ -151,7 +152,7 @@ export async function GET(request: Request) {
     };
     try {
       const { getAbsoluteUrl } = await import('@/lib/siteUrl');
-      const magmaRes = await fetch(`${getAbsoluteUrl('/api/earth-monitoring/magma')}`, { cache: 'no-store' });
+      const magmaRes = await fetch(`${getAbsoluteUrl('/api/earth-monitoring/magma')}`);
       if (magmaRes.ok) {
         const magmaJson = await magmaRes.json();
         const vonas = magmaJson.vona || [];

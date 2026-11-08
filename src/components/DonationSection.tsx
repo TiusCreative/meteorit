@@ -171,7 +171,7 @@ export default function DonationSection() {
       <Script 
         src={midtransScriptUrl}
         data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
-        strategy="afterInteractive"
+        strategy="lazyOnload"
       />
       {paymentMethod === 'paypal' && (
         <Script 

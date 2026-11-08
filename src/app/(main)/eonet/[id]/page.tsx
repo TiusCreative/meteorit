@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import Link from 'next/link';
 import AdDisplay from '@/components/AdDisplay';
 import ArticleActions from '@/components/ArticleActions';

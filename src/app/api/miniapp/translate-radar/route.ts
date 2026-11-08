@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { parseAIJson } from '@/lib/aiProvider';
 import { getSiteUrl } from '@/lib/siteUrl';

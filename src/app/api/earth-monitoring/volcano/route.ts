@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchJsonFromR2 } from '@/lib/r2Client';
 import { getAbsoluteUrl } from '@/lib/siteUrl';

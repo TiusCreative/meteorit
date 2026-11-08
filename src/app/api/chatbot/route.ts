@@ -1,9 +1,9 @@
+export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { queryD1 } from '@/lib/d1Client';
 import { fetchJsonFromR2 } from '@/lib/r2Client';
 import R2_CONFIG from '@/lib/cloudflareR2Config';
 import { getSiteUrl } from '@/lib/siteUrl';
-import adminApp from '@/lib/firebaseAdmin';
 import { findCachedAnswer, saveQAToCache, sanitizeInternalLinks } from '@/lib/chatbotCache';
 
 export const dynamic = 'force-dynamic';
@@ -217,16 +217,17 @@ export async function POST(req: NextRequest) {
 
     if (idToken && typeof idToken === 'string') {
       try {
-        if (adminApp) {
-          const { getAuth } = await import('firebase-admin/auth');
-          const decoded = await getAuth(adminApp).verifyIdToken(idToken);
-          if (decoded && decoded.uid) {
+        const parts = idToken.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+          const uid = payload.user_id || payload.sub;
+          if (uid) {
             isUserLoggedIn = true;
-            userId = `user_${decoded.uid}`;
+            userId = `user_${uid}`;
           }
         }
       } catch (err) {
-        console.warn('[Chatbot API] Token verification failed:', err);
+        console.warn('[Chatbot API] Token decoding failed:', err);
       }
     }
 

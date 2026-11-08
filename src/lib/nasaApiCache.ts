@@ -24,8 +24,7 @@ export async function fetchNasaJsonCached<T>(key: string, url: string, ttlMs: nu
   }
 
   const promise = fetch(url, {
-    cache: 'no-store',
-    signal: AbortSignal.timeout(12000),
+        signal: AbortSignal.timeout(12000),
   }).then(async (res) => {
     if (!res.ok) {
       throw new Error(`NASA API returned status ${res.status}`);

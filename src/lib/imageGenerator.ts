@@ -1,5 +1,6 @@
 import { uploadToR2 } from './r2Client';
 import { convertToWebp } from './imageConverter';
+import { isBadImageUrl } from './imageSafeguard';
 
 /**
  * Generates a unique image using Pollinations AI with a fallback to Cloudflare Workers AI.
@@ -23,8 +24,7 @@ export async function generateImageWithFallback(prompt: string, r2Path: string):
       headers: {
         'Accept': 'image/*'
       },
-      signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(5000) : undefined,
-      next: { revalidate: 0 }
+      signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(5000) : undefined
     });
 
     if (res.ok) {
@@ -69,8 +69,7 @@ export async function generateImageWithFallback(prompt: string, r2Path: string):
         prompt: `${prompt}, high quality, realistic space photography, seed ${seed}`,
         seed
       }),
-      signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(5000) : undefined,
-      next: { revalidate: 0 }
+      signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(5000) : undefined
     });
 
     if (!cfResponse.ok) {
@@ -99,6 +98,9 @@ export async function generateImageWithFallback(prompt: string, r2Path: string):
     return publicUrl;
   } catch (err) {
     console.error(`[ImageGen] Cloudflare Workers AI fallback failed:`, err);
-    return `https://placehold.co/800x500/020617/f59e0b?text=${encodeURIComponent(prompt.substring(0, 15))}`;
+    // JANGAN return placehold.co — gunakan R2 static fallback
+    // yang pasti ada (sudah pre-upload) agar banner tidak blank
+    const R2_PUBLIC = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+    return `${R2_PUBLIC}/data/glossary/images/nasa-apod.webp`;
   }
 }

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 /**
  * GET /api/admin/apod-fix-images
  * 
@@ -41,7 +42,7 @@ async function fetchApodFromWordPress(date: string): Promise<{
     const slugPrefix = `apod-${year}-${month}-${day}-`;
 
     const wpUrl = `https://science.nasa.gov/wp-json/wp/v2/image-article?search=${encodeURIComponent(`apod-${year}-${month}-${day}`)}&per_page=10`;
-    const wpRes = await fetch(wpUrl, { cache: 'no-store', signal: AbortSignal.timeout(10000) });
+    const wpRes = await fetch(wpUrl, {  signal: AbortSignal.timeout(10000) });
     if (!wpRes.ok) return null;
 
     const wpData = await wpRes.json();

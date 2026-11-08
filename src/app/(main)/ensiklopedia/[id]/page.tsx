@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import Link from 'next/link';
 import AdDisplay from '@/components/AdDisplay';
 import MeteoriteActions from '@/components/MeteoriteActions';
@@ -45,7 +46,7 @@ async function getMeteorite(id: string): Promise<Meteorite | null> {
   const targetId = String(id);
   // 1. Coba dari R2
   try {
-    const res = await fetch(`${R2_URL}/data/meteorites/catalog.json?t=${Date.now()}`, { cache: 'no-store' });
+    const res = await fetch(`${R2_URL}/data/meteorites/catalog.json?t=${Date.now()}`);
     if (res.ok) {
       const catalog: Meteorite[] = await res.json();
       const matched = catalog.find(m => String(m.id) === targetId || (m.name && m.name.toLowerCase() === targetId.toLowerCase()));

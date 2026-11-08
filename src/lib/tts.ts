@@ -14,10 +14,11 @@ export const TTS_AUDIO_CONFIG = {
 };
 
 /**
- * Helper to split text into chunks of maximum 200 characters.
+ * Helper to split text into chunks of maximum 160 characters.
+ * Google TTS client=tw-ob strictly requires q length <= 200 chars (returns 400 otherwise).
  * Splits on punctuation or spaces so words aren't truncated.
  */
-export function splitTextIntoChunks(text: string, maxLength = 200): string[] {
+export function splitTextIntoChunks(text: string, maxLength = 160): string[] {
   const cleanText = text
     .replace(/<[^>]*>/g, '') // remove HTML tags
     .replace(/[*#_`~]/g, '') // remove Markdown symbols
@@ -64,7 +65,7 @@ export function splitTextIntoChunks(text: string, maxLength = 200): string[] {
  * Default language is Indonesian ('id'), supports 'en' for English.
  */
 export async function generateTtsMp3(text: string, lang = 'id'): Promise<Buffer> {
-  const chunks = splitTextIntoChunks(text, 200);
+  const chunks = splitTextIntoChunks(text, 160);
   if (chunks.length === 0) {
     throw new Error("No pronounceable text provided");
   }
@@ -84,7 +85,7 @@ export async function generateTtsMp3(text: string, lang = 'id'): Promise<Buffer>
 
     while (retries > 0 && !success) {
       try {
-        const response = await fetch(url, { headers, cache: 'no-store' });
+        const response = await fetch(url, { headers });
         if (!response.ok) {
           throw new Error(`Google TTS returned status ${response.status}`);
         }

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { uploadToR2 } from '@/lib/r2Client';
 import { adminDb } from '@/lib/firebaseAdmin';
@@ -15,16 +16,51 @@ const NASA_API_KEY = process.env.NASA_API_KEY || '';
 
 async function rebuildR2MeteoritesCache() {
   try {
-    const snapshot = await adminDb.collection('meteorites').get();
-    const list: any[] = [];
-    snapshot.forEach((doc: any) => {
-      const data = doc.data();
-      list.push({ ...data, id: String(doc.id) });
-    });
+    let list: any[] = [];
+
+    // 1. Prioritas: baca catalog.json yang sudah ada di R2 (berisi image_url AI yang valid)
+    //    Ini WAJIB diutamakan karena Firestore di Edge Runtime selalu return empty (dummyFirestore)
+    const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+    try {
+      const r2Res = await fetch(`${R2_PUBLIC_URL}/data/meteorites/catalog.json?_t=${Date.now()}`, {
+        signal: AbortSignal.timeout(5000)
+      });
+      if (r2Res.ok) {
+        const existing = await r2Res.json() as any[];
+        if (Array.isArray(existing) && existing.length > 0) {
+          list = existing;
+          console.log(`[Cron] rebuildR2MeteoritesCache: loaded ${list.length} from existing R2 catalog (image_url preserved)`);
+        }
+      }
+    } catch (r2Err) {
+      console.warn('[Cron] Failed to load existing R2 catalog, trying D1:', r2Err);
+    }
+
+    // 2. Fallback ke D1 jika R2 kosong/gagal
+    if (list.length === 0) {
+      try {
+        const { queryD1 } = await import('@/lib/d1Client');
+        const d1Res = await queryD1('SELECT * FROM meteorites');
+        if (d1Res?.results?.length) {
+          list = d1Res.results as any[];
+          console.log(`[Cron] rebuildR2MeteoritesCache: loaded ${list.length} from D1`);
+        }
+      } catch (d1Err) {
+        console.warn('Failed to load meteorites from D1:', d1Err);
+      }
+    }
+
+    // 3. Merge newly processed meteorites (from processedMeteorites arg) — dilakukan oleh caller
+    //    Di sini hanya rebuild ulang dari sumber yang sudah ada + merge yang baru
+    if (list.length === 0) {
+      console.warn('[Cron] rebuildR2MeteoritesCache: no data found in R2 or D1, skipping rebuild');
+      return;
+    }
+
     await uploadToR2('data/meteorites/catalog.json', JSON.stringify(list, null, 2), 'application/json');
     console.log("Successfully rebuilt R2 meteorites catalog cache. Total items:", list.length);
 
-    // Sync to Cloudflare D1
+    // Sync ke Cloudflare D1 (PRESERVE image_url yang sudah ada)
     try {
       const { queryD1 } = await import('@/lib/d1Client');
       for (const item of list) {
@@ -43,7 +79,7 @@ async function rebuildR2MeteoritesCache() {
             item.long || '0',
             item.description || '',
             item.translated_description || item.description || '',
-            item.image_url || ''
+            item.image_url || '' // JANGAN kosongkan: preserve URL gambar AI yang sudah ada
           ]
         );
       }
@@ -95,18 +131,20 @@ export async function GET(request: Request) {
 
 async function rebuildR2ApodHistoryCache() {
   try {
-    const snapApods = await adminDb.collection('apod_history')
-      .orderBy('id', 'desc')
-      .limit(100)
-      .get();
-    
-    const historyList: any[] = [];
-    snapApods.forEach((doc: any) => {
-      historyList.push({ id: doc.id, ...doc.data() });
-    });
-    
-    await uploadToR2('data/encyclopedia/history.json', JSON.stringify(historyList, null, 2), 'application/json');
-    console.log('[Cron Route] Successfully rebuilt APOD history cache in R2. Total:', historyList.length);
+    const { queryD1 } = await import('@/lib/d1Client');
+    const d1Res = await queryD1('SELECT id, date, title, explanation, image_url, copyright FROM apod_history ORDER BY id DESC LIMIT 150');
+    if (d1Res?.results?.length) {
+      const historyList = d1Res.results.map((r: any) => ({
+        id: r.id,
+        title: typeof r.title === 'string' && r.title.startsWith('{') ? JSON.parse(r.title) : { en: r.title, id: r.title },
+        explanation: typeof r.explanation === 'string' && r.explanation.startsWith('{') ? JSON.parse(r.explanation) : { en: r.explanation, id: r.explanation },
+        image_url: r.image_url,
+        copyright: r.copyright || 'NASA Public Domain',
+        media_type: 'image'
+      }));
+      await uploadToR2('data/encyclopedia/history.json', JSON.stringify(historyList, null, 2), 'application/json');
+      console.log('[Cron Route] Successfully rebuilt APOD history cache in R2 from D1. Total:', historyList.length);
+    }
   } catch (err) {
     console.error('[Cron Route] Failed to rebuild APOD history cache:', err);
   }
@@ -425,6 +463,24 @@ Tuliskan langsung dalam format markdown yang rapi tanpa kata pengantar tambahan.
 
         processedMeteorites.push(metData);
 
+        // Simpan ke D1 segera (dengan image_url yang baru di-generate)
+        try {
+          const { queryD1 } = await import('@/lib/d1Client');
+          await queryD1(
+            `INSERT OR REPLACE INTO meteorites (
+              id, name, translated_name, mass, year, recclass, lat, long, description, translated_description, image_url
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+            [
+              String(metData.id), metData.name, metData.translated_name,
+              metData.mass, metData.year, metData.recclass,
+              metData.lat, metData.long, metData.description,
+              metData.translated_description, metData.image_url || ''
+            ]
+          );
+        } catch (d1SaveErr) {
+          console.warn('[Cron] Gagal simpan meteorit ke D1:', d1SaveErr);
+        }
+
         // Check if this is a new meteorite
         const docRef = adminDb.collection('meteorites').doc(metId);
         const docSnap = await docRef.get();
@@ -458,8 +514,36 @@ Tuliskan langsung dalam format markdown yang rapi tanpa kata pengantar tambahan.
 
       processedMeteoritesCount = processedMeteorites.length;
 
-      // Rebuild the complete consolidated catalog cache in R2 from all Firestore meteorites!
-      await rebuildR2MeteoritesCache();
+      // Merge meteorit yang baru diproses dengan R2 catalog yang sudah ada (preserve image_url lama)
+      // rebuildR2MeteoritesCache() kini baca R2 existing dulu → merge → update R2 & D1
+      if (processedMeteorites.length > 0) {
+        const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+        try {
+          const catalogRes = await fetch(`${R2_PUBLIC_URL}/data/meteorites/catalog.json?_t=${Date.now()}`, {
+            signal: AbortSignal.timeout(5000)
+          });
+          if (catalogRes.ok) {
+            const existing = await catalogRes.json() as any[];
+            const existingMap = new Map(existing.map((m: any) => [String(m.id), m]));
+            // Merge: data baru override data lama (tapi image_url baru LEBIH PRIORITAS)
+            for (const met of processedMeteorites) {
+              existingMap.set(String(met.id), met);
+            }
+            const merged = Array.from(existingMap.values());
+            await uploadToR2('data/meteorites/catalog.json', JSON.stringify(merged, null, 2), 'application/json');
+            console.log(`[Cron] Merged catalog: ${merged.length} total meteorites in R2`);
+          } else {
+            // Jika R2 catalog belum ada, buat baru dari processedMeteorites
+            await uploadToR2('data/meteorites/catalog.json', JSON.stringify(processedMeteorites, null, 2), 'application/json');
+          }
+        } catch (mergeErr) {
+          console.warn('[Cron] Gagal merge catalog R2, rebuild ulang:', mergeErr);
+          await rebuildR2MeteoritesCache();
+        }
+      } else {
+        // Tidak ada meteorit baru: rebuild dari R2/D1 existing (preserve semua image_url)
+        await rebuildR2MeteoritesCache();
+      }
 
       // Get total statistics for report
       const totalArticles = await adminDb.collection('articles').get().then((snap: any) => snap.size);

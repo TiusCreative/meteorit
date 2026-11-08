@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { uploadToR2, fetchJsonFromR2, deleteFromR2 } from '@/lib/r2Client';
 import { sendTelegramMessage } from '@/lib/telegram';
@@ -7,8 +8,6 @@ import { generateTtsMp3 } from '@/lib/tts';
 import { isValidCronRequest } from '@/lib/cronAuth';
 import { translateText } from '@/lib/translator';
 import R2_CONFIG from '@/lib/cloudflareR2Config';
-import fs from 'fs';
-import path from 'path';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 80; // Cocok dengan batas durasi cron Vercel
@@ -52,7 +51,7 @@ async function translateTextToEnglish(text: string): Promise<string> {
   if (!text || text.trim() === '') return '';
   try {
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text)}`;
-    const response = await fetch(url, { cache: 'no-store' });
+    const response = await fetch(url);
     if (response.ok) {
       const json = await response.json();
       const sentences = json[0];
@@ -110,21 +109,9 @@ export async function GET(request: Request) {
       }
     }
 
-    // 1. Unggah logo cover art podcast ke R2 jika file lokal ada
+    // 1. URL cover art podcast di R2
     const logoKey = 'logo-meteor-spotify.png';
     const logoUrl = `${R2_CONFIG.publicUrl}/${logoKey}`;
-    try {
-      const logoPath = path.join(process.cwd(), 'public', 'logo-meteor-spotify.png');
-      if (fs.existsSync(logoPath)) {
-        const logoBuffer = fs.readFileSync(logoPath);
-        await uploadToR2(logoKey, logoBuffer, 'image/png');
-        console.log("[Podcast Cron] Cover art podcast berhasil diunggah ke R2.");
-      } else {
-        console.warn("[Podcast Cron] Berkas lokal logo-meteor-spotify.png tidak ditemukan di folder public/");
-      }
-    } catch (logoErr) {
-      console.warn("[Podcast Cron] Gagal menyelaraskan cover art ke R2:", logoErr);
-    }
 
     // 2. Memilih sumber konten astronomi secara acak dari database D1
     let title = '';
@@ -277,8 +264,8 @@ export async function GET(request: Request) {
       }
     }
 
-    // Batasi kata agar durasi audio TTS tidak terlampau panjang (> 250 kata)
-    const maxWords = 250;
+    // Batasi kata agar durasi audio TTS ringkas dan tidak melampaui batas subrequest Cloudflare (max 50)
+    const maxWords = 110;
     const words = cleanContent.split(/\s+/);
     const excerptContent = words.slice(0, maxWords).join(' ') + (words.length > maxWords ? '...' : '');
 

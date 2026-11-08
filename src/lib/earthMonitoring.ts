@@ -193,8 +193,7 @@ function buildForecastUrl(location: MonitoringLocation) {
 
 async function fetchLocationWeather(location: MonitoringLocation): Promise<LiveWeatherPoint> {
   const response = await fetch(buildForecastUrl(location), {
-    cache: 'no-store',
-    headers: { Accept: 'application/json' },
+        headers: { Accept: 'application/json' },
     signal: AbortSignal.timeout(9000),
   });
 
@@ -265,8 +264,7 @@ export async function fetchBmkgWeatherAlertText() {
 
   try {
     const response = await fetch(alertUrl, {
-      cache: 'no-store',
-      headers: { Accept: 'application/json,text/plain,*/*' },
+            headers: { Accept: 'application/json,text/plain,*/*' },
       signal: AbortSignal.timeout(9000),
     });
     if (!response.ok) return null;
@@ -380,8 +378,7 @@ export function buildExtremeWeatherMessage(alerts: ExtremeWeatherAlert[]) {
 
 export async function fetchLatestBmkgEarthquake(): Promise<NormalizedEarthquake> {
   const response = await fetch(BMKG_AUTOGEMPA_URL, {
-    cache: 'no-store',
-    headers: { Accept: 'application/json' },
+        headers: { Accept: 'application/json' },
   });
 
   if (!response.ok) {
@@ -448,8 +445,7 @@ async function fetchReAtlasSummary() {
 
   try {
     const response = await fetch(reAtlasUrl, {
-      cache: 'no-store',
-      headers: { Accept: 'application/json' },
+            headers: { Accept: 'application/json' },
       signal: AbortSignal.timeout(12000),
     });
     if (!response.ok) return null;

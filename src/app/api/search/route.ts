@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { queryD1 } from '@/lib/d1Client';
 import { fetchJsonFromR2 } from '@/lib/r2Client';

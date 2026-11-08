@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { uploadToR2, fetchJsonFromR2 } from '@/lib/r2Client';
 import { sendTelegramMessage } from '@/lib/telegram';
@@ -6,6 +7,7 @@ import { buildArticleTranslations } from '@/lib/articleLocalization';
 import { shouldSkipExternalFetch } from '@/lib/cronSafety';
 import { sendBroadcastNotification } from '@/lib/notifications';
 import { rebuildRSSFeedHelper } from '@/lib/rss';
+import { ensureImageUrl } from '@/lib/imageSafeguard';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 80;
@@ -77,8 +79,7 @@ async function fetchMarsImage(): Promise<MarsImage> {
     if (fetchGuard.skip) throw new Error(`Cooldown anti-loop NASA Mars Photos aktif sampai ${fetchGuard.nextAllowedAt}`);
 
     const res = await fetch(
-      `https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/latest_photos?api_key=${NASA_API_KEY}`,
-      { cache: 'no-store' }
+      `https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/latest_photos?api_key=${NASA_API_KEY}`
     );
 
     if (!res.ok) throw new Error(`NASA Mars Rover API status ${res.status}`);
@@ -191,19 +192,10 @@ Aturan:
     const attribution = "\n\nSource: NASA Open Data APIs\nSumber Data: Pusat Data Publik Antariksa";
     const articleContent = article.contentHtml + attribution;
 
-    // Auto-translate ke 4 bahasa (EN, MS, ZH, JA) saat artikel dibuat
-    console.log(`[Cron Mars] Memulai auto-translate untuk: ${article.title}`);
+    // Di Cloudflare Edge, terjemahan dialihkan ke cron translate terpisah agar tidak melampaui batas subrequest (50 max)
     let translations = {};
-    try {
-      translations = await buildArticleTranslations({
-        title: article.title,
-        excerpt: article.excerpt,
-        content: articleContent,
-      });
-      console.log(`[Cron Mars] \u2705 Auto-translate selesai: ${Object.keys(translations).join(', ')}`);
-    } catch (translateErr) {
-      console.warn('[Cron Mars] \u26a0\ufe0f Auto-translate gagal, artikel tetap disimpan tanpa terjemahan:', translateErr);
-    }
+
+    const validImageUrl = await ensureImageUrl(marsImage.img_src, 'mars');
 
     const newArticle = {
       id: docId,
@@ -214,7 +206,7 @@ Aturan:
       content_format: 'html',
       category: 'Planet Mars',
       date: dateFormatted,
-      image: marsImage.img_src,
+      image: validImageUrl,
       views: 0,
       status: 'Published',
       review_status: 'Otomatis',

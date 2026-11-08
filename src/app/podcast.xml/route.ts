@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import R2_CONFIG from '@/lib/cloudflareR2Config';
 
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
     const fileName = requestedLang === 'en' ? 'podcast-en.xml' : 'podcast.xml';
 
     const r2Url = `${R2_CONFIG.publicUrl}/data/podcast/${fileName}`;
-    const res = await fetch(r2Url, { cache: 'no-store' });
+    const res = await fetch(r2Url);
 
     if (!res.ok) {
       throw new Error(`R2 returned status ${res.status}`);

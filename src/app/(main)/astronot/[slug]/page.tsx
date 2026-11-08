@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import Link from 'next/link';
 import AstronautActions from '@/components/AstronautActions';
 import SafeImage from '@/components/SafeImage';

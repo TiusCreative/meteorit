@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import type { Metadata } from 'next';
 import MonitoringClient from './MonitoringClient';
 import { getAbsoluteUrl } from '@/lib/siteUrl';
@@ -9,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
   let asteroidCount = 0;
   let hazardousCount = 0;
   try {
-    const res = await fetch(getAbsoluteUrl('/api/nasa/neo'), { cache: 'no-store' });
+    const res = await fetch(getAbsoluteUrl('/api/nasa/neo'));
     if (res.ok) {
       const data = await res.json();
       asteroidCount = data.count || 0;

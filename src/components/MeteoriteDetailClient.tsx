@@ -128,7 +128,7 @@ export default function MeteoriteDetailClient({ initialMeteorite }: MeteoriteDet
                   src={meteorite.image_url} 
                   alt={currentName} 
                   className="w-full h-full object-cover"
-                  fallback="https://placehold.co/600x400/020617/22d3ee?text=Meteorit"
+                  fallback="https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev/data/glossary/images/nasa-meteorite.webp"
                 />
               </div>
 

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { Metadata } from 'next';
 import dynamicImport from 'next/dynamic';
 import JsonLd from '@/components/JsonLd';

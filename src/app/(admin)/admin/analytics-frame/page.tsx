@@ -20,7 +20,7 @@ export default function AnalyticsFramePage() {
   useEffect(() => {
     async function loadAnalytics() {
       try {
-        const response = await fetch('/api/admin/analytics/google', { cache: 'no-store' });
+        const response = await fetch('/api/admin/analytics/google');
         const data = await response.json();
         if (!response.ok || !data.success) {
           throw new Error(data.message || 'Google Analytics belum terhubung.');

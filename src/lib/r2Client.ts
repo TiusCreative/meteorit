@@ -38,6 +38,25 @@ export async function uploadToR2(key: string, body: Buffer | string, contentType
  * Reads a JSON file from Cloudflare R2
  */
 export async function fetchJsonFromR2<T>(key: string): Promise<T | null> {
+  // 1. Primary: Direct high-speed Edge HTTP fetch via CDN (0ms CPU, prevents Cloudflare Error 1102)
+  try {
+    const cdnBase = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.meteorit.my.id';
+    const publicBase = R2_CONFIG.publicUrl || 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev';
+    
+    // Coba via CDN custom domain dulu, fallback ke public r2.dev
+    let res = await fetch(`${cdnBase}/${key}`, { signal: AbortSignal.timeout(3000) });
+    if (!res.ok) {
+      res = await fetch(`${publicBase}/${key}`, { signal: AbortSignal.timeout(3000) });
+    }
+
+    if (res.ok) {
+      return (await res.json()) as T;
+    }
+  } catch (fetchErr) {
+    // Lanjutkan ke S3 fallback jika fetch gagal
+  }
+
+  // 2. Fallback: Authenticated S3 client jika file belum ter-cache di CDN
   try {
     const response = await s3Client.send(new GetObjectCommand({
       Bucket: R2_CONFIG.bucketName,

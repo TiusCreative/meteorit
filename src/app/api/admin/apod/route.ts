@@ -1,37 +1,27 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { uploadToR2 } from '@/lib/r2Client';
 import { queryD1 } from '@/lib/d1Client';
+import { verifyAdmin } from '@/lib/verifyAdminToken';
 
 export const dynamic = 'force-dynamic';
-
-async function verifyAdmin(request: Request): Promise<boolean> {
-  const adminUid = request.headers.get('x-admin-uid');
-  if (!adminUid) return false;
-  try {
-    const userSnap = await adminDb.collection('users').doc(adminUid).get();
-    return userSnap.exists && userSnap.data()?.role === 'admin';
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Rebuild R2 history.json and latest.json cache from Firestore
  */
 async function rebuildR2ApodHistoryCache() {
   try {
-    const snapApods = await adminDb.collection('apod_history')
-      .orderBy('id', 'desc')
-      .limit(200)
-      .get();
-    
-    const historyList: any[] = [];
-    snapApods.forEach((doc: any) => {
-      historyList.push({ id: doc.id, ...doc.data() });
-    });
-
-    if (historyList.length > 0) {
+    const d1Res = await queryD1('SELECT id, date, title, explanation, image_url, copyright FROM apod_history ORDER BY id DESC LIMIT 200');
+    if (d1Res?.results?.length) {
+      const historyList = d1Res.results.map((r: any) => ({
+        id: r.id,
+        title: typeof r.title === 'string' && r.title.startsWith('{') ? JSON.parse(r.title) : { en: r.title, id: r.title },
+        explanation: typeof r.explanation === 'string' && r.explanation.startsWith('{') ? JSON.parse(r.explanation) : { en: r.explanation, id: r.explanation },
+        image_url: r.image_url,
+        copyright: r.copyright || 'NASA Public Domain',
+        media_type: 'image'
+      }));
       await uploadToR2('data/encyclopedia/history.json', JSON.stringify(historyList, null, 2), 'application/json');
       await uploadToR2('data/encyclopedia/latest.json', JSON.stringify(historyList[0], null, 2), 'application/json');
       console.log(`[Admin APOD API] Rebuilt R2 cache with ${historyList.length} APOD items.`);

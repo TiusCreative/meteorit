@@ -59,7 +59,7 @@ export default function AdminLayout({
   useEffect(() => {
     async function checkDbStatus() {
       try {
-        const res = await fetch(`/api/admin/status?t=${Date.now()}`, { cache: 'no-store' });
+        const res = await fetch(`/api/admin/status?t=${Date.now()}`);
         if (res.ok) {
           const data = await res.json();
           setIsDbMocked(data.isMocked || false);

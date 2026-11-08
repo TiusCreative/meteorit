@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
     // MENGGUNAKAN NASA FIRMS AREA API KARENA COUNTRY API SUDAH DEPRECATED/OUTAGES
     const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${FIRMS_API_KEY}/${source}/${areaParam}/${dayRange}`;
 
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`NASA FIRMS API returned status ${res.status}`);
     }

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -79,8 +80,7 @@ async function reverseCoordinateLabel(location: ResolvedLocation) {
     reverseUrl.searchParams.set('addressdetails', '1');
 
     const response = await fetch(reverseUrl, {
-      cache: 'no-store',
-      headers: {
+            headers: {
         Accept: 'application/json',
         'Accept-Language': 'id,en;q=0.8',
         'User-Agent': 'MeteoritIndonesia/1.0 (https://meteorit.my.id)',
@@ -108,8 +108,7 @@ async function geocodeWithOpenStreetMap(query: string): Promise<ResolvedLocation
   url.searchParams.set('countrycodes', 'id');
 
   const response = await fetch(url, {
-    cache: 'no-store',
-    headers: {
+        headers: {
       Accept: 'application/json',
       'Accept-Language': 'id,en;q=0.8',
       'User-Agent': 'MeteoritIndonesia/1.0 (https://meteorit.my.id)',
@@ -138,8 +137,7 @@ async function geocodeWithOpenMeteo(query: string): Promise<ResolvedLocation | n
   geocodeUrl.searchParams.set('format', 'json');
 
   const geocodeRes = await fetch(geocodeUrl, {
-    cache: 'no-store',
-    headers: { Accept: 'application/json' },
+        headers: { Accept: 'application/json' },
     signal: AbortSignal.timeout(7000),
   });
 
@@ -206,8 +204,7 @@ export async function GET(request: Request) {
     forecastUrl.searchParams.set('forecast_days', '1');
 
     const forecastRes = await fetch(forecastUrl, {
-      cache: 'no-store',
-      headers: { Accept: 'application/json' },
+            headers: { Accept: 'application/json' },
       signal: AbortSignal.timeout(7000),
     });
 
