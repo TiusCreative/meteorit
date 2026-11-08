@@ -104,10 +104,28 @@ export default function ApodContentClient({ initialApod, initialTitle, initialEx
   }, [language, apod.id]);
 
   const isDirectVideo = apod.image_url.includes('.mp4') || apod.image_url.includes('.webm') || apod.image_url.includes('.ogv');
-  const isIframeVideo = apod.image_url.includes('youtube.com') ||
+  const isIframeVideo = (apod as any).media_type === 'video' ||
+    apod.image_url.includes('youtube.com') ||
     apod.image_url.includes('youtu.be') ||
     apod.image_url.includes('vimeo.com') ||
     apod.image_url.includes('player.vimeo.com');
+
+  const getEmbedUrl = (url: string) => {
+    if (!url) return url;
+    if (url.includes('youtube.com/watch?v=')) {
+      const videoId = url.split('watch?v=')[1]?.split('&')[0];
+      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+    }
+    if (url.includes('youtu.be/')) {
+      const videoId = url.split('youtu.be/')[1]?.split('?')[0];
+      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+    }
+    if (url.includes('vimeo.com/') && !url.includes('player.vimeo.com/video/')) {
+      const videoId = url.split('vimeo.com/')[1]?.split('?')[0];
+      if (videoId) return `https://player.vimeo.com/video/${videoId}`;
+    }
+    return url;
+  };
 
   return (
     <main className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white py-16 transition-colors duration-300 print:bg-white print:text-black">
@@ -176,7 +194,7 @@ export default function ApodContentClient({ initialApod, initialTitle, initialEx
               ) : isIframeVideo ? (
                 <div className="aspect-video w-full">
                   <iframe
-                    src={apod.image_url}
+                    src={getEmbedUrl(apod.image_url)}
                     title={currentTitle || 'NASA APOD Video'}
                     className="w-full h-full border-0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

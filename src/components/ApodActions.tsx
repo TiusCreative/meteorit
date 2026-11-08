@@ -55,14 +55,16 @@ const isVideoUrl = (url: string) => {
   return url.includes('youtube.com') || url.includes('youtu.be') || url.includes('vimeo.com') || url.includes('player.vimeo.com');
 };
 
+const R2_SPACE_FALLBACK = 'https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev/data/glossary/images/nasa-apod.webp';
+
 const getThumbnailUrl = (url: string) => {
-  if (!url) return 'https://placehold.co/600x400/020617/22d3ee?text=APOD+Space';
+  if (!url) return R2_SPACE_FALLBACK;
   if (isVideoUrl(url)) {
     const ytId = getYoutubeId(url);
     if (ytId) {
       return `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`;
     }
-    return 'https://placehold.co/600x400/020617/eab308?text=Video+Astronomi';
+    return R2_SPACE_FALLBACK;
   }
   return url;
 };
