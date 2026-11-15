@@ -16,20 +16,30 @@ if (idx === -1) {
 }
 const cleanBody = content.slice(idx);
 
-// Parse .env
-const envContent = fs.readFileSync(path.join(__dirname, '../.env'), 'utf8');
+// Parse .env and .env.local
 const envVars = {};
-for (const line of envContent.split('\n')) {
-  const trimmed = line.trim();
-  if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue;
-  const i = trimmed.indexOf('=');
-  const key = trimmed.slice(0, i).trim();
-  let val = trimmed.slice(i + 1).trim();
-  if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-    val = val.slice(1, -1);
+for (const envFile of ['.env', '.env.local']) {
+  const p = path.join(__dirname, '..', envFile);
+  if (fs.existsSync(p)) {
+    const lines = fs.readFileSync(p, 'utf8').split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue;
+      const i = trimmed.indexOf('=');
+      const key = trimmed.slice(0, i).trim();
+      let val = trimmed.slice(i + 1).trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      if (val) {
+        envVars[key] = val;
+      }
+    }
   }
-  envVars[key] = val;
 }
+envVars['NEXT_PUBLIC_SITE_URL'] = envVars['NEXT_PUBLIC_SITE_URL'] || 'https://meteorit.my.id';
+envVars['NEXT_PUBLIC_R2_PUBLIC_URL'] = 'https://cdn.meteorit.my.id';
+envVars['R2_PUBLIC_URL'] = 'https://cdn.meteorit.my.id';
 
 const domParserPolyfill = `if (typeof globalThis.DOMParser === "undefined") {
   globalThis.Node = { ELEMENT_NODE: 1, TEXT_NODE: 3 };

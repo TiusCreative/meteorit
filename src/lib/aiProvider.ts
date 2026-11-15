@@ -41,35 +41,27 @@ export async function generateWithAI(options: AIGenerateOptions): Promise<AIGene
   const cfAccountId = process.env.R2_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID || '';
 
   // Order of providers:
-  // 1. Cloudflare Workers AI (AI Token) - Lightning fast, reliable
-  // 2. OpenRouter Utama
-  // 3. Groq Utama (Llama 3.3 70B / Llama 3.1 8B)
-  // 4. Cloudflare Workers AI (API Token)
-  // 5. Groq Backup
-  // 6. OpenRouter Backup
-  // 7. Mistral (Latest models)
+  // 1. OpenRouter Utama (Llama 3.3 70B) - Aktif, responsif
+  // 2. Cloudflare Workers AI (AI Token) - Cepat, andal
+  // 3. Cloudflare Workers AI (API Token)
+  // 4. OpenRouter Backup
+  // 5. Groq Utama (Llama 3.3 70B)
+  // 6. Groq Backup
+  // 7. Mistral
   const providers: ProviderConfig[] = [
-    {
-      name: 'Cloudflare Workers AI (AI Token)',
-      type: 'cloudflare',
-      key: cfAiToken,
-      model: '@cf/meta/llama-3.1-8b-instruct',
-    },
-    {
-      name: 'Groq Utama',
-      type: 'openai-compatible',
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: groqKeyPrimary,
-      model: 'llama-3.3-70b-versatile',
-      fallbackModels: ['llama-3.1-8b-instant', 'gemma2-9b-it', 'mixtral-8x7b-32768'],
-    },
     {
       name: 'OpenRouter Utama',
       type: 'openai-compatible',
       url: 'https://openrouter.ai/api/v1/chat/completions',
       key: openRouterKeyPrimary,
       model: 'meta-llama/llama-3.3-70b-instruct',
-      fallbackModels: ['meta-llama/llama-3.2-3b-instruct:free', 'google/gemini-2.0-flash-lite-001'],
+      fallbackModels: ['google/gemini-2.0-flash-lite-001', 'meta-llama/llama-3.1-8b-instruct:free'],
+    },
+    {
+      name: 'Cloudflare Workers AI (AI Token)',
+      type: 'cloudflare',
+      key: cfAiToken,
+      model: '@cf/meta/llama-3.1-8b-instruct',
     },
     {
       name: 'Cloudflare Workers AI (API Token)',
@@ -78,26 +70,38 @@ export async function generateWithAI(options: AIGenerateOptions): Promise<AIGene
       model: '@cf/meta/llama-3.1-8b-instruct',
     },
     {
-      name: 'Groq Backup',
-      type: 'openai-compatible',
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: groqKeyBackup,
-      model: 'llama-3.3-70b-versatile',
-      fallbackModels: ['llama-3.1-8b-instant', 'gemma2-9b-it', 'mixtral-8x7b-32768'],
-    },
-    {
       name: 'OpenRouter Backup',
       type: 'openai-compatible',
       url: 'https://openrouter.ai/api/v1/chat/completions',
       key: openRouterKeyBackup,
       model: 'meta-llama/llama-3.3-70b-instruct',
-      fallbackModels: ['meta-llama/llama-3.2-3b-instruct:free'],
+      fallbackModels: ['google/gemini-2.0-flash-lite-001'],
+    },
+    {
+      name: 'Groq Utama',
+      type: 'openai-compatible',
+      url: 'https://api.groq.com/openai/v1/chat/completions',
+      key: groqKeyPrimary,
+      model: 'llama-3.3-70b-versatile',
+      fallbackModels: ['llama-3.1-8b-instant', 'gemma2-9b-it'],
+    },
+    {
+      name: 'Groq Backup',
+      type: 'openai-compatible',
+      url: 'https://api.groq.com/openai/v1/chat/completions',
+      key: groqKeyBackup,
+      model: 'llama-3.3-70b-versatile',
+      fallbackModels: ['llama-3.1-8b-instant'],
     },
     {
       name: 'Mistral',
       type: 'mistral',
       url: 'https://api.mistral.ai/v1/chat/completions',
       key: mistralKey,
+      model: 'mistral-small-latest',
+      fallbackModels: ['ministral-8b-latest', 'ministral-3b-latest'],
+    },
+  ];
       model: 'mistral-small-latest',
       fallbackModels: ['ministral-8b-latest', 'ministral-3b-latest'],
     },
