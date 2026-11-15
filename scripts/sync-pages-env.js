@@ -1,8 +1,12 @@
 const fs = require('fs');
 
 async function syncEnv() {
-  const envContent = fs.readFileSync('.env', 'utf8');
+  const envFile = fs.existsSync('.env.local') ? '.env.local' : '.env';
+  console.log(`Reading environment variables from ${envFile}...`);
+  const envContent = fs.readFileSync(envFile, 'utf8');
   const envVars = {};
+  let token = process.env.CLOUDFLARE_API_TOKEN;
+
   for (const line of envContent.split('\n')) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue;
@@ -12,10 +16,20 @@ async function syncEnv() {
     if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
-    envVars[key] = { value: val, type: 'plain_text' };
+    if (key === 'CLOUDFLARE_API_TOKEN' && !token) {
+      token = val;
+    }
+    if (val !== undefined && val !== '') {
+      envVars[key] = { value: val, type: 'plain_text' };
+    }
   }
 
-  const token = process.env.CLOUDFLARE_API_TOKEN;
+  // Ensure Node version & compatibility are present
+  envVars['NODE_VERSION'] = { value: '20.18.0', type: 'plain_text' };
+  envVars['NEXT_PUBLIC_SITE_URL'] = { value: 'https://meteorit.my.id', type: 'plain_text' };
+  envVars['NEXT_PUBLIC_R2_PUBLIC_URL'] = { value: 'https://cdn.meteorit.my.id', type: 'plain_text' };
+  envVars['R2_PUBLIC_URL'] = { value: 'https://cdn.meteorit.my.id', type: 'plain_text' };
+
   const accountId = '5f29e48300ae379ebe15c20185d15ac8';
   const projectName = 'meteorit-indonesia';
 
@@ -54,4 +68,3 @@ syncEnv().catch(err => {
   console.error('Error:', err);
   process.exit(1);
 });
-

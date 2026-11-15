@@ -9,8 +9,13 @@
 const https = require('https');
 const http = require('http');
 
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || 'https://meteorit.my.id').replace(/\/+$/, '');
-const CRON_SECRET = process.env.CRON_SECRET || 'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU=';
+let rawSiteUrl = (process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || 'https://meteorit.my.id').trim();
+rawSiteUrl = rawSiteUrl.replace(/^['"]+|['"]+$/g, '').trim();
+if (!/^https?:\/\//i.test(rawSiteUrl)) {
+  rawSiteUrl = `https://${rawSiteUrl}`;
+}
+const SITE_URL = rawSiteUrl.replace(/\/+$/, '');
+const CRON_SECRET = (process.env.CRON_SECRET || 'UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU=').trim().replace(/^['"]+|['"]+$/g, '');
 
 // Daftar seluruh endpoint cron beserta jadwal jam (UTC) aslinya
 const CRON_SCHEDULE = [
@@ -31,51 +36,56 @@ const CRON_SCHEDULE = [
 
 function requestEndpoint(urlPath) {
   return new Promise((resolve) => {
-    const fullUrl = `${SITE_URL}${urlPath}?secret=${encodeURIComponent(CRON_SECRET)}`;
-    const urlObj = new URL(fullUrl);
-    const client = urlObj.protocol === 'https:' ? https : http;
+    try {
+      const fullUrl = `${SITE_URL}${urlPath}?secret=${encodeURIComponent(CRON_SECRET)}`;
+      const urlObj = new URL(fullUrl);
+      const client = urlObj.protocol === 'https:' ? https : http;
 
-    console.log(`\n⏳ Mengirim request ke: ${urlObj.origin}${urlObj.pathname}`);
+      console.log(`\n⏳ Mengirim request ke: ${urlObj.origin}${urlObj.pathname}`);
 
-    const req = client.request(
-      fullUrl,
-      {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${CRON_SECRET}`,
-          'User-Agent': 'Meteorit-Cron-Scheduler/1.0',
-          'Accept': 'application/json',
+      const req = client.request(
+        fullUrl,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${CRON_SECRET}`,
+            'User-Agent': 'Meteorit-Cron-Scheduler/1.0',
+            'Accept': 'application/json',
+          },
+          timeout: 120000, // 2 menit timeout
         },
-        timeout: 120000, // 2 menit timeout
-      },
-      (res) => {
-        let body = '';
-        res.on('data', (chunk) => { body += chunk; });
-        res.on('end', () => {
-          console.log(`✅ Status: ${res.statusCode} ${res.statusMessage}`);
-          try {
-            const parsed = JSON.parse(body);
-            console.log(`📄 Response:`, JSON.stringify(parsed, null, 2).slice(0, 500));
-          } catch (e) {
-            console.log(`📄 Response (raw):`, body.slice(0, 500));
-          }
-          resolve({ ok: res.statusCode >= 200 && res.statusCode < 400, statusCode: res.statusCode });
-        });
-      }
-    );
+        (res) => {
+          let body = '';
+          res.on('data', (chunk) => { body += chunk; });
+          res.on('end', () => {
+            console.log(`✅ Status: ${res.statusCode} ${res.statusMessage}`);
+            try {
+              const parsed = JSON.parse(body);
+              console.log(`📄 Response:`, JSON.stringify(parsed, null, 2).slice(0, 500));
+            } catch (e) {
+              console.log(`📄 Response (raw):`, body.slice(0, 500));
+            }
+            resolve({ ok: res.statusCode >= 200 && res.statusCode < 400, statusCode: res.statusCode });
+          });
+        }
+      );
 
-    req.on('error', (err) => {
-      console.error(`❌ Request Error: ${err.message}`);
+      req.on('error', (err) => {
+        console.error(`❌ Request Error: ${err.message}`);
+        resolve({ ok: false, error: err.message });
+      });
+
+      req.on('timeout', () => {
+        req.destroy();
+        console.error(`⏰ Request Timeout (120s)`);
+        resolve({ ok: false, error: 'Timeout' });
+      });
+
+      req.end();
+    } catch (err) {
+      console.error(`❌ Request Exception for ${urlPath}:`, err.message);
       resolve({ ok: false, error: err.message });
-    });
-
-    req.on('timeout', () => {
-      req.destroy();
-      console.error(`⏰ Request Timeout (120s)`);
-      resolve({ ok: false, error: 'Timeout' });
-    });
-
-    req.end();
+    }
   });
 }
 

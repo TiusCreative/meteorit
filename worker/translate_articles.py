@@ -21,7 +21,7 @@ def load_env():
 env = load_env()
 GROQ_API_KEY = env.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
 CRON_SECRET = env.get("CRON_SECRET") or os.getenv("CRON_SECRET") or "UNVIKvyeh6thKFg7GiMhzSd33rVcz/yCZ/CBRyNuMvU="
-R2_PUBLIC_URL = env.get("R2_PUBLIC_URL") or env.get("NEXT_PUBLIC_R2_PUBLIC_URL") or "https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev"
+R2_PUBLIC_URL = env.get("R2_PUBLIC_URL") or env.get("NEXT_PUBLIC_R2_PUBLIC_URL") or "https://cdn.meteorit.my.id"
 SITE_URL = env.get("NEXT_PUBLIC_SITE_URL") or env.get("NEXT_PUBLIC_APP_URL") or "http://localhost:3000"
 
 if not GROQ_API_KEY:

@@ -28,7 +28,7 @@ type ProviderConfig = {
 };
 
 export async function generateWithAI(options: AIGenerateOptions): Promise<AIGenerateResult> {
-  const { messages, temperature = 0.7, responseFormatJson = false, maxTokens, timeoutMs = 8000 } = options;
+  const { messages, temperature = 0.7, responseFormatJson = false, maxTokens, timeoutMs = 25000 } = options;
 
   const groqKeyPrimary = process.env.GROQ_API_KEY;
   const openRouterKeyPrimary = process.env.OPENROUTER_API_KEY;

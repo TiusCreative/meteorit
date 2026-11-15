@@ -15,7 +15,7 @@ R2_ACCOUNT_ID = os.getenv("R2_ACCOUNT_ID", "5f29e48300ae379ebe15c20185d15ac8")
 R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID", "cd3b2f027722b69c38f2f9ebf3663228")
 R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY", "5e2207a33647f195c2616ebb6f2ad4b8c421c629756c9459186b8988af1a8073")
 R2_BUCKET_NAME = "meteorit-indonesia"
-R2_PUBLIC_URL = os.getenv("NEXT_PUBLIC_R2_PUBLIC_URL", "https://pub-a60a40fd84104aa089d4cd04cdb98d19.r2.dev")
+R2_PUBLIC_URL = os.getenv("NEXT_PUBLIC_R2_PUBLIC_URL", "https://cdn.meteorit.my.id")
 
 # Inisialisasi klien Groq untuk terjemahan
 client = Groq(api_key=GROQ_API_KEY)
