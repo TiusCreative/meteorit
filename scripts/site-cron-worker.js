@@ -32,6 +32,7 @@ const CRON_SCHEDULE = [
   { id: 'earth-monitoring', path: '/api/cron/earth-monitoring', hourUTC: 9, desc: 'Earth Monitoring Realtime' },
   { id: 'earth-monitoring-daily', path: '/api/cron/earth-monitoring-daily', hourUTC: 10, desc: 'Earth Monitoring Harian' },
   { id: 'glossary', path: '/api/cron/glossary', hourUTC: 20, desc: 'Update Kamus Astronomi / Glosarium' },
+  { id: 'glossary-ai', path: '/api/cron/glossary-ai', hourUTC: 20, desc: 'Penerbitan Istilah Glosarium Baru (AI)' },
 ];
 
 function requestEndpoint(urlPath) {

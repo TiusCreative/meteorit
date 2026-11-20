@@ -28,6 +28,7 @@ on:
           - 'earth-monitoring'
           - 'earth-monitoring-daily'
           - 'glossary'
+          - 'glossary-ai'
           - 'cleanup'
 
 jobs:
