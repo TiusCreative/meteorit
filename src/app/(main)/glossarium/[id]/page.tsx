@@ -303,7 +303,14 @@ export default async function GlossaryDetailPage({ params }: { params: { id: str
   return (
     <>
       <JsonLd schema={[breadcrumbSchema, articleSchema, faqSchema]} />
-      <GlossaryDetailClient initialTerm={term} initialLanguage={language} />
+      <GlossaryDetailClient
+        initialTerm={{
+          ...term,
+          date: term.date || (term.publishedAt ? new Date(term.publishedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '27 Juni 2026'),
+          publishedAt: term.publishedAt || term.updatedAt || '2026-06-27T00:00:00.000Z',
+        }}
+        initialLanguage={language}
+      />
     </>
   );
 }

@@ -303,7 +303,14 @@ export async function GET(request: Request) {
       `🏡 <b>Alumni/returned:</b> ${dataset.summary.returned}\n` +
       `🗂 <b>Total profil:</b> ${dataset.summary.total}\n` +
       `💾 <b>R2:</b> data/astronauts/astronauts.json`;
-    await sendTelegramMessage(adminChatId, reportMsg);
+    // Kirim broadcast ke semua platform (Telegram, Facebook, Discord, Bluesky, Mastodon, Web Push)
+    await sendBroadcastNotification({
+      title: `🛰 Update Data Astronot ISS`,
+      body: `${dataset.summary.active} astronot sedang aktif di antariksa. Total ${dataset.summary.total} profil diperbarui.`,
+      telegramHtml: reportMsg,
+      link: `/ensiklopedia`,
+      imageUrl: getAbsoluteUrl('/logo-meteor.png'),
+    });
 
     return NextResponse.json({
       success: true,

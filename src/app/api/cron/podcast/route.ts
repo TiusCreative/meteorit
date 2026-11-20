@@ -2,6 +2,7 @@ export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { uploadToR2, fetchJsonFromR2, deleteFromR2 } from '@/lib/r2Client';
 import { sendTelegramMessage } from '@/lib/telegram';
+import { sendBroadcastNotification } from '@/lib/notifications';
 import { getSiteUrl, getAbsoluteUrl } from '@/lib/siteUrl';
 import { queryD1 } from '@/lib/d1Client';
 import { generateTtsMp3 } from '@/lib/tts';
@@ -422,7 +423,22 @@ export async function GET(request: Request) {
       `🔗 <b>Spotify Show:</b> <a href="https://open.spotify.com/show/033TS5YqepN9kNXRguuLZf">Spotify Podcast</a>\n\n` +
       `ℹ️ <i>Catatan: Berkas MP3 disimpan selama 300 hari di R2 dan otomatis dibersihkan setelah 300 hari untuk efisiensi penyimpanan R2.</i>`;
 
-    await sendTelegramMessage(TELEGRAM_CHAT_ID, successMsg);
+    // Kirim broadcast ke semua platform (Telegram, Facebook, Discord, Bluesky, Mastodon, Web Push)
+    await sendBroadcastNotification({
+      title: `🎙 Podcast Baru: ${title}`,
+      body: `Episode baru tersedia di Spotify dan RSS Feed Meteorit Indonesia. Durasi: ${durationStr}.`,
+      telegramHtml:
+        `🎙 <b>PODCAST BARU TERBIT!</b>\n\n` +
+        `📌 <b>Judul:</b> ${title}\n` +
+        `📂 <b>Sumber:</b> ${sourceType} (${sourceId})\n` +
+        `⏱ <b>Durasi:</b> ${durationStr} (${wordsCount} kata)\n` +
+        `📦 <b>Ukuran:</b> ${fileMb} MB\n\n` +
+        `🔗 <a href="${enclosureUrl}">Download MP3</a>\n` +
+        `🎧 <a href="https://open.spotify.com/show/033TS5YqepN9kNXRguuLZf">Spotify Podcast</a>\n\n` +
+        `ℹ️ <i>Berkas MP3 tersedia selama 300 hari.</i>`,
+      link: `/podcast`,
+      imageUrl: getAbsoluteUrl('/logo.jpg'),
+    });
 
     return NextResponse.json({
       success: true,

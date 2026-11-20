@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { sendTelegramMessage } from '@/lib/telegram';
+import { sendBroadcastNotification } from '@/lib/notifications';
 import { getAbsoluteUrl } from '@/lib/siteUrl';
 import { isValidCronRequest } from '@/lib/cronAuth';
 
@@ -78,11 +79,20 @@ export async function GET(request: Request) {
 
     message += `🔗 <a href="${getAbsoluteUrl('/monitoring')}">Pantau Langsung di Meteorit Indonesia →</a>`;
 
-    // Send to Telegram channel
-    let telegramSent = false;
-    if (channelId) {
-      telegramSent = await sendTelegramMessage(channelId, message);
-    }
+    // Kirim broadcast ke semua platform (Telegram, Facebook, Discord, Bluesky, Mastodon, Web Push)
+    const alertTitle = hazardous.length > 0
+      ? `⚠️ ${hazardous.length} Asteroid Berbahaya Terdeteksi Hari Ini!`
+      : `🌌 Laporan Harian Benda Langit — Aman`;
+    const alertBody = hazardous.length > 0
+      ? `${hazardous.length} asteroid berpotensi berbahaya melintas dekat Bumi. Pantau di Meteorit Indonesia.`
+      : `Semua ${totalCount} asteroid melintas aman. ${flrData.length > 0 ? `${flrData.length} solar flare terdeteksi.` : 'Cuaca antariksa tenang.'}`;
+    await sendBroadcastNotification({
+      title: alertTitle,
+      body: alertBody,
+      telegramHtml: message,
+      link: `/monitoring`,
+      imageUrl: getAbsoluteUrl('/logo-meteor.png'),
+    });
 
     // === AUTOMATIC KOMET ARTICLE GENERATION ===
     // Trigger the komet generation endpoint immediately to publish a new article for the closest/hazardous asteroid
