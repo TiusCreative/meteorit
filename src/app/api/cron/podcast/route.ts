@@ -411,18 +411,6 @@ export async function GET(request: Request) {
     const durationSec = duration % 60;
     const durationStr = `${durationMin}m ${durationSec}s`;
 
-    const successMsg = `🎙 <b>LAPORAN PODCAST SPOTIFY CRON</b>\n\n` +
-      `🟢 <b>Status:</b> Sukses Diterbitkan\n` +
-      `📌 <b>Judul:</b> ${title}\n` +
-      `📂 <b>Sumber:</b> ${sourceType} (${sourceId})\n` +
-      `🎙 <b>Format MP3:</b> Mono, 32-48 kbps, 24 kHz\n` +
-      `⏱ <b>Durasi:</b> ${durationStr} (${wordsCount} kata)\n` +
-      `📦 <b>Ukuran:</b> ${fileMb} MB\n\n` +
-      `🔗 <b>Audio R2:</b> <a href="${enclosureUrl}">Download MP3</a>\n` +
-      `🔗 <b>RSS Feed:</b> <a href="${getAbsoluteUrl('/podcast.xml')}">podcast.xml</a>\n` +
-      `🔗 <b>Spotify Show:</b> <a href="https://open.spotify.com/show/033TS5YqepN9kNXRguuLZf">Spotify Podcast</a>\n\n` +
-      `ℹ️ <i>Catatan: Berkas MP3 disimpan selama 300 hari di R2 dan otomatis dibersihkan setelah 300 hari untuk efisiensi penyimpanan R2.</i>`;
-
     // Kirim broadcast ke semua platform (Telegram, Facebook, Discord, Bluesky, Mastodon, Web Push)
     await sendBroadcastNotification({
       title: `🎙 Podcast Baru: ${title}`,
