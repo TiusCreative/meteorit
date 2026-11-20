@@ -22,6 +22,8 @@ interface Meteorite {
   description: string;
   translated_description: string;
   image_url: string;
+  date?: string;
+  publishedAt?: string;
 }
 
 const R2_URL = process.env.R2_PUBLIC_URL || 'https://cdn.meteorit.my.id';
@@ -74,6 +76,8 @@ async function getMeteorite(id: string): Promise<Meteorite | null> {
         description: data.description || '',
         translated_description: data.translated_description || data.description || '',
         image_url: data.image_url || '',
+        date: data.date || '',
+        publishedAt: data.publishedAt || '',
       };
     }
   } catch (d1Err) {
@@ -98,6 +102,8 @@ async function getMeteorite(id: string): Promise<Meteorite | null> {
         description: data?.description || '',
         translated_description: data?.translated_description || data?.description || '',
         image_url: data?.image_url || '',
+        date: data?.date || '',
+        publishedAt: data?.publishedAt || '',
       };
     }
   } catch (err) {
@@ -129,6 +135,8 @@ async function getMeteorite(id: string): Promise<Meteorite | null> {
         description: data?.description || '',
         translated_description: data?.translated_description || data?.description || '',
         image_url: data?.image_url || '',
+        date: data?.date || '',
+        publishedAt: data?.publishedAt || '',
       };
 
       // Trigger background sync to rebuild R2 catalog so R2 has this entry for next visits

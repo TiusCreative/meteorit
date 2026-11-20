@@ -60,11 +60,15 @@ export default function BlogListClient({ initialPosts }: BlogListClientProps) {
     if (selectedCategory) {
       result = result.filter(p => p.category?.toLowerCase() === selectedCategory.toLowerCase());
     }
-    if (searchQuery) {
-      result = result.filter(p =>
-        p.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.excerpt?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+    if (searchQuery.trim()) {
+      const tokens = searchQuery.toLowerCase().trim().split(/\s+/).filter(Boolean);
+      result = result.filter(p => {
+        const title = (p.title || '').toLowerCase();
+        const excerpt = (p.excerpt || '').toLowerCase();
+        const category = (p.category || '').toLowerCase();
+        const full = `${title} ${excerpt} ${category}`;
+        return tokens.every(tok => full.includes(tok));
+      });
     }
     if (dateFilter.startDate || dateFilter.endDate || dateFilter.selectedMonth || dateFilter.selectedYear) {
       result = result.filter(p => matchesDateFilter(p, dateFilter));

@@ -15,6 +15,7 @@ interface DateFilterBarProps {
   onChange: (newValue: DateFilterValue) => void;
   availableYears?: number[];
   className?: string;
+  mode?: 'standard' | 'historical';
 }
 
 const MONTH_NAMES: Record<string, string[]> = {
@@ -27,6 +28,7 @@ const MONTH_NAMES: Record<string, string[]> = {
 
 const UI_TEXT: Record<string, {
   dateFilterTitle: string;
+  historicalFilterTitle: string;
   startDate: string;
   endDate: string;
   month: string;
@@ -37,10 +39,19 @@ const UI_TEXT: Record<string, {
   presetToday: string;
   presetThisMonth: string;
   presetThisYear: string;
+  presetAllEras: string;
+  presetModern: string;
+  preset20th: string;
+  preset19th: string;
+  presetAncient: string;
+  fromYear: string;
+  toYear: string;
+  specificYear: string;
   resetFilter: string;
 }> = {
   id: {
     dateFilterTitle: '📅 Filter Tanggal & Periode Rilis',
+    historicalFilterTitle: '📅 Filter Tahun Jatuh & Era Sejarah Meteorit',
     startDate: 'Dari Tanggal',
     endDate: 'Sampai Tanggal',
     month: 'Bulan',
@@ -51,10 +62,19 @@ const UI_TEXT: Record<string, {
     presetToday: 'Hari Ini',
     presetThisMonth: 'Bulan Ini',
     presetThisYear: 'Tahun Ini',
+    presetAllEras: 'Semua Era',
+    presetModern: 'Modern (2000-Kini)',
+    preset20th: 'Abad 20 (1900-1999)',
+    preset19th: 'Abad 19 (1800-1899)',
+    presetAncient: 'Kuno (< 1800)',
+    fromYear: 'Dari Tahun (Masehi)',
+    toYear: 'Sampai Tahun (Masehi)',
+    specificYear: 'Pilih Tahun Jatuh',
     resetFilter: 'Reset Filter',
   },
   en: {
     dateFilterTitle: '📅 Filter by Date & Publishing Period',
+    historicalFilterTitle: '📅 Filter by Fall Year & Historical Era',
     startDate: 'From Date',
     endDate: 'To Date',
     month: 'Month',
@@ -65,10 +85,19 @@ const UI_TEXT: Record<string, {
     presetToday: 'Today',
     presetThisMonth: 'This Month',
     presetThisYear: 'This Year',
+    presetAllEras: 'All Eras',
+    presetModern: 'Modern (2000-Present)',
+    preset20th: '20th Century (1900-1999)',
+    preset19th: '19th Century (1800-1899)',
+    presetAncient: 'Ancient (< 1800)',
+    fromYear: 'From Year (CE)',
+    toYear: 'To Year (CE)',
+    specificYear: 'Specific Fall Year',
     resetFilter: 'Reset Filter',
   },
   ms: {
     dateFilterTitle: '📅 Tapis mengikut Tarikh & Tempoh Rilis',
+    historicalFilterTitle: '📅 Tapis Tahun Jatuh & Era Sejarah Meteorit',
     startDate: 'Dari Tarikh',
     endDate: 'Hingga Tarikh',
     month: 'Bulan',
@@ -79,10 +108,19 @@ const UI_TEXT: Record<string, {
     presetToday: 'Hari Ini',
     presetThisMonth: 'Bulan Ini',
     presetThisYear: 'Tahun Ini',
+    presetAllEras: 'Semua Era',
+    presetModern: 'Modern (2000-Kini)',
+    preset20th: 'Abad ke-20 (1900-1999)',
+    preset19th: 'Abad ke-19 (1800-1899)',
+    presetAncient: 'Purba (< 1800)',
+    fromYear: 'Dari Tahun (Masihi)',
+    toYear: 'Hingga Tahun (Masihi)',
+    specificYear: 'Pilih Tahun Jatuh',
     resetFilter: 'Set Semula',
   },
   zh: {
     dateFilterTitle: '📅 按日期和发布周期筛选',
+    historicalFilterTitle: '📅 按坠落年份与历史时期筛选',
     startDate: '开始日期',
     endDate: '结束日期',
     month: '月份',
@@ -93,10 +131,19 @@ const UI_TEXT: Record<string, {
     presetToday: '今天',
     presetThisMonth: '本月',
     presetThisYear: '今年',
+    presetAllEras: '所有时期',
+    presetModern: '现代 (2000-至今)',
+    preset20th: '20世纪 (1900-1999)',
+    preset19th: '19世纪 (1800-1899)',
+    presetAncient: '古代 (< 1800)',
+    fromYear: '起始年份 (公元)',
+    toYear: '结束年份 (公元)',
+    specificYear: '选择具体坠落年份',
     resetFilter: '重置筛选',
   },
   ja: {
     dateFilterTitle: '📅 日付・公開期間で絞り込み',
+    historicalFilterTitle: '📅 落下年・歴史的時代で絞り込み',
     startDate: '開始日',
     endDate: '終了日',
     month: '月',
@@ -107,6 +154,14 @@ const UI_TEXT: Record<string, {
     presetToday: '今日',
     presetThisMonth: '今月',
     presetThisYear: '今年',
+    presetAllEras: '全時代',
+    presetModern: '現代 (2000-現在)',
+    preset20th: '20世紀 (1900-1999)',
+    preset19th: '19世紀 (1800-1899)',
+    presetAncient: '古代 (< 1800)',
+    fromYear: '開始年 (西暦)',
+    toYear: '終了年 (西暦)',
+    specificYear: '落下年を選択',
     resetFilter: 'リセット',
   },
 };
@@ -116,6 +171,7 @@ export default function DateFilterBar({
   onChange,
   availableYears,
   className = '',
+  mode = 'standard',
 }: DateFilterBarProps) {
   const language = useSiteLanguage();
   const text = UI_TEXT[language] || UI_TEXT.id;
@@ -177,13 +233,28 @@ export default function DateFilterBar({
     });
   };
 
+  const handlePresetEra = (startYear: string, endYear: string) => {
+    onChange({
+      startDate: `${startYear}-01-01`,
+      endDate: `${endYear}-12-31`,
+      selectedMonth: '',
+      selectedYear: '',
+    });
+  };
+
+  const isHistorical = mode === 'historical';
+  const isModernActive = value.startDate === '2000-01-01' && value.endDate === '2099-12-31';
+  const is20thActive = value.startDate === '1900-01-01' && value.endDate === '1999-12-31';
+  const is19thActive = value.startDate === '1800-01-01' && value.endDate === '1899-12-31';
+  const isAncientActive = value.startDate === '0001-01-01' && value.endDate === '1799-12-31';
+
   return (
     <div className={`bg-slate-900/60 backdrop-blur border border-cyan-900/40 p-4 md:p-5 rounded-2xl mb-6 text-left shadow-lg ${className}`}>
       {/* Header & Preset Buttons */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-cyan-300 flex items-center gap-1.5">
-            {text.dateFilterTitle}
+            {isHistorical ? text.historicalFilterTitle : text.dateFilterTitle}
           </span>
           {isActive && (
             <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-bold px-2 py-0.5 rounded-full">
@@ -194,27 +265,79 @@ export default function DateFilterBar({
 
         {/* Preset Buttons */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          <button
-            type="button"
-            onClick={handlePresetToday}
-            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white rounded-lg text-xs font-semibold transition-colors"
-          >
-            {text.presetToday}
-          </button>
-          <button
-            type="button"
-            onClick={handlePresetThisMonth}
-            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white rounded-lg text-xs font-semibold transition-colors"
-          >
-            {text.presetThisMonth}
-          </button>
-          <button
-            type="button"
-            onClick={handlePresetThisYear}
-            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white rounded-lg text-xs font-semibold transition-colors"
-          >
-            {text.presetThisYear}
-          </button>
+          {isHistorical ? (
+            <>
+              <button
+                type="button"
+                onClick={handleReset}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                  !isActive ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white'
+                }`}
+              >
+                {text.presetAllEras}
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePresetEra('2000', '2099')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                  isModernActive ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white'
+                }`}
+              >
+                {text.presetModern}
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePresetEra('1900', '1999')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                  is20thActive ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white'
+                }`}
+              >
+                {text.preset20th}
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePresetEra('1800', '1899')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                  is19thActive ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white'
+                }`}
+              >
+                {text.preset19th}
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePresetEra('0001', '1799')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                  isAncientActive ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white'
+                }`}
+              >
+                {text.presetAncient}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={handlePresetToday}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white rounded-lg text-xs font-semibold transition-colors"
+              >
+                {text.presetToday}
+              </button>
+              <button
+                type="button"
+                onClick={handlePresetThisMonth}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white rounded-lg text-xs font-semibold transition-colors"
+              >
+                {text.presetThisMonth}
+              </button>
+              <button
+                type="button"
+                onClick={handlePresetThisYear}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white rounded-lg text-xs font-semibold transition-colors"
+              >
+                {text.presetThisYear}
+              </button>
+            </>
+          )}
 
           {isActive && (
             <button
@@ -230,63 +353,124 @@ export default function DateFilterBar({
       </div>
 
       {/* Input Controls Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-        {/* Start Date */}
-        <div>
-          <label className="block text-gray-400 font-semibold mb-1">{text.startDate}</label>
-          <input
-            type="date"
-            value={value.startDate}
-            onChange={(e) => onChange({ ...value, startDate: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-950 border border-cyan-900/50 rounded-xl text-white focus:outline-none focus:border-cyan-400 transition-colors"
-          />
-        </div>
+      {isHistorical ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          {/* Specific Year */}
+          <div>
+            <label className="block text-gray-400 font-semibold mb-1">{text.specificYear}</label>
+            <select
+              value={value.selectedYear}
+              onChange={(e) => onChange({ ...value, selectedYear: e.target.value })}
+              className="w-full px-3 py-2 bg-slate-950 border border-cyan-900/50 rounded-xl text-white focus:outline-none focus:border-cyan-400 transition-colors"
+            >
+              <option value="">{text.allYears}</option>
+              {yearOptions.map((y) => (
+                <option key={y} value={String(y)}>
+                  Tahun {y}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        {/* End Date */}
-        <div>
-          <label className="block text-gray-400 font-semibold mb-1">{text.endDate}</label>
-          <input
-            type="date"
-            value={value.endDate}
-            onChange={(e) => onChange({ ...value, endDate: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-950 border border-cyan-900/50 rounded-xl text-white focus:outline-none focus:border-cyan-400 transition-colors"
-          />
-        </div>
+          {/* Start Year Range */}
+          <div>
+            <label className="block text-gray-400 font-semibold mb-1">{text.fromYear}</label>
+            <input
+              type="number"
+              placeholder="Contoh: 1800"
+              min="1"
+              max="2100"
+              value={value.startDate ? value.startDate.split('-')[0].replace(/^0+/, '') : ''}
+              onChange={(e) => {
+                const yr = e.target.value.trim();
+                onChange({
+                  ...value,
+                  startDate: yr ? `${yr.padStart(4, '0')}-01-01` : '',
+                });
+              }}
+              className="w-full px-3 py-2 bg-slate-950 border border-cyan-900/50 rounded-xl text-white focus:outline-none focus:border-cyan-400 transition-colors"
+            />
+          </div>
 
-        {/* Month Selector */}
-        <div>
-          <label className="block text-gray-400 font-semibold mb-1">{text.month}</label>
-          <select
-            value={value.selectedMonth}
-            onChange={(e) => onChange({ ...value, selectedMonth: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-950 border border-cyan-900/50 rounded-xl text-white focus:outline-none focus:border-cyan-400 transition-colors"
-          >
-            <option value="">{text.allMonths}</option>
-            {monthNames.map((name, idx) => (
-              <option key={idx} value={String(idx + 1)}>
-                {name}
-              </option>
-            ))}
-          </select>
+          {/* End Year Range */}
+          <div>
+            <label className="block text-gray-400 font-semibold mb-1">{text.toYear}</label>
+            <input
+              type="number"
+              placeholder="Contoh: 1950"
+              min="1"
+              max="2100"
+              value={value.endDate ? value.endDate.split('-')[0].replace(/^0+/, '') : ''}
+              onChange={(e) => {
+                const yr = e.target.value.trim();
+                onChange({
+                  ...value,
+                  endDate: yr ? `${yr.padStart(4, '0')}-12-31` : '',
+                });
+              }}
+              className="w-full px-3 py-2 bg-slate-950 border border-cyan-900/50 rounded-xl text-white focus:outline-none focus:border-cyan-400 transition-colors"
+            />
+          </div>
         </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          {/* Start Date */}
+          <div>
+            <label className="block text-gray-400 font-semibold mb-1">{text.startDate}</label>
+            <input
+              type="date"
+              value={value.startDate}
+              onChange={(e) => onChange({ ...value, startDate: e.target.value })}
+              className="w-full px-3 py-2 bg-slate-950 border border-cyan-900/50 rounded-xl text-white focus:outline-none focus:border-cyan-400 transition-colors"
+            />
+          </div>
 
-        {/* Year Selector */}
-        <div>
-          <label className="block text-gray-400 font-semibold mb-1">{text.year}</label>
-          <select
-            value={value.selectedYear}
-            onChange={(e) => onChange({ ...value, selectedYear: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-950 border border-cyan-900/50 rounded-xl text-white focus:outline-none focus:border-cyan-400 transition-colors"
-          >
-            <option value="">{text.allYears}</option>
-            {yearOptions.map((y) => (
-              <option key={y} value={String(y)}>
-                {y}
-              </option>
-            ))}
-          </select>
+          {/* End Date */}
+          <div>
+            <label className="block text-gray-400 font-semibold mb-1">{text.endDate}</label>
+            <input
+              type="date"
+              value={value.endDate}
+              onChange={(e) => onChange({ ...value, endDate: e.target.value })}
+              className="w-full px-3 py-2 bg-slate-950 border border-cyan-900/50 rounded-xl text-white focus:outline-none focus:border-cyan-400 transition-colors"
+            />
+          </div>
+
+          {/* Month Selector */}
+          <div>
+            <label className="block text-gray-400 font-semibold mb-1">{text.month}</label>
+            <select
+              value={value.selectedMonth}
+              onChange={(e) => onChange({ ...value, selectedMonth: e.target.value })}
+              className="w-full px-3 py-2 bg-slate-950 border border-cyan-900/50 rounded-xl text-white focus:outline-none focus:border-cyan-400 transition-colors"
+            >
+              <option value="">{text.allMonths}</option>
+              {monthNames.map((name, idx) => (
+                <option key={idx} value={String(idx + 1)}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Year Selector */}
+          <div>
+            <label className="block text-gray-400 font-semibold mb-1">{text.year}</label>
+            <select
+              value={value.selectedYear}
+              onChange={(e) => onChange({ ...value, selectedYear: e.target.value })}
+              className="w-full px-3 py-2 bg-slate-950 border border-cyan-900/50 rounded-xl text-white focus:outline-none focus:border-cyan-400 transition-colors"
+            >
+              <option value="">{text.allYears}</option>
+              {yearOptions.map((y) => (
+                <option key={y} value={String(y)}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

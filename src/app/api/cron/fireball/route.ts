@@ -216,7 +216,7 @@ Kembalikan HANYA JSON murni tanpa pembungkus markdown.`;
 
     // 5. Generate ilustrasi unik berdasarkan judul & data lokasi
     const illustrationPrompt = `${articleJson.title}, dramatic fireball meteor entering Earth's atmosphere near ${latStr} ${lonStr}, glowing orange trail, cosmic night sky view, NASA scientific visualization, hyperrealistic 8k digital art`;
-    const imagePath = `data/fireball/images/${docId}.jpg`;
+    const imagePath = `data/fireball/images/${docId}.webp`;
     const { generateImageWithFallback } = await import('@/lib/imageGenerator');
     const imageUrl = await generateImageWithFallback(illustrationPrompt, imagePath);
 
@@ -257,6 +257,7 @@ Kembalikan HANYA JSON murni tanpa pembungkus markdown.`;
       review_status: 'Otomatis',
       ai_provider: articleJson.provider,
       createdAt: new Date().toISOString(),
+      publishedAt: new Date().toISOString(),
       fireball_data: {
         event_date: selectedEvent.date,
         lat: selectedEvent.lat,

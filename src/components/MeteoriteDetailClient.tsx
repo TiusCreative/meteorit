@@ -21,6 +21,8 @@ interface Meteorite {
   description: string;
   translated_description: string;
   image_url: string;
+  date?: string;
+  publishedAt?: string;
   translations?: Record<string, { name: string; description: string }>;
 }
 
@@ -151,6 +153,12 @@ export default function MeteoriteDetailClient({ initialMeteorite }: MeteoriteDet
                   <p className="flex justify-between">
                     <span className="text-slate-500 dark:text-gray-500 print:text-black font-medium">{t.foundYear || 'Tahun Ditemukan:'}</span>
                     <span className="font-semibold text-slate-800 dark:text-gray-200 print:text-black">{meteorite.year}</span>
+                  </p>
+                  <p className="flex justify-between">
+                    <span className="text-slate-500 dark:text-gray-500 print:text-black font-medium">Tanggal Terbit:</span>
+                    <span className="font-semibold text-cyan-600 dark:text-cyan-400 print:text-black">
+                      {meteorite.date || (meteorite.publishedAt ? new Date(meteorite.publishedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '16 November 2026')}
+                    </span>
                   </p>
                   <p className="flex justify-between">
                     <span className="text-slate-500 dark:text-gray-500 print:text-black font-medium">{t.latitudeLabel || 'Koordinat Lintang:'}</span>

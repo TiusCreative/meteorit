@@ -144,16 +144,20 @@ export function matchesDateFilter(item: any, filter: DateFilterState): boolean {
     if (itemMonth !== 0 && itemMonth !== reqMonth) return false;
   }
 
+  // Normalize start/end date for comparison (support YYYY or YYYY-MM-DD)
+  const normalizedStart = startDate && /^\d{4}$/.test(startDate.trim()) ? `${startDate.trim()}-01-01` : startDate;
+  const normalizedEnd = endDate && /^\d{4}$/.test(endDate.trim()) ? `${endDate.trim()}-12-31` : endDate;
+
   // 3. Start Date filter (YYYY-MM-DD)
-  if (startDate) {
+  if (normalizedStart) {
     const iso = (parsedFull && parsedFull.formattedISO) ? parsedFull.formattedISO : (parsedYear?.formattedISO || '');
-    if (iso && iso < startDate) return false;
+    if (iso && iso < normalizedStart) return false;
   }
 
   // 4. End Date filter (YYYY-MM-DD)
-  if (endDate) {
+  if (normalizedEnd) {
     const iso = (parsedFull && parsedFull.formattedISO) ? parsedFull.formattedISO : (parsedYear?.formattedISO || '');
-    if (iso && iso > endDate) return false;
+    if (iso && iso > normalizedEnd) return false;
   }
 
   return true;

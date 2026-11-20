@@ -56,11 +56,15 @@ export default function FireballListClient({ initialPosts }: FireballListClientP
 
   useEffect(() => {
     let result = posts;
-    if (searchQuery) {
-      result = result.filter(p =>
-        p.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.excerpt?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+    if (searchQuery.trim()) {
+      const tokens = searchQuery.toLowerCase().trim().split(/\s+/).filter(Boolean);
+      result = result.filter(p => {
+        const title = (p.title || '').toLowerCase();
+        const excerpt = (p.excerpt || '').toLowerCase();
+        const date = (p.date || '').toLowerCase();
+        const full = `${title} ${excerpt} ${date}`;
+        return tokens.every(tok => full.includes(tok));
+      });
     }
     if (dateFilter.startDate || dateFilter.endDate || dateFilter.selectedMonth || dateFilter.selectedYear) {
       result = result.filter(p => matchesDateFilter(p, dateFilter));

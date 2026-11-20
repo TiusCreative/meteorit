@@ -39,6 +39,7 @@ export default function MarsListClient({ initialPosts }: MarsListClientProps) {
   const t = landingText[language];
   const [posts] = useState<MarsPost[]>(initialPosts);
   const [filteredPosts, setFilteredPosts] = useState<MarsPost[]>(initialPosts);
+  const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState<DateFilterValue>({
     startDate: '',
     endDate: '',
@@ -59,11 +60,21 @@ export default function MarsListClient({ initialPosts }: MarsListClientProps) {
 
   useEffect(() => {
     let result = posts;
+    if (searchQuery.trim()) {
+      const tokens = searchQuery.toLowerCase().trim().split(/\s+/).filter(Boolean);
+      result = result.filter(p => {
+        const title = (p.title || '').toLowerCase();
+        const excerpt = (p.excerpt || '').toLowerCase();
+        const date = (p.date || '').toLowerCase();
+        const full = `${title} ${excerpt} ${date}`;
+        return tokens.every(tok => full.includes(tok));
+      });
+    }
     if (dateFilter.startDate || dateFilter.endDate || dateFilter.selectedMonth || dateFilter.selectedYear) {
       result = result.filter(p => matchesDateFilter(p.date || p.createdAt || p.id, dateFilter));
     }
     setFilteredPosts(result);
-  }, [dateFilter, posts]);
+  }, [searchQuery, dateFilter, posts]);
 
   const flipboardItems: MobileReaderItem[] = posts.map((post) => {
     const localized = localizeArticle(post, language);
@@ -128,6 +139,17 @@ export default function MarsListClient({ initialPosts }: MarsListClientProps) {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="bg-slate-50 dark:bg-slate-900/60 backdrop-blur border border-slate-200 dark:border-red-900/30 p-4 rounded-2xl mb-6 shadow-md transition-colors">
+          <input 
+            type="text"
+            placeholder={t.searchPlaceholder || "Cari artikel planet Mars..."}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-2.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-red-900/40 rounded-xl text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-orange-500 transition-colors text-sm"
+          />
         </div>
 
         {/* Date Filter Bar */}

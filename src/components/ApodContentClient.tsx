@@ -56,51 +56,50 @@ export default function ApodContentClient({ initialApod, initialTitle, initialEx
 
   useEffect(() => {
     // 1. Tentukan judul dan penjelasan dari data lokal jika sudah ada
-    let title = (language !== 'id' && (apod.title as any)[language]) || '';
-    let explanation = (language !== 'id' && (apod.explanation as any)[language]) || '';
+    let title = (apod.title as any)?.[language] || '';
+    let explanation = (apod.explanation as any)?.[language] || '';
 
-    if (!title) title = apod.title.id || apod.title.en;
-    if (!explanation) explanation = apod.explanation.id || apod.explanation.en;
+    if (!title) title = apod.title?.id || apod.title?.en || '';
+    if (!explanation) explanation = apod.explanation?.id || apod.explanation?.en || '';
 
-    // Jika bahasa adalah Indonesia (default cache), gunakan default
-    if (language === 'id') {
-      setCurrentTitle(apod.title.id || apod.title.en);
-      setCurrentExplanation(apod.explanation.id || apod.explanation.en);
+    const needsTranslation = (
+      !title ||
+      title.toLowerCase() === 'nasa science' ||
+      !explanation ||
+      (language === 'id' && explanation === apod.explanation?.en) ||
+      (language !== 'id' && !(apod.title as any)?.[language])
+    );
+
+    if (!needsTranslation) {
+      setCurrentTitle(title);
+      setCurrentExplanation(explanation);
       return;
     }
 
-    // 2. Jika bukan Indonesia dan data cache lokal untuk bahasa ini belum lengkap, fetch dari server API secara aman
-    const rawTitleInLang = (apod.title as any)[language];
-    const rawExplanationInLang = (apod.explanation as any)[language];
-
-    if (!rawTitleInLang || !rawExplanationInLang) {
-      setLoading(true);
-      fetch(`/api/apod/translate?id=${apod.id}&locale=${language}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.title && data.explanation) {
-            setCurrentTitle(data.title);
-            setCurrentExplanation(data.explanation);
-            // Update local state apod object cache so it doesn't fetch again if toggled back and forth
-            setApod(prev => ({
-              ...prev,
-              title: { ...prev.title, [language]: data.title },
-              explanation: { ...prev.explanation, [language]: data.explanation }
-            }));
-          }
-        })
-        .catch(err => {
-          console.error("Gagal memuat terjemahan APOD secara dinamis:", err);
-          setCurrentTitle(title);
-          setCurrentExplanation(explanation);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
-      setCurrentTitle(rawTitleInLang);
-      setCurrentExplanation(rawExplanationInLang);
-    }
+    // 2. Fetch terjemahan dari API translate secara dinamis jika belum diterjemahkan
+    setLoading(true);
+    fetch(`/api/apod/translate?id=${apod.id}&locale=${language}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.title && data.explanation) {
+          setCurrentTitle(data.title);
+          setCurrentExplanation(data.explanation);
+          // Update local state apod object cache so it doesn't fetch again if toggled back and forth
+          setApod(prev => ({
+            ...prev,
+            title: { ...prev.title, [language]: data.title },
+            explanation: { ...prev.explanation, [language]: data.explanation }
+          }));
+        }
+      })
+      .catch(err => {
+        console.error("Gagal memuat terjemahan APOD secara dinamis:", err);
+        setCurrentTitle(title);
+        setCurrentExplanation(explanation);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [language, apod.id]);
 
   const isDirectVideo = apod.image_url.includes('.mp4') || apod.image_url.includes('.webm') || apod.image_url.includes('.ogv');
@@ -155,11 +154,11 @@ export default function ApodContentClient({ initialApod, initialTitle, initialEx
             {loading && (
               <span className="absolute right-0 top-0 text-xs text-cyan-500 animate-pulse font-bold print:hidden">🔄 Translating...</span>
             )}
-            <h1 className="text-3xl md:text-5xl font-black mb-2 text-amber-600 dark:text-amber-400 print:text-black text-left leading-tight">
-              {currentTitle}
+            <h1 className="text-2xl md:text-3xl font-bold mb-3 text-slate-900 dark:text-slate-100 print:text-black text-left leading-snug">
+              {currentTitle && currentTitle.length > 80 && currentTitle.toLowerCase().includes('tidak dapat diterjemahkan') ? (apod.title.en || 'V-G-R') : currentTitle}
             </h1>
-            {apod.title.id && (
-              <h2 className="text-lg md:text-xl font-medium text-slate-500 dark:text-gray-400 italic mb-8 text-left print:hidden">
+            {apod.title.en && (
+              <h2 className="text-base md:text-lg font-medium text-slate-500 dark:text-slate-400 italic mb-6 text-left print:hidden">
                 {apod.title.en}
               </h2>
             )}

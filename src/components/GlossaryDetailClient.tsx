@@ -80,6 +80,12 @@ export default function GlossaryDetailClient({ initialTerm, initialLanguage }: G
       });
   }, [language, term.id]);
 
+  const formattedPublishDate = term.date || (term.publishedAt ? new Date(term.publishedAt).toLocaleDateString(language === 'id' ? 'id-ID' : language, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }) : '27 Juni 2026');
+
   return (
     <main className="min-h-screen bg-white dark:bg-slate-950 py-12 text-slate-900 dark:text-white transition-colors duration-300 print:bg-white print:text-black">
       <div className="container mx-auto max-w-5xl px-4">
@@ -98,9 +104,17 @@ export default function GlossaryDetailClient({ initialTerm, initialLanguage }: G
                 {loading && (
                   <span className="absolute right-0 top-0 text-xs text-cyan-500 animate-pulse font-bold print:hidden">🔄 Translating...</span>
                 )}
-                <span className={`inline-flex rounded-full px-3 py-1 text-xs font-black ${term.category === 'BMKG' ? 'bg-cyan-100 dark:bg-cyan-400 text-cyan-800 dark:text-slate-950' : 'bg-amber-100 dark:bg-amber-400 text-amber-800 dark:text-slate-950'}`}>
-                  {term.category}
-                </span>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span className={`inline-flex rounded-full px-3 py-1 text-xs font-black ${term.category === 'BMKG' ? 'bg-cyan-100 dark:bg-cyan-400 text-cyan-800 dark:text-slate-950' : 'bg-amber-100 dark:bg-amber-400 text-amber-800 dark:text-slate-950'}`}>
+                    {term.category}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-200/60 dark:bg-slate-800/80 px-3 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700/60 print:border-gray-300 print:text-black">
+                    <svg className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span>{t.publishedDateLabel || 'Tanggal Terbit'}: <strong>{formattedPublishDate}</strong></span>
+                  </span>
+                </div>
                 <h1 className="mt-4 text-4xl font-black leading-tight text-cyan-600 dark:text-cyan-200 md:text-6xl print:text-black">
                   {currentTitle}
                 </h1>
@@ -150,7 +164,7 @@ export default function GlossaryDetailClient({ initialTerm, initialLanguage }: G
             </section>
 
             <p className="mt-6 text-xs font-semibold text-slate-400 dark:text-slate-500 print:text-gray-600">
-              {t.sourceLabel || 'Sumber:'} {term.source}. {t.updatedAtLabel || 'Diperbarui:'} {new Date(term.updatedAt || new Date()).toLocaleDateString(language)}.
+              {t.publishedDateLabel || 'Tanggal Terbit'}: {formattedPublishDate}. {t.sourceLabel || 'Sumber:'} {term.source}. {t.updatedAtLabel || 'Diperbarui:'} {new Date(term.updatedAt || new Date()).toLocaleDateString(language)}.
             </p>
           </div>
         </article>

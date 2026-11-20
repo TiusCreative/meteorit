@@ -61,8 +61,14 @@ const isVideoUrl = (url: string, mediaType?: string) => {
 
 const R2_SPACE_FALLBACK = 'https://cdn.meteorit.my.id/data/glossary/images/nasa-apod.webp';
 
+const isNasaLogo = (url: string) => {
+  if (!url) return true;
+  const l = url.toLowerCase();
+  return l.includes('nasa-logo') || l.includes('/themes/nasa-child/') || l.includes('placeholder');
+};
+
 const getThumbnailUrl = (url: string) => {
-  if (!url) return R2_SPACE_FALLBACK;
+  if (!url || isNasaLogo(url)) return R2_SPACE_FALLBACK;
   if (isVideoUrl(url)) {
     const ytId = getYoutubeId(url);
     if (ytId) {

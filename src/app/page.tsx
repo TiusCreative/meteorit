@@ -7,6 +7,7 @@ import AdDisplay from '@/components/AdDisplay'
 import Footer from '@/components/Footer'
 import { adminDb } from '@/lib/firebaseAdmin';
 import { fetchJsonFromR2 } from '@/lib/r2Client';
+import { isNasaLogoPlaceholder } from '@/lib/nasaApodHelper';
 
 // Lazy load komponen berat di below-the-fold agar tidak blokir First Load JS
 const EarthTEWSWidget = dynamic(() => import('@/components/EarthTEWSWidget'), { ssr: false });
@@ -69,16 +70,33 @@ export default async function Home() {
 
   // ── APOD data ────────────────────────────────────────────────────────────────
   let apodData: any = apodResult.status === 'fulfilled' ? apodResult.value : null;
-  if (!apodData) {
+
+  // Jika data di latest.json kosong atau berisi gambar placeholder logo NASA
+  if (!apodData || isNasaLogoPlaceholder(apodData.image_url)) {
     try {
-      const snapshot = await adminDb.collection('apod_history').orderBy('id', 'desc').limit(1).get();
+      const snapshot = await adminDb.collection('apod_history').orderBy('id', 'desc').limit(5).get();
       if (!snapshot.empty) {
-        const doc = snapshot.docs[0]; const data = doc.data();
-        apodData = { id: doc.id, title: data.title || { en: '', id: '' }, explanation: data.explanation || { en: '', id: '' }, image_url: data.image_url || '', copyright: data.copyright || 'NASA Public Domain', media_type: data.media_type || 'image' };
+        for (const doc of snapshot.docs) {
+          const data = doc.data();
+          if (data && !isNasaLogoPlaceholder(data.image_url)) {
+            apodData = {
+              id: doc.id,
+              title: data.title || { en: '', id: '' },
+              explanation: data.explanation || { en: '', id: '' },
+              image_url: data.image_url || '',
+              copyright: data.copyright || 'NASA Public Domain',
+              media_type: data.media_type || 'image'
+            };
+            break;
+          }
+        }
       }
     } catch { /* fallback below */ }
   }
   if (!apodData) apodData = STATIC_APOD_FALLBACK;
+  if (isNasaLogoPlaceholder(apodData.image_url)) {
+    apodData.image_url = 'https://cdn.meteorit.my.id/data/glossary/images/nasa-apod.webp';
+  }
 
   // ── Blog / Post data ──────────────────────────────────────────────────────────
   let fireballPosts: BlogPost[] = [];

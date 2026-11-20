@@ -9,6 +9,8 @@ import { isSiteLanguage, LANGUAGE_COOKIE_KEY, defaultLanguage } from '@/lib/i18n
 import { landingText } from '@/lib/landingText';
 import { fetchJsonFromR2, uploadToR2 } from '@/lib/r2Client';
 import { queryD1 } from '@/lib/d1Client';
+import { fetchRawApod, isNasaLogoPlaceholder } from '@/lib/nasaApodHelper';
+import { ensureImageUrl } from '@/lib/imageSafeguard';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,111 +53,107 @@ const R2_URL = process.env.R2_PUBLIC_URL || 'https://cdn.meteorit.my.id';
 
 // Fetch APOD Data
 async function getApod(id: string): Promise<Apod | null> {
+  let cachedApod: Apod | null = null;
+
   // 1. Coba fetch dari R2 history.json via S3 SDK terlebih dahulu
   try {
     const history = await fetchJsonFromR2<Apod[]>('data/encyclopedia/history.json');
     if (Array.isArray(history)) {
       const matched = history.find(a => a.id === id);
-      if (matched) return matched;
+      if (matched && !isNasaLogoPlaceholder(matched.image_url) && matched.title?.id && matched.title.id.toLowerCase() !== 'nasa science') {
+        cachedApod = matched;
+      }
     }
   } catch (err) {
     console.warn("Failed to fetch APOD from R2 history cache, trying Firestore...", err);
   }
 
   // 2. Coba dari Cloudflare D1
-  try {
-    const d1Res = await queryD1('SELECT id, date, title, explanation, image_url, copyright FROM apod_history WHERE id = ? LIMIT 1', [id]);
-    if (d1Res?.results?.length) {
-      const data = d1Res.results[0];
-      return {
-        id: data.id,
-        title: typeof data.title === 'string' && data.title.startsWith('{') ? JSON.parse(data.title) : { en: data.title, id: data.title },
-        explanation: typeof data.explanation === 'string' && data.explanation.startsWith('{') ? JSON.parse(data.explanation) : { en: data.explanation, id: data.explanation },
-        image_url: data.image_url || '',
-        copyright: data.copyright || 'NASA Public Domain'
-      };
-    }
-  } catch (err) {
-    console.warn("Failed to fetch APOD from D1 database, falling back to NASA API:", err);
-  }
-
-  // 3. Fallback: Fetch langsung dari NASA API jika di-request tanggal yang belum di-cache
-  try {
-    const res = await fetch(`https://api.nasa.gov/planetary/apod?api_key=${NASA_API_KEY}&date=${id}`);
-    if (res.ok) {
-      const apodData = await res.json();
-
-      // Terjemahkan dengan AI
-      const translatedTitle = await translateText(apodData.title, 'Terjemahkan judul astronomi berikut ke Bahasa Indonesia secara singkat dan menarik.');
-      const translatedExplanation = await translateText(apodData.explanation, 'Terjemahkan deskripsi ilmiah astronomi berikut ke Bahasa Indonesia yang mudah dipahami.');
-
-      // Deteksi jika NASA API mengembalikan placeholder logo
-      const isNasaLogoPlaceholder = (url: string) =>
-        url.includes('nasa-logo') || url.includes('/themes/nasa-child/assets/images/');
-
-      let finalImageUrl = apodData.hdurl || apodData.url;
-
-      // Jika placeholder, coba ambil gambar asli dari WordPress API
-      if (apodData.media_type !== 'video' && isNasaLogoPlaceholder(finalImageUrl)) {
-        try {
-          const d = new Date(id + 'T00:00:00Z');
-          const monthNames = ['january','february','march','april','may','june','july','august','september','october','november','december'];
-          const slugPrefix = `apod-${d.getUTCFullYear()}-${monthNames[d.getUTCMonth()]}-${d.getUTCDate()}`;
-          const wpRes = await fetch(
-            `https://science.nasa.gov/wp-json/wp/v2/image-article?search=${slugPrefix}&per_page=3&orderby=date&order=desc`
-          );
-          if (wpRes.ok) {
-            const wpData = await wpRes.json();
-            const matched = Array.isArray(wpData) && (wpData.find((item: any) => item.slug?.startsWith(slugPrefix)) || wpData[0]);
-            if (matched) {
-              const fi = matched.featured_image;
-              if (fi?.file && fi.file.startsWith('http')) finalImageUrl = fi.file;
-              else if (matched.featured_image_url && !isNasaLogoPlaceholder(matched.featured_image_url)) finalImageUrl = matched.featured_image_url;
-            }
-          }
-        } catch (wpErr) {
-          console.warn('[APOD Detail] WordPress image fallback failed:', wpErr);
+  if (!cachedApod) {
+    try {
+      const d1Res = await queryD1('SELECT id, date, title, explanation, image_url, copyright FROM apod_history WHERE id = ? LIMIT 1', [id]);
+      if (d1Res?.results?.length) {
+        const data = d1Res.results[0];
+        const rowApod: Apod = {
+          id: data.id,
+          title: typeof data.title === 'string' && data.title.startsWith('{') ? JSON.parse(data.title) : { en: data.title, id: data.title },
+          explanation: typeof data.explanation === 'string' && data.explanation.startsWith('{') ? JSON.parse(data.explanation) : { en: data.explanation, id: data.explanation },
+          image_url: data.image_url || '',
+          copyright: data.copyright || 'NASA Public Domain'
+        };
+        if (!isNasaLogoPlaceholder(rowApod.image_url) && rowApod.title?.id && rowApod.title.id.toLowerCase() !== 'nasa science') {
+          cachedApod = rowApod;
         }
       }
+    } catch (err) {
+      console.warn("Failed to fetch APOD from D1 database, falling back to NASA API:", err);
+    }
+  }
 
+  if (cachedApod) {
+    return cachedApod;
+  }
+
+  // 3. Fallback: Ambil data APOD asli menggunakan nasaApodHelper (bebas logo NASA)
+  try {
+    const rawApod = await fetchRawApod(id);
+
+    // Terjemahkan dengan AI
+    const translatedTitle = await translateText(
+      rawApod.title,
+      'Terjemahkan judul astronomi NASA APOD berikut ke Bahasa Indonesia secara singkat, akurat, dan ilmiah. Kembalikan HANYA judul terjemahan saja.',
+      'id'
+    );
+    const translatedExplanation = await translateText(
+      rawApod.explanation,
+      'Terjemahkan deskripsi ilmiah astronomi NASA APOD berikut ke Bahasa Indonesia yang akurat, mudah dipahami, dan lengkap. Jangan memotong penjelasan.',
+      'id'
+    );
+
+    let finalImageUrl = rawApod.imageUrl;
+    if (rawApod.mediaType !== 'video' && rawApod.imageUrl && !rawApod.imageUrl.includes('cdn.meteorit.my.id')) {
       try {
-        if (apodData.media_type !== 'video') {
-          const imgFetch = await fetch(finalImageUrl);
-          if (imgFetch.ok) {
-            const buffer = Buffer.from(await imgFetch.arrayBuffer());
-            const ext = finalImageUrl.split('.').pop()?.split('?')[0] || 'jpg';
-            const imgKey = `data/encyclopedia/images/${id}.${ext}`;
-            const contentType = imgFetch.headers.get('content-type') || 'image/jpeg';
-            finalImageUrl = await uploadToR2(imgKey, buffer, contentType);
-          }
+        const imgFetch = await fetch(rawApod.imageUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MeteoritIndonesia/1.0)' },
+          signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(15000) : undefined,
+        });
+        if (imgFetch.ok) {
+          const buffer = Buffer.from(await imgFetch.arrayBuffer());
+          const ext = rawApod.imageUrl.split('.').pop()?.split('?')[0]?.toLowerCase() || 'jpg';
+          const safeExt = ['jpg', 'jpeg', 'png', 'webp'].includes(ext) ? ext : 'jpg';
+          const imgKey = `data/encyclopedia/images/${id}.${safeExt}`;
+          const contentType = imgFetch.headers.get('content-type') || 'image/jpeg';
+          finalImageUrl = await uploadToR2(imgKey, buffer, contentType);
         }
       } catch (imgErr) {
         console.error("Gagal mengunggah gambar APOD ke R2:", imgErr);
       }
-
-      const finalApod: Apod = {
-        id: apodData.date,
-        title: {
-          en: apodData.title,
-          id: translatedTitle
-        },
-        explanation: {
-          en: apodData.explanation,
-          id: translatedExplanation
-        },
-        image_url: finalImageUrl,
-        copyright: apodData.copyright || 'NASA Public Domain'
-      };
-
-      // Simpan/Arsipkan ke Firestore agar request selanjutnya instan
-      try {
-        await adminDb.collection('apod_history').doc(id).set(finalApod);
-      } catch (saveErr) {
-        console.warn("Failed to save auto-fetched APOD to Firestore:", saveErr);
-      }
-
-      return finalApod;
     }
+
+    finalImageUrl = await ensureImageUrl(finalImageUrl, 'apod');
+
+    const finalApod: Apod = {
+      id: rawApod.date,
+      title: {
+        en: rawApod.title,
+        id: translatedTitle || rawApod.title
+      },
+      explanation: {
+        en: rawApod.explanation,
+        id: translatedExplanation || rawApod.explanation
+      },
+      image_url: finalImageUrl,
+      copyright: rawApod.copyright || 'NASA Public Domain'
+    };
+
+    // Simpan/Arsipkan ke Firestore & D1 agar request selanjutnya instan
+    try {
+      await adminDb.collection('apod_history').doc(id).set(finalApod);
+    } catch (saveErr) {
+      console.warn("Failed to save auto-fetched APOD to Firestore:", saveErr);
+    }
+
+    return finalApod;
   } catch (err) {
     console.error("NASA APOD Fallback API error:", err);
   }
@@ -204,28 +202,50 @@ export default async function ApodDetailPage({ params }: { params: { id: string 
   }
 
   // Localize content title/explanation if present on the server-side first
-  let title = (locale !== 'id' && (apod.title as any)[locale]) || '';
-  let explanation = (locale !== 'id' && (apod.explanation as any)[locale]) || '';
+  let title = (apod.title as any)?.[locale] || '';
+  let explanation = (apod.explanation as any)?.[locale] || '';
 
-  if (locale !== 'id' && (!title || !explanation)) {
+  // Clean title if it contains conversational disclaimer
+  if (title && title.length > 80 && (title.toLowerCase().includes('tidak dapat diterjemahkan') || title.toLowerCase().includes('konteks'))) {
+    title = apod.title.en || 'V-G-R';
+    if (apod.title) apod.title.id = title;
+  }
+
+  // Check if Indonesian translation is missing, generic placeholder, or untranslated English
+  const isIndonesianNeedsTranslation = locale === 'id' && (
+    !title ||
+    title.toLowerCase() === 'nasa science' ||
+    !explanation ||
+    explanation === apod.explanation.en
+  );
+
+  const isOtherLocaleNeedsTranslation = locale !== 'id' && (!title || !explanation);
+
+  if (isIndonesianNeedsTranslation || isOtherLocaleNeedsTranslation) {
     try {
       const targetLangLabel = 
+        locale === 'id' ? 'Indonesian' :
         locale === 'en' ? 'English' : 
         locale === 'ms' ? 'Malay' : 
         locale === 'zh' ? 'Mandarin Chinese' : 
         locale === 'ja' ? 'Japanese' : 
         locale === 'ru' ? 'Russian' :
         locale === 'fr' ? 'French' :
-        'English';
+        'Indonesian';
       
+      const sourceTitle = (apod.title.en && apod.title.en.toLowerCase() !== 'nasa science') ? apod.title.en : apod.title.id;
+      const sourceExplanation = apod.explanation.en || apod.explanation.id;
+
       const [translatedTitle, translatedExplanation] = await Promise.all([
         translateText(
-          apod.title.en || apod.title.id,
-          `Translate this astronomy title into ${targetLangLabel}. Return ONLY the translated title, no introduction, no quotes, no other text.`
+          sourceTitle,
+          `Translate this astronomy title into ${targetLangLabel}. Return ONLY the translated title, no introduction, no quotes, no other text.`,
+          locale
         ),
         translateText(
-          apod.explanation.en || apod.explanation.id,
-          `Translate this astronomy explanation into ${targetLangLabel}. Keep paragraph structure intact. Return ONLY the translated description, no other text.`
+          sourceExplanation,
+          `Translate this astronomy scientific explanation into ${targetLangLabel}. Preserve scientific terms, mission names, and full paragraph structure. Return ONLY the translated description, no other text.`,
+          locale
         )
       ]);
 

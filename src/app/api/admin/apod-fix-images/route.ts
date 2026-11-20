@@ -20,6 +20,7 @@ import { revalidatePath } from 'next/cache';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { uploadToR2 } from '@/lib/r2Client';
 import { isValidCronRequest } from '@/lib/cronAuth';
+import { translateText } from '@/lib/translator';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -171,17 +172,27 @@ export async function GET(req: NextRequest) {
           fixSource: 'nasa-wordpress-api'
         };
 
-        if (wpData.title && (isGenericTitle || !entry.title?.en || entry.title.en === 'NASA Science')) {
+        if (wpData.title && (isGenericTitle || !entry.title?.en || entry.title.en === 'NASA Science' || entry.title.id === entry.title.en)) {
+          const translatedTitle = await translateText(
+            wpData.title,
+            'Terjemahkan judul astronomi NASA APOD berikut ke Bahasa Indonesia secara singkat, akurat, dan ilmiah. Kembalikan HANYA judul terjemahan saja.',
+            'id'
+          );
           updatePayload.title = {
             en: wpData.title,
-            id: wpData.title
+            id: translatedTitle || wpData.title
           };
         }
 
-        if (wpData.explanation && (!entry.explanation?.en || entry.explanation.en.includes('Source: NASA Open Data APIs'))) {
+        if (wpData.explanation && (!entry.explanation?.en || entry.explanation.en.includes('Source: NASA Open Data APIs') || entry.explanation.id === entry.explanation.en)) {
+          const translatedExp = await translateText(
+            wpData.explanation,
+            'Terjemahkan deskripsi ilmiah astronomi NASA APOD berikut ke Bahasa Indonesia yang akurat, mudah dipahami, dan lengkap. Jangan memotong penjelasan.',
+            'id'
+          );
           updatePayload.explanation = {
             en: wpData.explanation,
-            id: wpData.explanation
+            id: translatedExp || wpData.explanation
           };
         }
 

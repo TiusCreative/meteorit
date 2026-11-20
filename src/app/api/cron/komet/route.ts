@@ -178,7 +178,7 @@ Kembalikan HANYA string JSON murni tanpa pembungkus markdown json.`;
 
     // Image Illustration via Fallback AI Generator (unique per asteroid name and title)
     const illustrationPrompt = `${articleJson.title}, asteroid ${name} flying in deep space, glowing cosmic trail near Earth, NASA space photography, hyperrealistic 8k digital art`;
-    const imagePath = `data/komet/images/${docId}.jpg`;
+    const imagePath = `data/komet/images/${docId}.webp`;
     const { generateImageWithFallback } = await import('@/lib/imageGenerator');
     const imageUrl = await generateImageWithFallback(illustrationPrompt, imagePath);
 
@@ -219,6 +219,7 @@ Kembalikan HANYA string JSON murni tanpa pembungkus markdown json.`;
       review_status: 'Otomatis',
       ai_provider: articleJson.provider,
       createdAt: new Date().toISOString(),
+      publishedAt: new Date().toISOString(),
       asteroid_data: {
         name,
         close_approach_date: closeApproachDate,

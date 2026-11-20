@@ -80,7 +80,7 @@ Kembalikan HANYA string JSON murni tanpa membungkus dengan tag markdown json.`;
     });
 
     const illustrationPrompt = `${articleJson.title}, ${category}, space astronomy photography, cosmic nebula stars background, hyperrealistic 8k digital art, cinematic lighting`;
-    const imagePath = `data/blog/images/${docId}.jpg`;
+    const imagePath = `data/blog/images/${docId}.webp`;
     const { generateImageWithFallback } = await import('@/lib/imageGenerator');
     const imageUrl = await generateImageWithFallback(illustrationPrompt, imagePath);
 
@@ -113,7 +113,8 @@ Kembalikan HANYA string JSON murni tanpa membungkus dengan tag markdown json.`;
       views: 0,
       status: 'Published',
       ai_provider: articleJson.provider,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      publishedAt: new Date().toISOString()
     };
 
     // 3. Save individual article JSON directly to R2 (no Firestore)

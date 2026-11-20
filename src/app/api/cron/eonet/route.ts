@@ -193,7 +193,7 @@ Kembalikan HANYA JSON murni tanpa pembungkus markdown.`;
     // 7. Generate ilustrasi unik berdasarkan judul event, lokasi, dan kategori
     const illustrationPrompt = `${eventTitle}, ${categoryStr}, natural event near ${locationStr}, NASA Earth Observatory satellite view, dramatic atmospheric landscape, cinematic hyperrealistic 8k digital art`;
 
-    const imagePath = `data/eonet/images/${docId}.jpg`;
+    const imagePath = `data/eonet/images/${docId}.webp`;
     const { generateImageWithFallback } = await import('@/lib/imageGenerator');
     const imageUrl = await generateImageWithFallback(illustrationPrompt, imagePath);
 
@@ -234,6 +234,7 @@ Kembalikan HANYA JSON murni tanpa pembungkus markdown.`;
       review_status: 'Otomatis',
       ai_provider: articleJson.provider,
       createdAt: new Date().toISOString(),
+      publishedAt: new Date().toISOString(),
       eonet_data: {
         event_id: selectedEvent.id,
         event_title: eventTitle,

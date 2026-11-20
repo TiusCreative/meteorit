@@ -63,8 +63,20 @@ export async function sendBroadcastNotification({
     finalImageUrl = getAbsoluteUrl(finalImageUrl);
   }
 
-  // 1. Send Telegram Message to Channel
-  const tgSuccess = await sendTelegramMessage(TELEGRAM_CHANNEL_ID, telegramHtml);
+  // 1. Send Telegram Message to Channel and Group/Admin Chat
+  const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '5429818332';
+  let tgChannelSuccess = false;
+  let tgGroupSuccess = false;
+
+  try {
+    tgChannelSuccess = await sendTelegramMessage(TELEGRAM_CHANNEL_ID, telegramHtml);
+    if (TELEGRAM_CHAT_ID && TELEGRAM_CHAT_ID !== TELEGRAM_CHANNEL_ID) {
+      tgGroupSuccess = await sendTelegramMessage(TELEGRAM_CHAT_ID, telegramHtml);
+    }
+  } catch (tgErr) {
+    console.error('[Broadcast Manager] Error sending Telegram broadcast:', tgErr);
+  }
+  const tgSuccess = tgChannelSuccess || tgGroupSuccess;
 
   // 2. Post to other social media platforms in parallel (all-settled)
   let fbSuccess = false;

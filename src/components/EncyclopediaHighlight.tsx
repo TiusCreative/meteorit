@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { landingText } from '@/lib/landingText';
 import { useSiteLanguage } from '@/lib/useSiteLanguage';
 import SafeImage from '@/components/SafeImage';
+import { isNasaLogoPlaceholder, parseVideoMedia } from '@/lib/nasaApodHelper';
 
 type EncyclopediaEntry = {
   id: string;
@@ -89,14 +90,31 @@ export default function EncyclopediaHighlight({ initialData }: EncyclopediaHighl
 
   const descStr = (data.explanation as any)?.[language] || (data.explanation as any)?.id || (data.explanation as any)?.en || "";
   const shortDescription = descStr.split('. ').slice(0, 2).join('. ') + '.';
-  const title = (data.title as any)?.[language] || (data.title as any)?.id || (data.title as any)?.en;
+  let title = (data.title as any)?.[language] || (data.title as any)?.id || (data.title as any)?.en || 'Foto Antariksa NASA';
+  if (title.toLowerCase() === 'nasa science' || title.toLowerCase() === 'ilmu pengetahuan nasa') {
+    title = (data.title as any)?.en && (data.title as any).en.toLowerCase() !== 'nasa science'
+      ? (data.title as any).en
+      : 'Objek Kosmik NASA APOD';
+  }
   const dateLocale = language === 'en' ? 'en-US' : language === 'ja' ? 'ja-JP' : language === 'zh' ? 'zh-CN' : language === 'ms' ? 'ms-MY' : 'id-ID';
 
-  const isDirectVideo = data.image_url.includes('.mp4') || data.image_url.includes('.webm') || data.image_url.includes('.ogv');
-  const isIframeVideo = data.image_url.includes('youtube.com') ||
-                  data.image_url.includes('youtu.be') ||
-                  data.image_url.includes('vimeo.com') ||
-                  data.image_url.includes('player.vimeo.com');
+  const isDirectVideo = data.image_url?.includes('.mp4') || data.image_url?.includes('.webm') || data.image_url?.includes('.ogv');
+  const isIframeVideo = data.image_url?.includes('youtube.com') ||
+                  data.image_url?.includes('youtu.be') ||
+                  data.image_url?.includes('vimeo.com') ||
+                  data.image_url?.includes('player.vimeo.com') ||
+                  data.media_type === 'video';
+
+  // Safeguard: Jika image_url adalah logo NASA, jangan pernah tampilkan logo NASA
+  let safeApodImage = data.image_url;
+  if (isNasaLogoPlaceholder(safeApodImage)) {
+    safeApodImage = 'https://cdn.meteorit.my.id/data/glossary/images/nasa-apod.webp';
+  } else if (isIframeVideo && !isDirectVideo) {
+    const parsed = parseVideoMedia(data.image_url);
+    if (parsed.thumbnailUrl && !isNasaLogoPlaceholder(parsed.thumbnailUrl)) {
+      safeApodImage = parsed.thumbnailUrl;
+    }
+  }
 
   return (
     <section className="py-16 bg-slate-900/20 border-t border-cyan-900/10">
@@ -143,10 +161,10 @@ export default function EncyclopediaHighlight({ initialData }: EncyclopediaHighl
                   </div>
                 ) : (
                   <SafeImage
-                    src={data.image_url}
+                    src={safeApodImage}
                     alt={title || 'APOD'}
                     className="object-cover w-full h-full hover:scale-105 transition-transform duration-500"
-                    fallback="https://placehold.co/800x500/020617/22d3ee?text=APOD+Space"
+                    fallback="https://cdn.meteorit.my.id/data/glossary/images/nasa-apod.webp"
                   />
                 )}
               </div>

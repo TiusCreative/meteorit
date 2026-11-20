@@ -102,10 +102,6 @@ export async function generateWithAI(options: AIGenerateOptions): Promise<AIGene
       fallbackModels: ['ministral-8b-latest', 'ministral-3b-latest'],
     },
   ];
-      model: 'mistral-small-latest',
-      fallbackModels: ['ministral-8b-latest', 'ministral-3b-latest'],
-    },
-  ];
 
   const errors: string[] = [];
 

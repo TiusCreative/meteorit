@@ -21,7 +21,7 @@ const CATEGORY_FALLBACKS: Record<string, string> = {
   komet: `${R2_PUBLIC}/data/blog/images/fallback-komet.jpg`,
   comet: `${R2_PUBLIC}/data/blog/images/fallback-komet.jpg`,
   mars: `${R2_PUBLIC}/data/blog/images/fallback-mars.jpg`,
-  apod: `${R2_PUBLIC}/data/encyclopedia/images/fallback-apod.jpg`,
+  apod: `${R2_PUBLIC}/data/glossary/images/nasa-apod.webp`,
   astronot: `${R2_PUBLIC}/data/astronauts/images/fallback-astronot.jpg`,
   astronaut: `${R2_PUBLIC}/data/astronauts/images/fallback-astronot.jpg`,
   fireball: `${R2_PUBLIC}/data/blog/images/fallback-fireball.jpg`,
@@ -53,6 +53,8 @@ export function isBadImageUrl(url: string | null | undefined): boolean {
   const bad = [
     'nasa-logo',
     'nasa_logo',
+    'nasa-child',
+    'editor-page-nasa-logo',
     'meatball',
     'worm-logo',
     'placeholder',

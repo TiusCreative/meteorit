@@ -1,7 +1,6 @@
 export const runtime = 'edge';
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebaseAdmin';
-import { uploadToR2 } from '@/lib/r2Client';
+import { uploadToR2, fetchJsonFromR2 } from '@/lib/r2Client';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { sendBroadcastNotification } from '@/lib/notifications';
 import { buildAstronautDataset, FALLBACK_ASTRONAUTS, type AstronautProfile } from '@/lib/astronautData';
@@ -185,31 +184,31 @@ export async function GET(request: Request) {
   let aiCallCount = 0;
 
   try {
+    // 2. Ambil profil eksisting dari R2
+    let existingAstronauts: AstronautProfile[] = [];
+    try {
+      const existingData = await fetchJsonFromR2<any>('data/astronauts/astronauts.json');
+      if (existingData?.astronauts && Array.isArray(existingData.astronauts)) {
+        existingAstronauts = existingData.astronauts;
+      }
+    } catch (e) {
+      console.warn('[Cron Astronot] Gagal fetch R2 lama, menggunakan fallback:', e);
+    }
+    const existingMap = new Map<string, AstronautProfile>(existingAstronauts.map((a) => [a.id, a]));
+
     for (const person of people) {
       const name = person.name;
       const craft = person.craft || 'ISS';
       const slug = getSlug(name);
-      const docRef = adminDb.collection('astronauts').doc(slug);
-      const docSnap = await docRef.get();
 
-      if (docSnap.exists) {
-        const existing = docSnap.data() || {};
+      if (existingMap.has(slug)) {
+        const existing = existingMap.get(slug)!;
         const updatedDoc: AstronautProfile = {
-          id: slug,
-          name: existing.name || name,
+          ...existing,
           craft,
-          country: existing.country || 'Tidak diketahui',
-          agency: existing.agency || 'Agensi Antariksa',
-          launchDate: existing.launchDate || new Date().toISOString().split('T')[0],
-          role: existing.role || 'Astronot',
-          biography: existing.biography || `${name} sedang menjalankan misi di ${craft}.`,
-          imageUrl: existing.imageUrl || `https://image.pollinations.ai/prompt/${encodeURIComponent(`professional official portrait photo astronaut ${name} in space suit`)}?width=400&height=500&nologo=true`,
           status: 'active',
-          mission: existing.mission || `Misi aktif ${craft}`,
-          source: 'Open Notify API + cache profil',
           updatedAt: new Date().toISOString()
         };
-        await docRef.update({ ...updatedDoc, craft, status: 'active', updatedAt: new Date().toISOString() });
         activeAstronauts.push(updatedDoc);
         processed.push({ name, slug, status: 'Already exists — craft updated' });
         continue;
@@ -266,10 +265,8 @@ export async function GET(request: Request) {
         }
       }
 
-      // Generate photo via Pollinations with fallback safeguard
-      const photoPrompt = encodeURIComponent(`professional official portrait photo astronaut ${name} in space suit NASA realistic high quality`);
-      const rawImageUrl = `https://image.pollinations.ai/prompt/${photoPrompt}?width=400&height=500&nologo=true&seed=${slug.length * 17}`;
-      const imageUrl = await ensureImageUrl(rawImageUrl, 'astronot');
+      // Gunakan foto WebP resmi dari R2 CDN
+      const imageUrl = `https://cdn.meteorit.my.id/data/astronauts/images/${slug}.webp`;
 
       const attribution = '\n\nSource: NASA Open Data APIs\nSumber Data: Pusat Data Publik Antariksa';
       const astronautDoc = {
@@ -288,24 +285,8 @@ export async function GET(request: Request) {
         updatedAt: new Date().toISOString()
       };
 
-      await docRef.set(astronautDoc);
       activeAstronauts.push(astronautDoc as AstronautProfile);
       processed.push({ name, slug, status: 'Generated & Saved' });
-
-      const profileMsg =
-        `👨‍🚀 <b>Profil Astronot Baru</b>\n\n` +
-        `<b>${astronautDoc.name}</b>\n` +
-        `${astronautDoc.role} • ${astronautDoc.agency} (${astronautDoc.country})\n` +
-        `🛰 <b>Misi:</b> ${astronautDoc.craft}\n\n` +
-        `🔗 ${getAbsoluteUrl(`/astronot/${astronautDoc.id}`)}`;
-      
-      await sendBroadcastNotification({
-        title: `👨‍🚀 Profil Astronot Baru: ${astronautDoc.name}`,
-        body: `Profil Astronot Baru:\n${astronautDoc.name}\n${astronautDoc.role} • ${astronautDoc.agency} (${astronautDoc.country})`,
-        telegramHtml: profileMsg,
-        link: `/astronot/${astronautDoc.id}`,
-        imageUrl: astronautDoc.imageUrl
-      });
     }
 
     const seen = new Set(activeAstronauts.map((astronaut) => astronaut.id));

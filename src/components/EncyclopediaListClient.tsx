@@ -21,6 +21,8 @@ interface Meteorite {
   translated_description: string;
   image_url: string;
   createdAt?: string;
+  date?: string;
+  publishedAt?: string;
   translations?: Record<string, { name: string; description: string }>;
 }
 
@@ -72,16 +74,24 @@ export default function EncyclopediaListClient({ initialMeteorites }: Encycloped
   useEffect(() => {
     let result = initialMeteorites;
     if (selectedClass) {
-      result = result.filter(m => m.recclass.toLowerCase().includes(selectedClass.toLowerCase()));
+      result = result.filter(m => (m.recclass || '').toLowerCase().includes(selectedClass.toLowerCase()));
     }
-    if (searchQuery) {
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const tokens = q.split(/\s+/).filter(Boolean);
       result = result.filter(m => {
-        const name = language === 'id' 
-          ? (m.translated_name || m.name) 
-          : (m.translations?.[language]?.name || m.name);
-        return name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-               m.recclass.toLowerCase().includes(searchQuery.toLowerCase()) ||
-               (m.year && m.year.toLowerCase().includes(searchQuery.toLowerCase()));
+        const origName = (m.name || '').toLowerCase();
+        const transName = (m.translated_name || '').toLowerCase();
+        const localizedName = (m.translations?.[language]?.name || '').toLowerCase();
+        const recclass = (m.recclass || '').toLowerCase();
+        const year = (m.year || '').toLowerCase();
+        const desc = (m.description || '').toLowerCase();
+        const transDesc = (m.translated_description || '').toLowerCase();
+        const localizedDesc = (m.translations?.[language]?.description || '').toLowerCase();
+        const mass = (m.mass || '').toLowerCase();
+
+        const searchableText = `${origName} ${transName} ${localizedName} ${recclass} ${year} ${desc} ${transDesc} ${localizedDesc} ${mass}`;
+        return tokens.every(token => searchableText.includes(token));
       });
     }
     if (dateFilter.startDate || dateFilter.endDate || dateFilter.selectedMonth || dateFilter.selectedYear) {
@@ -91,8 +101,8 @@ export default function EncyclopediaListClient({ initialMeteorites }: Encycloped
     setCurrentPage(1);
   }, [searchQuery, selectedClass, dateFilter, initialMeteorites, language]);
 
-  // Extract unique classes
-  const classesList = Array.from(new Set(initialMeteorites.map(m => m.recclass))).slice(0, 10);
+  // Extract all unique meteorite classes sorted alphabetically
+  const classesList = Array.from(new Set(initialMeteorites.map(m => m.recclass).filter(Boolean))).sort();
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredMeteorites.length / itemsPerPage);
@@ -155,8 +165,8 @@ export default function EncyclopediaListClient({ initialMeteorites }: Encycloped
         </div>
       </div>
 
-      {/* Date Filter Bar */}
-      <DateFilterBar value={dateFilter} onChange={setDateFilter} availableYears={availableYears} />
+      {/* Date Filter Bar (Historical Era Mode for Meteorite Specimens) */}
+      <DateFilterBar mode="historical" value={dateFilter} onChange={setDateFilter} availableYears={availableYears} />
 
       {/* Filter Toolbar */}
       <div className="bg-slate-50 dark:bg-slate-900/60 backdrop-blur border border-slate-200 dark:border-cyan-900/30 p-6 rounded-2xl mb-12 flex flex-col md:flex-row gap-4 justify-between items-center shadow-lg transition-colors">
@@ -170,7 +180,7 @@ export default function EncyclopediaListClient({ initialMeteorites }: Encycloped
           />
         </div>
 
-          <div className="w-full md:w-auto flex items-center gap-3 justify-end">
+          <div className="w-full md:w-auto flex items-center gap-3 justify-end flex-wrap">
             <label className="text-slate-500 dark:text-gray-400 text-sm font-semibold shrink-0">{t.classificationLabel || "Klasifikasi:"}</label>
             <select 
               value={selectedClass} 
@@ -182,16 +192,48 @@ export default function EncyclopediaListClient({ initialMeteorites }: Encycloped
                 <option key={cls} value={cls}>{cls}</option>
               ))}
             </select>
+            {(searchQuery || selectedClass || dateFilter.selectedYear || dateFilter.selectedMonth || dateFilter.startDate || dateFilter.endDate) && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedClass('');
+                  setDateFilter({ startDate: '', endDate: '', selectedMonth: '', selectedYear: '' });
+                }}
+                className="px-3 py-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-white hover:bg-rose-600 rounded-xl text-xs font-semibold transition-colors"
+              >
+                ✕ Reset
+              </button>
+            )}
           </div>
         </div>
 
         <AdDisplay position="hero" />
 
         {filteredMeteorites.length === 0 ? (
-          <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/20 border border-dashed border-slate-200 dark:border-cyan-950/50 rounded-2xl">
-            <span className="text-4xl mb-4 block">☄️</span>
-            <p className="text-slate-700 dark:text-gray-400 font-medium">{t.meteorNotFound || "Benda langit tidak ditemukan."}</p>
-            <p className="text-slate-400 dark:text-gray-650 text-sm mt-1">{t.meteorNotFoundDesc || "Gunakan sinkronisasi manual di admin dashboard untuk memuat data NASA terbaru."}</p>
+          <div className="text-center py-16 bg-slate-50 dark:bg-slate-900/30 border border-dashed border-slate-300 dark:border-cyan-950/60 rounded-2xl p-6">
+            <span className="text-4xl mb-3 block">☄️</span>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">
+              {searchQuery || selectedClass || dateFilter.startDate || dateFilter.endDate || dateFilter.selectedYear
+                ? 'Tidak ada meteorit yang cocok dengan filter'
+                : (t.meteorNotFound || 'Benda langit tidak ditemukan.')}
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-gray-400 max-w-lg mx-auto mb-4">
+              {searchQuery || selectedClass || dateFilter.startDate || dateFilter.endDate || dateFilter.selectedYear
+                ? 'Spesimen meteorit dalam katalog terdata berdasarkan Tahun Jatuh Sejarah (1491 - 2013). Silakan pilih Era Sejarah lain, bersihkan kata kunci, atau klik tombol Reset.'
+                : (t.meteorNotFoundDesc || 'Gunakan sinkronisasi manual di admin dashboard untuk memuat data NASA terbaru.')}
+            </p>
+            {(searchQuery || selectedClass || dateFilter.startDate || dateFilter.endDate || dateFilter.selectedYear) && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedClass('');
+                  setDateFilter({ startDate: '', endDate: '', selectedMonth: '', selectedYear: '' });
+                }}
+                className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition-colors shadow-lg"
+              >
+                🔄 Reset Semua Filter
+              </button>
+            )}
           </div>
         ) : (
           <div>
@@ -227,6 +269,12 @@ export default function EncyclopediaListClient({ initialMeteorites }: Encycloped
                         <p className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1">
                           <span className="text-slate-400 dark:text-gray-500">{t.foundYear || 'Tahun Jatuh:'}</span>
                           <span className="font-semibold">{met.year}</span>
+                        </p>
+                        <p className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1 text-xs">
+                          <span className="text-slate-400 dark:text-gray-500">Terbit:</span>
+                          <span className="font-semibold text-cyan-600 dark:text-cyan-400">
+                            {met.date || (met.publishedAt || met.createdAt ? new Date(met.publishedAt || met.createdAt!).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '16 Nov 2026')}
+                          </span>
                         </p>
                         <p className="flex justify-between">
                           <span className="text-slate-400 dark:text-gray-500">{t.latitudeLabel || 'Lintang:'}, {t.longitudeLabel || 'Bujur:'}</span>

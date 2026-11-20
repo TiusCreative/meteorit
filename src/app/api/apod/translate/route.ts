@@ -9,10 +9,10 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
-    const locale = searchParams.get('locale');
+    const locale = searchParams.get('locale') || 'id';
 
-    if (!id || !locale) {
-      return NextResponse.json({ error: 'Missing parameters id or locale' }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: 'Missing parameter id' }, { status: 400 });
     }
 
     const docRef = adminDb.collection('apod_history').doc(id);
@@ -23,21 +23,39 @@ export async function GET(req: NextRequest) {
     }
 
     const data = docSnap.data()!;
-    let title = (locale !== 'id' && data.title?.[locale]) || '';
-    let explanation = (locale !== 'id' && data.explanation?.[locale]) || '';
+    let title = data.title?.[locale] || '';
+    let explanation = data.explanation?.[locale] || '';
 
-    if (locale !== 'id' && (!title || !explanation)) {
-      const targetLangLabel = locale === 'en' ? 'English' : locale === 'ms' ? 'Malay' : locale === 'zh' ? 'Mandarin Chinese' : locale === 'ja' ? 'Japanese' : locale === 'ru' ? 'Russian' : locale === 'fr' ? 'French' : 'English';
+    const isUntranslated = (
+      !title ||
+      title.toLowerCase() === 'nasa science' ||
+      !explanation ||
+      (locale === 'id' && explanation === data.explanation?.en)
+    );
+
+    if (isUntranslated) {
+      const targetLangLabel = 
+        locale === 'id' ? 'Indonesian' :
+        locale === 'en' ? 'English' : 
+        locale === 'ms' ? 'Malay' : 
+        locale === 'zh' ? 'Mandarin Chinese' : 
+        locale === 'ja' ? 'Japanese' : 
+        locale === 'ru' ? 'Russian' : 
+        locale === 'fr' ? 'French' : 
+        'Indonesian';
       
+      const sourceTitle = (data.title?.en && data.title.en.toLowerCase() !== 'nasa science') ? data.title.en : (data.title?.id || 'NASA Astronomy Picture of the Day');
+      const sourceExplanation = data.explanation?.en || data.explanation?.id || '';
+
       const [translatedTitle, translatedExplanation] = await Promise.all([
         translateText(
-          data.title?.en || data.title?.id,
+          sourceTitle,
           `Translate this astronomy title into ${targetLangLabel}. Return ONLY the translated title, no introduction, no quotes, no other text.`,
           locale
         ),
         translateText(
-          data.explanation?.en || data.explanation?.id,
-          `Translate this astronomy explanation into ${targetLangLabel}. Keep paragraph structure intact. Return ONLY the translated description, no other text.`,
+          sourceExplanation,
+          `Translate this astronomy explanation into ${targetLangLabel}. Preserve paragraph structure, mission names, and scientific terms. Return ONLY the translated description, no other text.`,
           locale
         )
       ]);
@@ -54,8 +72,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    if (!title) title = data.title?.id || data.title?.en;
-    if (!explanation) explanation = data.explanation?.id || data.explanation?.en;
+    if (!title) title = data.title?.id || data.title?.en || '';
+    if (!explanation) explanation = data.explanation?.id || data.explanation?.en || '';
 
     return NextResponse.json({ title, explanation });
   } catch (error: any) {

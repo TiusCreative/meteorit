@@ -9,153 +9,16 @@ import { getAbsoluteUrl } from '@/lib/siteUrl';
 import { isValidCronRequest } from '@/lib/cronAuth';
 import { translateText } from '@/lib/translator';
 import { ensureImageUrl } from '@/lib/imageSafeguard';
+import { fetchRawApod, isNasaLogoPlaceholder } from '@/lib/nasaApodHelper';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-// NASA API Configuration
-const NASA_API_KEY = process.env.NASA_API_KEY || 'hlogNogFWGEANcJcPnYwlxYJh3auqScaH75m8ktN';
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '5429818332';
 
-const MONTH_NAMES = [
-  'january','february','march','april','may','june',
-  'july','august','september','october','november','december'
-];
-
 /**
- * GET /api/cron/apod
- *
- * Dijadwalkan otomatis oleh Vercel Cron setiap hari pukul 06:00 UTC (13:00 WIB).
- * Dapat juga dipicu manual dari halaman Admin dengan autentikasi secret.
- *
- * Query params:
- *   ?secret=CRON_SECRET   (untuk trigger manual)
- *   ?force=true           (paksa re-fetch & re-translate meski sudah ada hari ini)
- *   ?date=YYYY-MM-DD      (opsional: fetch tanggal spesifik)
+ * Rebuild and cache APOD history in Cloudflare R2 & D1
  */
-
-// ─── Utilities ────────────────────────────────────────────────────────────────
-
-/** Deteksi apakah URL adalah logo placeholder NASA (bukan gambar astronomi asli) */
-function isNasaLogoPlaceholder(url: string): boolean {
-  if (!url) return true;
-  return url.includes('nasa-logo') ||
-    url.includes('/themes/nasa-child/assets/images/') ||
-    url.includes('nasa-logo@2x') ||
-    url.endsWith('nasa-child/assets/images/nasa-logo@2x.png');
-}
-
-/** Retry fetch dengan exponential backoff */
-async function fetchWithRetry(
-  url: string,
-  options: RequestInit = {},
-  maxRetries = 3,
-  baseDelayMs = 2000
-): Promise<Response> {
-  let lastError: Error = new Error('Unknown fetch error');
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
-      const res = await fetch(url, { ...options, signal: controller.signal });
-      clearTimeout(timeoutId);
-
-      // Jika 5xx (server error NASA), retry
-      if (res.status >= 500 && attempt < maxRetries) {
-        const delay = baseDelayMs * Math.pow(2, attempt - 1);
-        console.warn(`[APOD Cron] NASA API returned ${res.status}, retry ${attempt}/${maxRetries} in ${delay}ms...`);
-        await new Promise(r => setTimeout(r, delay));
-        continue;
-      }
-      return res;
-    } catch (err: any) {
-      lastError = err;
-      if (attempt < maxRetries) {
-        const delay = baseDelayMs * Math.pow(2, attempt - 1);
-        console.warn(`[APOD Cron] Fetch attempt ${attempt}/${maxRetries} failed: ${err.message}. Retrying in ${delay}ms...`);
-        await new Promise(r => setTimeout(r, delay));
-      }
-    }
-  }
-  throw lastError;
-}
-
-/** Ambil data APOD dari NASA WordPress API (science.nasa.gov) */
-async function fetchApodFromWordPress(date: string): Promise<{
-  title: string;
-  explanation: string;
-  imageUrl: string | null;
-  copyright: string;
-  mediaType: string;
-} | null> {
-  try {
-    const d = new Date(date + 'T00:00:00Z');
-    const month = MONTH_NAMES[d.getUTCMonth()];
-    const day = d.getUTCDate();
-    const dayStr = String(day).padStart(2, '0');
-    const year = d.getUTCFullYear();
-
-    const searchVariants = [
-      `${year}-${month}-${day}`,
-      `${year}-${month}-${dayStr}`,
-      `apod-${year}-${month}-${day}`,
-      `apod-${year}-${month}-${dayStr}`
-    ];
-
-    for (const term of searchVariants) {
-      try {
-        const wpUrl = `https://science.nasa.gov/wp-json/wp/v2/image-article?search=${encodeURIComponent(term)}&per_page=10`;
-        const wpRes = await fetchWithRetry(wpUrl, {}, 2, 1500);
-        if (!wpRes.ok) continue;
-
-        const wpData = await wpRes.json();
-        if (!Array.isArray(wpData) || wpData.length === 0) continue;
-
-        const matched = wpData.find((item: any) => {
-          const s = item.slug || '';
-          const t = (item.title?.rendered || '').toLowerCase();
-          const matchesDate = s.includes(`${year}-${month}-${day}`) || s.includes(`${year}-${month}-${dayStr}`);
-          return matchesDate && !t.includes('nasa science');
-        });
-
-        if (matched) {
-          const rawTitle = (matched.title?.rendered || '')
-            .replace(/APOD:\s*\d{4}\s*\w+\s*\d+\s*[–—\-]\s*/i, '')
-            .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#8217;/g, "'").replace(/&#8211;/g, '-').trim();
-
-          const rawExcerpt = (matched.excerpt?.rendered || matched.caption || '')
-            .replace(/<[^>]+>/g, '')
-            .replace(/\[&hellip;\]/g, '...')
-            .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#8217;/g, "'").replace(/&#8211;/g, '-').trim();
-
-          let imageUrl: string | null = null;
-          const fi = matched.featured_image;
-          if (fi?.file && fi.file.startsWith('http') && !isNasaLogoPlaceholder(fi.file)) {
-            imageUrl = fi.file;
-          } else if (matched.featured_image_url && !isNasaLogoPlaceholder(matched.featured_image_url)) {
-            imageUrl = matched.featured_image_url;
-          }
-
-          if (imageUrl) {
-            console.log(`[APOD Cron] WordPress API matched for ${date}: title="${rawTitle}", imageUrl=${imageUrl}`);
-            return { title: rawTitle, explanation: rawExcerpt, imageUrl, copyright: 'NASA Public Domain', mediaType: 'image' };
-          }
-        }
-      } catch {}
-    }
-
-    return null;
-  } catch (err) {
-    console.warn('[APOD Cron] WordPress API fetch failed:', err);
-    return null;
-  }
-}
-
-async function translateWithGroq(text: string, systemPrompt: string): Promise<string> {
-  if (!text) return text;
-  return await translateText(text, systemPrompt);
-}
-
 async function rebuildR2ApodHistoryCache(newEntry?: any) {
   try {
     let historyList: any[] = [];
@@ -230,7 +93,7 @@ export async function GET(request: Request) {
   const targetDate = dateParam || today;
 
   try {
-    // ─── STEP 1: Cek cache D1 & Firestore dulu ─────────────────────────────
+    // ─── STEP 1: Cek cache D1 & Firestore dulu jika tidak force ────────────
     let existing: any = null;
     try {
       const d1Res = await queryD1('SELECT id, date, title, explanation, image_url, copyright FROM apod_history WHERE id = ? LIMIT 1', [targetDate]);
@@ -239,7 +102,9 @@ export async function GET(request: Request) {
         existing = {
           id: row.id,
           title: typeof row.title === 'string' && row.title.startsWith('{') ? JSON.parse(row.title) : { en: row.title, id: row.title },
+          explanation: typeof row.explanation === 'string' && row.explanation.startsWith('{') ? JSON.parse(row.explanation) : { en: row.explanation, id: row.explanation },
           image_url: row.image_url,
+          copyright: row.copyright || 'NASA Public Domain',
         };
       }
     } catch (d1Err) {
@@ -254,176 +119,136 @@ export async function GET(request: Request) {
       }
     }
 
-    if (existing && !force) {
-      // Jika sudah ada tapi gambarnya masih placeholder, lanjut proses ulang
-      if (!isNasaLogoPlaceholder(existing.image_url || '')) {
-        console.log(`[APOD Cron] APOD ${targetDate} sudah ada & valid. Rebuilding R2 history cache.`);
-        await rebuildR2ApodHistoryCache();
-        return NextResponse.json({
-          success: true,
-          skipped: true,
-          message: `APOD tanggal ${targetDate} sudah ada. Cache R2 history telah diperbarui.`,
-          apod: existing.title?.id || existing.title?.en,
-          date: targetDate,
-        });
-      }
-      console.warn(`[APOD Cron] APOD ${targetDate} ada tapi gambarnya placeholder. Memproses ulang...`);
+    // Periksa apakah data lama valid (bukan placeholder logo dan judul bukan "NASA Science")
+    const isBadExisting = existing && (
+      isNasaLogoPlaceholder(existing.image_url) ||
+      (existing.title?.id && existing.title.id.toLowerCase() === 'nasa science') ||
+      (existing.title?.en && existing.title.en.toLowerCase() === 'nasa science') ||
+      !existing.explanation?.id ||
+      existing.explanation?.id === existing.explanation?.en
+    );
+
+    if (existing && !force && !isBadExisting) {
+      console.log(`[APOD Cron] APOD ${targetDate} sudah ada & valid. Rebuilding R2 history cache.`);
+      await rebuildR2ApodHistoryCache(existing);
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        message: `APOD tanggal ${targetDate} sudah ada. Cache R2 history telah diperbarui.`,
+        apod: existing.title?.id || existing.title?.en,
+        date: targetDate,
+      });
     }
 
-    // ─── STEP 2: Coba NASA API dulu (dengan retry) ────────────────────────────
-    let apodTitle = '';
-    let apodExplanation = '';
-    let apodDate = targetDate;
-    let rawImageUrl = '';
-    let mediaType = 'image';
-    let copyright = 'NASA Public Domain';
-    let nasaApiFailed = false;
-
-    try {
-      const nasaUrl = dateParam
-        ? `https://api.nasa.gov/planetary/apod?api_key=${NASA_API_KEY}&date=${dateParam}`
-        : `https://api.nasa.gov/planetary/apod?api_key=${NASA_API_KEY}`;
-
-      console.log(`[APOD Cron] Fetching NASA API: ${nasaUrl.replace(NASA_API_KEY, 'API_KEY_HIDDEN')}`);
-      const apodRes = await fetchWithRetry(nasaUrl, {}, 3, 2000);
-
-      if (apodRes.ok) {
-        const apodData = await apodRes.json();
-        apodTitle = apodData.title || '';
-        apodExplanation = apodData.explanation || '';
-        apodDate = apodData.date || targetDate;
-        mediaType = apodData.media_type || 'image';
-        copyright = apodData.copyright || 'NASA Public Domain';
-        rawImageUrl = apodData.hdurl || apodData.url || '';
-
-        // Cek apakah NASA mengembalikan placeholder logo
-        if (mediaType !== 'video' && isNasaLogoPlaceholder(rawImageUrl)) {
-          console.warn(`[APOD Cron] NASA returned placeholder logo for ${apodDate}. Will use WordPress fallback for image.`);
-          rawImageUrl = ''; // Reset agar ambil dari WP
-        }
-        console.log(`[APOD Cron] NASA API OK: title="${apodTitle}", date=${apodDate}, imageUrl=${rawImageUrl || '(placeholder)'}`);
-      } else {
-        console.warn(`[APOD Cron] NASA API returned HTTP ${apodRes.status}. Falling back to WordPress API.`);
-        nasaApiFailed = true;
-      }
-    } catch (nasaErr: any) {
-      console.warn(`[APOD Cron] NASA API failed: ${nasaErr.message}. Falling back to WordPress API.`);
-      nasaApiFailed = true;
+    if (isBadExisting) {
+      console.warn(`[APOD Cron] APOD ${targetDate} ada tapi data/gambar tidak valid (placeholder/untranslated). Memproses ulang...`);
     }
 
-    // ─── STEP 3: Fallback ke WordPress API jika NASA gagal atau gambar placeholder ──
-    let wpData: Awaited<ReturnType<typeof fetchApodFromWordPress>> = null;
-    if (nasaApiFailed || !apodTitle || !rawImageUrl) {
-      console.log(`[APOD Cron] Using WordPress API for ${targetDate}...`);
-      wpData = await fetchApodFromWordPress(targetDate);
+    // ─── STEP 2: Ambil data APOD asli menggunakan nasaApodHelper ──────────────
+    console.log(`[APOD Cron] Fetching authentic NASA APOD for date: ${targetDate}`);
+    const rawApod = await fetchRawApod(targetDate);
 
-      if (wpData) {
-        // Isi dari WP jika NASA gagal total
-        if (!apodTitle) apodTitle = wpData.title;
-        if (!apodExplanation) apodExplanation = wpData.explanation;
-        if (!rawImageUrl && wpData.imageUrl) rawImageUrl = wpData.imageUrl;
-        if (nasaApiFailed) {
-          mediaType = wpData.mediaType;
-          copyright = wpData.copyright;
-        }
-        console.log(`[APOD Cron] WordPress API data merged. title="${apodTitle}"`);
-      } else if (nasaApiFailed && !apodTitle) {
-        throw new Error('Baik NASA API maupun WordPress API tidak dapat mengambil data APOD untuk tanggal ini.');
-      }
-    }
-
-    // Jika masih tidak ada gambar setelah semua upaya
-    if (!rawImageUrl && wpData?.imageUrl) rawImageUrl = wpData.imageUrl;
-
-    // ─── STEP 4: Terjemahkan ke Bahasa Indonesia ──────────────────────────────
+    // ─── STEP 3: Terjemahkan judul & penjelasan ke Bahasa Indonesia ──────────
     const [translatedTitle, translatedExplanation] = await Promise.all([
-      translateWithGroq(
-        apodTitle,
-        'Terjemahkan judul astronomi berikut ke Bahasa Indonesia secara singkat dan menarik. Hasil terjemahan harus berupa teks terjemahan langsung saja, TANPA penjelasan, pengantar, tanda kutip, atau kalimat pembuka.'
+      translateText(
+        rawApod.title,
+        'Terjemahkan judul astronomi NASA APOD berikut ke Bahasa Indonesia secara singkat, akurat, dan ilmiah. Kembalikan HANYA teks judul terjemahan saja tanpa tanda kutip.',
+        'id'
       ),
-      translateWithGroq(
-        apodExplanation,
-        'Terjemahkan deskripsi ilmiah astronomi berikut ke Bahasa Indonesia yang mudah dipahami oleh pembaca umum. Hasil terjemahan harus berupa teks terjemahan langsung saja, TANPA pengantar atau kalimat pembuka.'
+      translateText(
+        rawApod.explanation,
+        'Terjemahkan penjelasan ilmiah astronomi NASA APOD berikut ke Bahasa Indonesia yang akurat, mudah dipahami, mempertahankan seluruh paragraf, nama objek kosmik, misi antariksa, dan istilah teknis ilmiah. Jangan memotong teks.',
+        'id'
       ),
     ]);
 
-    // ─── STEP 5: Cache gambar ke Cloudflare R2 ────────────────────────────────
-    let finalImageUrl = rawImageUrl;
-    if (mediaType !== 'video' && rawImageUrl) {
+    let safeTitle = (translatedTitle || rawApod.title).trim().replace(/^["']+|["']+$/g, '');
+    if (safeTitle.length > 80 && (safeTitle.toLowerCase().includes('tidak dapat diterjemahkan') || safeTitle.toLowerCase().includes('konteks'))) {
+      safeTitle = rawApod.title;
+    }
+
+    // ─── STEP 4: Cache gambar ke Cloudflare R2 jika format gambar ───────────
+    let finalImageUrl = rawApod.imageUrl;
+    if (rawApod.mediaType !== 'video' && rawApod.imageUrl && !rawApod.imageUrl.includes('cdn.meteorit.my.id')) {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 20000);
-        const imgFetch = await fetch(rawImageUrl, { signal: controller.signal });
+        const imgFetch = await fetch(rawApod.imageUrl, {
+          signal: controller.signal,
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MeteoritIndonesia/1.0)' },
+        });
         clearTimeout(timeoutId);
 
         if (imgFetch.ok) {
-          const buffer = Buffer.from(await imgFetch.arrayBuffer());
-          const ext = rawImageUrl.split('.').pop()?.split('?')[0]?.toLowerCase() || 'jpg';
-          const safeExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext) ? ext : 'jpg';
-          const imgKey = `data/encyclopedia/images/${apodDate}.${safeExt}`;
-          const contentType = imgFetch.headers.get('content-type') || 'image/jpeg';
-          finalImageUrl = await uploadToR2(imgKey, buffer, contentType);
-          console.log(`[APOD Cron] Image cached to R2: ${finalImageUrl}`);
+          const rawBuffer = Buffer.from(await imgFetch.arrayBuffer());
+          const { convertToWebp } = await import('@/lib/imageConverter');
+          const converted = await convertToWebp(rawBuffer, 80);
+          const imgKey = `data/encyclopedia/images/${rawApod.date}.${converted.ext}`;
+          finalImageUrl = await uploadToR2(imgKey, converted.buffer, converted.contentType);
+          console.log(`[APOD Cron] Image cached to R2 (WebP 80%): ${finalImageUrl}`);
         }
       } catch (imgErr) {
         console.error('[APOD Cron] Gagal cache gambar ke R2, menggunakan URL asli:', imgErr);
-        finalImageUrl = rawImageUrl; // Tetap gunakan URL asli jika R2 gagal
+        finalImageUrl = rawApod.imageUrl;
       }
     }
 
-    // Pastikan finalImageUrl tidak pernah kosong
+    // Pastikan URL gambar akhir valid dan bukan logo NASA
     finalImageUrl = await ensureImageUrl(finalImageUrl, 'apod');
 
-    // ─── STEP 6: Simpan ke Firestore & R2 ────────────────────────────────────
+    // ─── STEP 5: Simpan ke Firestore, D1, & R2 ────────────────────────────────
     const attribution = '\n\nSource: NASA Open Data APIs\nSumber Data: Pusat Data Publik Antariksa';
     const formattedApod = {
-      id: apodDate,
+      id: rawApod.date,
       title: {
-        en: apodTitle,
-        id: translatedTitle,
+        en: rawApod.title,
+        id: safeTitle,
       },
       explanation: {
-        en: apodExplanation + attribution,
-        id: translatedExplanation + attribution,
+        en: rawApod.explanation + attribution,
+        id: (translatedExplanation || rawApod.explanation) + attribution,
       },
       image_url: finalImageUrl,
-      copyright,
-      media_type: mediaType,
+      copyright: rawApod.copyright || 'NASA Public Domain',
+      media_type: rawApod.mediaType,
+      videoEmbedUrl: rawApod.videoEmbedUrl,
+      videoThumbnailUrl: rawApod.videoThumbnailUrl,
       processedAt: new Date().toISOString(),
-      source: nasaApiFailed ? 'wordpress-fallback' : 'nasa-api',
+      publishedAt: new Date().toISOString(),
+      date: rawApod.date,
+      source: rawApod.source,
     };
 
-    const docRefFinal = adminDb.collection('apod_history').doc(apodDate);
+    const docRefFinal = adminDb.collection('apod_history').doc(rawApod.date);
     await Promise.all([
       docRefFinal.set(formattedApod),
       uploadToR2('data/encyclopedia/latest.json', JSON.stringify(formattedApod, null, 2), 'application/json'),
       rebuildR2ApodHistoryCache(formattedApod),
     ]);
 
-    // ─── STEP 7: Kirim notifikasi Telegram ───────────────────────────────────
-    const apodUrl = getAbsoluteUrl(`/apod/${apodDate}`);
+    // ─── STEP 6: Kirim notifikasi Telegram ───────────────────────────────────
+    const apodUrl = getAbsoluteUrl(`/apod/${rawApod.date}`);
     const channelMsg =
-      `🌌 <b>NASA APOD Hari Ini — ${apodDate}</b>\n\n` +
+      `🌌 <b>NASA APOD Hari Ini — ${rawApod.date}</b>\n\n` +
       `📸 <b>${formattedApod.title.id}</b>\n\n` +
       `${formattedApod.explanation.id.substring(0, 280)}...\n\n` +
-      (copyright !== 'NASA Public Domain' ? `📷 Foto: © ${copyright}\n\n` : '') +
+      (rawApod.copyright !== 'NASA Public Domain' ? `📷 Foto: © ${rawApod.copyright}\n\n` : '') +
       `🔗 Baca selengkapnya:\n${apodUrl}`;
 
-    const sourceLabel = nasaApiFailed ? ' (WP Fallback)' : '';
     const adminMsg =
-      `✅ <b>APOD Cron Berhasil${sourceLabel}</b>\n\n` +
-      `📅 Tanggal: ${apodDate}\n` +
+      `✅ <b>APOD Cron Berhasil (${rawApod.source})</b>\n\n` +
+      `📅 Tanggal: ${rawApod.date}\n` +
       `🌠 Judul: ${formattedApod.title.id}\n` +
-      `🖼 Media: ${mediaType}\n` +
+      `🖼 Media: ${rawApod.mediaType}\n` +
       `${force ? '⚡ Mode: Force Update\n' : ''}` +
       `🛠 Cache R2 & Firestore diperbarui.`;
 
     await Promise.allSettled([
       sendBroadcastNotification({
         title: `🌌 NASA APOD Hari Ini: ${formattedApod.title.id}`,
-        body: `NASA Astronomy Picture of the Day (${apodDate}):\n${formattedApod.title.id}`,
+        body: `NASA Astronomy Picture of the Day (${rawApod.date}):\n${formattedApod.title.id}`,
         telegramHtml: channelMsg,
-        link: `/apod/${apodDate}`,
+        link: `/apod/${rawApod.date}`,
         imageUrl: formattedApod.image_url,
       }),
       sendTelegramMessage(TELEGRAM_CHAT_ID, adminMsg),
@@ -431,9 +256,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `APOD ${apodDate} berhasil diproses dan disimpan.`,
+      message: `APOD ${rawApod.date} berhasil diproses dan disimpan.`,
       apod: formattedApod.title.id,
-      date: apodDate,
+      date: rawApod.date,
       imageUrl: finalImageUrl,
       forced: force,
       source: formattedApod.source,

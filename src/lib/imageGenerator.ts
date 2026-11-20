@@ -11,54 +11,16 @@ import { isBadImageUrl } from './imageSafeguard';
  */
 export async function generateImageWithFallback(prompt: string, r2Path: string): Promise<string> {
   const seed = Math.floor(Math.random() * 1000000);
-  const encodedPrompt = encodeURIComponent(prompt);
-  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=500&nologo=true&seed=${seed}&enhance=true`;
-
-  console.log(`[ImageGen] Generating unique image (seed: ${seed}). Prompt: "${prompt}"`);
-  
-  // 1. Try Pollinations AI with a strict 5s timeout
-  try {
-    console.log(`[ImageGen] Attempting Pollinations AI...`);
-    const res = await fetch(pollinationsUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'image/*'
-      },
-      signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(5000) : undefined
-    });
-
-    if (res.ok) {
-      let buffer: Buffer = Buffer.from(await res.arrayBuffer()) as any;
-      if (buffer.length > 5000) { // Verify it's a real image buffer
-        let finalContentType = 'image/jpeg';
-        let finalPath = r2Path;
-
-        // Convert to WebP 75%
-        const converted = await convertToWebp(buffer, 75);
-        buffer = converted.buffer;
-        finalContentType = converted.contentType;
-        if (converted.ext === 'webp') {
-          finalPath = r2Path.replace(/\.(jpg|jpeg|png)$/i, '.webp');
-        }
-
-        const publicUrl = await uploadToR2(finalPath, buffer, finalContentType);
-        console.log(`[ImageGen] Successfully generated via Pollinations AI. Saved to R2: ${publicUrl}`);
-        return publicUrl;
-      }
-    }
-    throw new Error(`Pollinations AI returned status ${res.status} or small buffer size.`);
-  } catch (err) {
-    console.warn(`[ImageGen] Pollinations AI failed:`, err);
-  }
-
-  // 2. Fallback to Cloudflare Workers AI
-  const accountId = process.env.R2_ACCOUNT_ID || '';
-  const cfAiToken = process.env.CLOUDFLARE_AI_TOKEN || '';
-  const model = '@cf/bytedance/stable-diffusion-xl-lightning';
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || '5f29e48300ae379ebe15c20185d15ac8';
+  const cfAiToken = process.env.CLOUDFLARE_AI_TOKEN || process.env.CLOUDFLARE_API_TOKEN || '';
+  const model = '@cf/black-forest-labs/flux-1-schnell';
   const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`;
 
+  console.log(`[ImageGen] Generating unique banner image. Prompt: "${prompt}"`);
+  
+  // 1. Primary: Cloudflare Workers AI FLUX (Fast, high-fidelity, native CF)
   try {
-    console.log(`[ImageGen] Attempting Cloudflare Workers AI fallback...`);
+    console.log(`[ImageGen] Attempting Cloudflare Workers AI (${model})...`);
     const cfResponse = await fetch(url, {
       method: 'POST',
       headers: {
@@ -66,41 +28,80 @@ export async function generateImageWithFallback(prompt: string, r2Path: string):
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ 
-        prompt: `${prompt}, high quality, realistic space photography, seed ${seed}`,
-        seed
+        prompt: `${prompt}, high quality, realistic space photography`
       }),
-      signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(5000) : undefined
+      signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(25000) : undefined
     });
 
-    if (!cfResponse.ok) {
+    if (cfResponse.ok) {
+      const contentType = cfResponse.headers.get('content-type') || '';
+      let buffer: Buffer;
+
+      if (contentType.includes('application/json')) {
+        const json: any = await cfResponse.json();
+        if (json?.result?.image) {
+          buffer = Buffer.from(json.result.image, 'base64');
+        } else {
+          throw new Error('Cloudflare Workers AI JSON missing result.image');
+        }
+      } else {
+        buffer = Buffer.from(await cfResponse.arrayBuffer()) as any;
+      }
+
+      if (buffer.length > 1000) {
+        const converted = await convertToWebp(buffer, 80);
+        const finalPath = r2Path.replace(/\.(jpg|jpeg|png)$/i, '.webp');
+        const publicUrl = await uploadToR2(finalPath, converted.buffer, converted.contentType);
+        console.log(`[ImageGen] Successfully generated via Cloudflare Workers AI FLUX. Saved to R2: ${publicUrl}`);
+        return publicUrl;
+      }
+    } else {
       const errorText = await cfResponse.text();
-      throw new Error(`Cloudflare AI API returned status ${cfResponse.status}: ${errorText}`);
+      console.warn(`[ImageGen] Cloudflare Workers AI returned status ${cfResponse.status}: ${errorText.slice(0, 200)}`);
     }
-
-    let buffer: Buffer = Buffer.from(await cfResponse.arrayBuffer()) as any;
-    if (buffer.length < 1000) {
-      throw new Error(`Cloudflare Workers AI returned invalid small buffer: ${buffer.length} bytes`);
-    }
-
-    let finalContentType = 'image/png';
-    let finalPath = r2Path;
-
-    // Convert to WebP 75%
-    const converted = await convertToWebp(buffer, 75);
-    buffer = converted.buffer;
-    finalContentType = converted.contentType;
-    if (converted.ext === 'webp') {
-      finalPath = r2Path.replace(/\.(jpg|jpeg|png)$/i, '.webp');
-    }
-
-    const publicUrl = await uploadToR2(finalPath, buffer, finalContentType);
-    console.log(`[ImageGen] Successfully generated via Cloudflare Workers AI. Saved to R2: ${publicUrl}`);
-    return publicUrl;
   } catch (err) {
-    console.error(`[ImageGen] Cloudflare Workers AI fallback failed:`, err);
-    // JANGAN return placehold.co — gunakan R2 static fallback
-    // yang pasti ada (sudah pre-upload) agar banner tidak blank
-    const R2_PUBLIC = process.env.R2_PUBLIC_URL || 'https://cdn.meteorit.my.id';
-    return `${R2_PUBLIC}/data/glossary/images/nasa-apod.webp`;
+    console.warn(`[ImageGen] Cloudflare Workers AI attempt failed:`, err);
   }
+
+  // 2. Secondary: Fallback to Pollinations AI
+  try {
+    console.log(`[ImageGen] Attempting Pollinations AI fallback...`);
+    const encodedPrompt = encodeURIComponent(prompt);
+    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=500&nologo=true&seed=${seed}&enhance=true`;
+    const res = await fetch(pollinationsUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'image/*'
+      },
+      signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(20000) : undefined
+    });
+
+    if (res.ok) {
+      let buffer: Buffer = Buffer.from(await res.arrayBuffer()) as any;
+      if (buffer.length > 5000) {
+        const converted = await convertToWebp(buffer, 80);
+        const finalPath = r2Path.replace(/\.(jpg|jpeg|png)$/i, '.webp');
+        const publicUrl = await uploadToR2(finalPath, converted.buffer, converted.contentType);
+        console.log(`[ImageGen] Successfully generated via Pollinations AI. Saved to R2: ${publicUrl}`);
+        return publicUrl;
+      }
+    }
+  } catch (pollErr) {
+    console.warn(`[ImageGen] Pollinations AI failed:`, pollErr);
+  }
+
+  // 3. Category-specific fallback image jika semua generator gagal (TIDAK BOLEH blind nasa-apod.webp)
+  const R2_PUBLIC = process.env.R2_PUBLIC_URL || 'https://cdn.meteorit.my.id';
+  if (r2Path.includes('eonet')) {
+    return `${R2_PUBLIC}/data/test/flux-wildfire.webp`;
+  } else if (r2Path.includes('fireball')) {
+    return `${R2_PUBLIC}/data/meteorites/images/nasa-meteorite.webp`;
+  } else if (r2Path.includes('komet') || r2Path.includes('asteroid')) {
+    return `${R2_PUBLIC}/data/blog/images/fallback-komet.jpg`;
+  } else if (r2Path.includes('mars')) {
+    return `${R2_PUBLIC}/data/blog/images/fallback-mars.jpg`;
+  } else if (r2Path.includes('meteorite') || r2Path.includes('meteorites')) {
+    return `${R2_PUBLIC}/data/meteorites/images/fallback-meteorit.jpg`;
+  }
+  return `${R2_PUBLIC}/data/blog/images/fallback-komet.jpg`;
 }

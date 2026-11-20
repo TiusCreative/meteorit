@@ -73,35 +73,99 @@ function dayOfYear(date: Date) {
 
 
 
+import { generateImageWithFallback } from '@/lib/imageGenerator';
+
 async function fetchMarsImage(): Promise<MarsImage> {
-  try {
-    const fetchGuard = await shouldSkipExternalFetch('nasa-mars-photos', 6 * 60 * 60 * 1000);
-    if (fetchGuard.skip) throw new Error(`Cooldown anti-loop NASA Mars Photos aktif sampai ${fetchGuard.nextAllowedAt}`);
+  const rovers = ['perseverance', 'curiosity'];
+  const selectedRover = rovers[Math.floor(Math.random() * rovers.length)];
+  const alternateRover = selectedRover === 'perseverance' ? 'curiosity' : 'perseverance';
 
-    const res = await fetch(
-      `https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/latest_photos?api_key=${NASA_API_KEY}`
-    );
+  for (const rover of [selectedRover, alternateRover]) {
+    try {
+      const res = await fetch(
+        `https://api.nasa.gov/mars-photos/api/v1/rovers/${rover}/latest_photos?api_key=${NASA_API_KEY}`,
+        { signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(10000) : undefined }
+      );
 
-    if (!res.ok) throw new Error(`NASA Mars Rover API status ${res.status}`);
+      if (!res.ok) continue;
 
-    const data = await res.json();
-    const photos = data.latest_photos || [];
-    if (!Array.isArray(photos) || photos.length === 0) throw new Error('NASA Mars Rover API tidak mengirim foto.');
+      const data = await res.json();
+      const photos = data.latest_photos || [];
+      if (!Array.isArray(photos) || photos.length === 0) continue;
 
-    const preferred = photos.find((photo: any) => ['MAST', 'NAVCAM', 'MAHLI'].includes(photo.camera?.name)) || photos[0];
-    return {
-      id: preferred.id,
-      img_src: String(preferred.img_src || '').replace('http://', 'https://'),
-      earth_date: preferred.earth_date,
-      sol: preferred.sol,
-      camera_name: preferred.camera?.full_name || preferred.camera?.name || 'Mars Rover Camera',
-      rover_name: preferred.rover?.name || 'Curiosity'
-    };
-  } catch (error) {
-    console.warn('[Cron Mars] Menggunakan fallback image NASA:', error);
-    const index = dayOfYear(new Date()) % FALLBACK_IMAGES.length;
-    return FALLBACK_IMAGES[index];
+      const highQualityPhotos = photos.filter((photo: any) =>
+        ['MCZ_RIGHT', 'MCZ_LEFT', 'MAST', 'NAVCAM_LEFT', 'NAVCAM_RIGHT', 'NAVCAM', 'FRONT_HAZCAM_LEFT_A', 'MAHLI'].includes(photo.camera?.name)
+      );
+
+      const candidateList = highQualityPhotos.length > 0 ? highQualityPhotos : photos;
+      const chosen = candidateList[Math.floor(Math.random() * candidateList.length)];
+
+      return {
+        id: chosen.id,
+        img_src: String(chosen.img_src || '').replace('http://', 'https://'),
+        earth_date: chosen.earth_date,
+        sol: chosen.sol,
+        camera_name: chosen.camera?.full_name || chosen.camera?.name || 'Mars Rover Camera',
+        rover_name: chosen.rover?.name || (rover === 'perseverance' ? 'Perseverance' : 'Curiosity')
+      };
+    } catch (error) {
+      console.warn(`[Cron Mars] Failed fetching from rover ${rover}:`, error);
+    }
   }
+
+  const DIVERSE_FALLBACKS: MarsImage[] = [
+    {
+      id: 'PIA19821',
+      img_src: 'https://images-assets.nasa.gov/image/PIA19821/PIA19821~orig.jpg',
+      earth_date: '2015-05-30',
+      sol: 1000,
+      camera_name: 'Mast Camera (MAST)',
+      rover_name: 'Curiosity'
+    },
+    {
+      id: 'PIA24424',
+      img_src: 'https://images-assets.nasa.gov/image/PIA24424/PIA24424~orig.jpg',
+      earth_date: '2021-02-18',
+      sol: 1,
+      camera_name: 'Hazard Avoidance Camera',
+      rover_name: 'Perseverance'
+    },
+    {
+      id: 'PIA24487',
+      img_src: 'https://images-assets.nasa.gov/image/PIA24487/PIA24487~orig.jpg',
+      earth_date: '2021-03-05',
+      sol: 15,
+      camera_name: 'Mastcam-Z (Color)',
+      rover_name: 'Perseverance'
+    },
+    {
+      id: 'PIA16226',
+      img_src: 'https://images-assets.nasa.gov/image/PIA16226/PIA16226~orig.jpg',
+      earth_date: '2012-10-31',
+      sol: 84,
+      camera_name: 'Mast Camera (MAST)',
+      rover_name: 'Curiosity'
+    },
+    {
+      id: 'PIA25042',
+      img_src: 'https://images-assets.nasa.gov/image/PIA25042/PIA25042~orig.jpg',
+      earth_date: '2022-04-19',
+      sol: 414,
+      camera_name: 'SuperCam Remote Micro-Imager',
+      rover_name: 'Perseverance'
+    },
+    {
+      id: 'PIA23962',
+      img_src: 'https://images-assets.nasa.gov/image/PIA23962/PIA23962~orig.jpg',
+      earth_date: '2020-07-30',
+      sol: 1,
+      camera_name: 'Navigation Camera',
+      rover_name: 'Perseverance'
+    }
+  ];
+
+  const index = Math.floor(Math.random() * DIVERSE_FALLBACKS.length);
+  return DIVERSE_FALLBACKS[index];
 }
 
 import { generateWithAI, parseAIJson } from '@/lib/aiProvider';
@@ -195,7 +259,10 @@ Aturan:
     // Di Cloudflare Edge, terjemahan dialihkan ke cron translate terpisah agar tidak melampaui batas subrequest (50 max)
     let translations = {};
 
-    const validImageUrl = await ensureImageUrl(marsImage.img_src, 'mars');
+    const validImageUrl = await ensureImageUrl(marsImage.img_src, 'mars', async () => {
+      const illustrationPrompt = `${article.title}, panoramic surface of planet Mars, red sand dunes and rocky craters, rover exploration tracks, NASA JPL space expedition photography, cinematic 8k ultra detailed`;
+      return await generateImageWithFallback(illustrationPrompt, `data/mars/images/${docId}.webp`);
+    });
 
     const newArticle = {
       id: docId,
@@ -212,6 +279,7 @@ Aturan:
       review_status: 'Otomatis',
       ai_provider: article.provider,
       createdAt: now.toISOString(),
+      publishedAt: now.toISOString(),
       mars_data: {
         topic,
         day_index: dayIndex,

@@ -11,6 +11,8 @@ export type GlossaryTerm = {
   image: string;
   source: string;
   updatedAt: string;
+  publishedAt?: string;
+  date?: string;
   articles?: Partial<Record<SiteLanguage, string>>;
   translatedLocales?: Partial<Record<SiteLanguage, boolean>>;
 };
@@ -474,6 +476,8 @@ function mapRows(rows: string[][], category: GlossaryCategory, source: string): 
     image: getTermPhoto(row[0], category),
     source,
     updatedAt,
+    publishedAt: updatedAt,
+    date: '27 Juni 2026',
   }));
 }
 

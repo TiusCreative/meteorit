@@ -4,6 +4,8 @@ import { isValidCronRequest } from '@/lib/cronAuth';
 import { shouldSkipExternalFetch } from '@/lib/cronSafety';
 import { uploadToR2, fetchJsonFromR2 } from '@/lib/r2Client';
 import { queryD1 } from '@/lib/d1Client';
+import { convertToWebp } from '@/lib/imageConverter';
+import { sendBroadcastNotification } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -112,22 +114,22 @@ async function getNextTerm() {
   }
 }
 
-/** Generate gambar AI via Cloudflare Workers AI REST API → WebP 80% */
-async function generateAndConvertImage(prompt: string): Promise<{ buffer: ArrayBuffer; contentType: string; ext: string }> {
+/** Generate gambar AI via Cloudflare Workers AI REST API (FLUX) → WebP 80% */
+async function generateAndConvertImage(prompt: string): Promise<{ buffer: Buffer; contentType: string; ext: string }> {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || '5f29e48300ae379ebe15c20185d15ac8';
   const aiToken = process.env.CLOUDFLARE_AI_TOKEN || process.env.CLOUDFLARE_API_TOKEN || '';
+  const model = '@cf/black-forest-labs/flux-1-schnell';
 
-  // Panggil Workers AI untuk generate gambar
   const aiRes = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/bytedance/stable-diffusion-xl-lightning`,
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
     {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${aiToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ prompt }),
-      signal: AbortSignal.timeout(55000),
+      body: JSON.stringify({ prompt: `${prompt}, realistic space science illustration` }),
+      signal: AbortSignal.timeout(30000),
     }
   );
 
@@ -136,33 +138,27 @@ async function generateAndConvertImage(prompt: string): Promise<{ buffer: ArrayB
     throw new Error(`Workers AI error ${aiRes.status}: ${errText.slice(0, 200)}`);
   }
 
-  const jpegBuffer = await aiRes.arrayBuffer();
+  const contentType = aiRes.headers.get('content-type') || '';
+  let imgBuffer: Buffer;
 
-  // Konversi ke WebP 80% via Cloudflare Image Resizing API (tersedia di Workers)
-  // Pada Edge Runtime (CF Pages Functions), kita bisa gunakan fetch dengan cf.image options
-  try {
-    // Metode: encode base64 → data URI → fetch dengan CF Image resizing
-    // CF Image Resizing tidak tersedia langsung di Pages, jadi kita upload JPEG dulu
-    // lalu serve via CF transform. Namun agar tetap edge-compatible, kita gunakan
-    // pendekatan: return JPEG buffer (CF Pages akan serve as-is) dan tandai sebagai webp intent.
-    // 
-    // Sharp tidak tersedia di Edge, namun kita bisa gunakan built-in Canvas API jika ada,
-    // atau cukup gunakan JPEG dan simpan dengan ekstensi .webp (CF R2 serve by content-type).
-    // 
-    // Solusi terbaik di Edge: upload sebagai image/webp content-type agar browser treat as webp.
-    // CF R2 serve by content-type header, bukan ekstensi file.
-    return {
-      buffer: jpegBuffer,
-      contentType: 'image/webp', // R2 akan serve dengan header webp
-      ext: 'webp',
-    };
-  } catch {
-    return {
-      buffer: jpegBuffer,
-      contentType: 'image/jpeg',
-      ext: 'jpg',
-    };
+  if (contentType.includes('application/json')) {
+    const json: any = await aiRes.json();
+    if (json?.result?.image) {
+      imgBuffer = Buffer.from(json.result.image, 'base64');
+    } else {
+      throw new Error('Workers AI FLUX JSON did not contain result.image');
+    }
+  } else {
+    imgBuffer = Buffer.from(await aiRes.arrayBuffer());
   }
+
+  // Konversi ke WebP kualitas 80%
+  const converted = await convertToWebp(imgBuffer, 80);
+  return {
+    buffer: converted.buffer,
+    contentType: converted.contentType,
+    ext: converted.ext,
+  };
 }
 
 /** Kirim notifikasi Telegram */
@@ -277,15 +273,24 @@ export async function GET(request: Request) {
       console.warn('[Glossary AI Cron] Gagal update terms.json di R2:', r2JsonErr);
     }
 
-    // 8. Kirim notifikasi Telegram
-    await sendTelegramNotification(
-      `🌌 <b>Istilah Glosarium Baru Terbit!</b>\n\n` +
-      `📚 <b>${newTerm.term.id}</b> (${newTerm.term.en})\n` +
-      `🏷️ Kategori: ${newTerm.category}\n` +
-      `📖 ${newTerm.definition.id}\n\n` +
-      `🖼️ Gambar AI: ${publicImageUrl}\n` +
-      `🕐 Waktu: ${now}`
-    );
+    // 8. Kirim notifikasi ke semua platform (Telegram, Facebook, Discord, Bluesky, Mastodon, Web Push)
+    const shortDefinition = newTerm.definition.id.length > 200
+      ? newTerm.definition.id.substring(0, 197) + '...'
+      : newTerm.definition.id;
+    const termSlug = newTerm.id.replace(/^glossary-/, '');
+    await sendBroadcastNotification({
+      title: `📚 Istilah Baru: ${newTerm.term.id}`,
+      body: `${shortDefinition}\n\nKategori: ${newTerm.category}`,
+      telegramHtml:
+        `🌌 <b>Istilah Glosarium Baru Terbit!</b>\n\n` +
+        `📚 <b>${newTerm.term.id}</b> (${newTerm.term.en})\n` +
+        `🏷️ Kategori: ${newTerm.category}\n` +
+        `📖 ${newTerm.definition.id}\n\n` +
+        `🕐 Waktu: ${now}\n` +
+        `🔗 https://meteorit.my.id/glossarium/${termSlug}`,
+      link: `/glossarium/${termSlug}`,
+      imageUrl: publicImageUrl,
+    });
 
     return NextResponse.json({
       success: true,

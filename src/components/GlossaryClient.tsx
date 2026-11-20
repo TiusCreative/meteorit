@@ -419,9 +419,14 @@ export default function GlossaryClient({ initialTerms }: { initialTerms: Glossar
                   <div className="p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black ${item.category === 'BMKG' ? 'bg-cyan-400 text-slate-950' : 'bg-amber-400 text-slate-950'}`}>
-                          {item.category}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black ${item.category === 'BMKG' ? 'bg-cyan-400 text-slate-950' : 'bg-amber-400 text-slate-950'}`}>
+                            {item.category}
+                          </span>
+                          <span className="text-[11px] font-semibold text-slate-400">
+                            Terbit: {item.date || (item.publishedAt ? new Date(item.publishedAt).toLocaleDateString(language === 'id' ? 'id-ID' : language, { day: 'numeric', month: 'short', year: 'numeric' }) : '27 Jun 2026')}
+                          </span>
+                        </div>
                         <h2 className="mt-3 text-xl font-extrabold text-cyan-200 print:text-black">
                           {item.term[language] || item.term.en || item.term.id}
                         </h2>

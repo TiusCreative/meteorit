@@ -7,6 +7,8 @@ import { sendBroadcastNotification } from '@/lib/notifications';
 import { getGlobalSettings } from '@/lib/settings';
 import { getAbsoluteUrl } from '@/lib/siteUrl';
 import { translateText } from '@/lib/translator';
+import { fetchRawApod, isNasaLogoPlaceholder } from '@/lib/nasaApodHelper';
+import { ensureImageUrl } from '@/lib/imageSafeguard';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 80;
@@ -152,75 +154,88 @@ async function rebuildR2ApodHistoryCache() {
 
     if (runApod) {
       try {
-        const apodRes = await fetch(`https://api.nasa.gov/planetary/apod?api_key=${NASA_API_KEY}`);
-        if (apodRes.ok) {
-          const apodData = await apodRes.json();
-          const apodDate = apodData.date || new Date().toISOString().split('T')[0];
+        const rawApod = await fetchRawApod();
+        const apodDate = rawApod.date;
 
-          // Check if today's APOD already exists in Firestore to avoid duplicate translation and R2 uploads
-          const docRef = adminDb.collection('apod_history').doc(apodDate);
-          const docSnap = await docRef.get();
+        // Check if today's APOD already exists in Firestore to avoid duplicate translation and R2 uploads
+        const docRef = adminDb.collection('apod_history').doc(apodDate);
+        const docSnap = await docRef.get();
 
-          if (docSnap.exists) {
-            console.log(`APOD for date ${apodDate} already exists. Skipping Groq translation.`);
-            formattedApod = docSnap.data() as typeof formattedApod;
-          } else {
-            // Translate APOD details with strict system instructions to avoid conversation prefixes
-            const translatedTitle = await translateText(
-              apodData.title, 
-              'Terjemahkan judul astronomi berikut ke Bahasa Indonesia secara singkat dan menarik. Hasil terjemahan harus berupa teks terjemahan langsung saja, TANPA penjelasan, pengantar, tanda kutip, atau kalimat pembuka seperti "Terjemahan judul adalah:".'
-            );
-            const translatedExplanation = await translateText(
-              apodData.explanation, 
-              'Terjemahkan deskripsi ilmiah astronomi berikut ke Bahasa Indonesia yang mudah dipahami oleh pembaca umum. Hasil terjemahan harus berupa teks terjemahan langsung saja, TANPA pengantar atau kalimat pembuka.'
-            );
+        const existingData = docSnap.exists ? (docSnap.data() as any) : null;
+        const isBadExisting = existingData && (
+          isNasaLogoPlaceholder(existingData.image_url) ||
+          (existingData.title?.id && existingData.title.id.toLowerCase() === 'nasa science') ||
+          (existingData.title?.en && existingData.title.en.toLowerCase() === 'nasa science') ||
+          !existingData.explanation?.id ||
+          existingData.explanation?.id === existingData.explanation?.en
+        );
 
-            // Download and cache the APOD image to R2 directly to prevent NASA rate limits
-            let finalImageUrl = apodData.hdurl || apodData.url;
-            try {
-              if (apodData.media_type === 'video') {
-                // Keep original video embed URL
-                finalImageUrl = apodData.url;
-              } else {
-                const imgFetch = await fetch(finalImageUrl);
-                if (imgFetch.ok) {
-                  const buffer = Buffer.from(await imgFetch.arrayBuffer());
-                  const ext = finalImageUrl.split('.').pop()?.split('?')[0] || 'jpg';
-                  const imgKey = `data/encyclopedia/images/${apodData.date}.${ext}`;
-                  const contentType = imgFetch.headers.get('content-type') || 'image/jpeg';
-                  finalImageUrl = await uploadToR2(imgKey, buffer, contentType);
-                }
+        if (existingData && !isBadExisting) {
+          console.log(`APOD for date ${apodDate} already exists and valid. Skipping translation.`);
+          formattedApod = existingData as typeof formattedApod;
+        } else {
+          // Translate APOD details with strict system instructions to avoid conversation prefixes
+          const translatedTitle = await translateText(
+            rawApod.title,
+            'Terjemahkan judul astronomi berikut ke Bahasa Indonesia secara singkat, akurat, dan ilmiah. Kembalikan HANYA judul terjemahan saja.',
+            'id'
+          );
+          const translatedExplanation = await translateText(
+            rawApod.explanation,
+            'Terjemahkan deskripsi ilmiah astronomi berikut ke Bahasa Indonesia yang mudah dipahami, akurat, dan lengkap. Jangan memotong penjelasan.',
+            'id'
+          );
+
+          // Download and cache the APOD image to R2 directly to prevent NASA rate limits
+          let finalImageUrl = rawApod.imageUrl;
+          try {
+            if (rawApod.mediaType === 'video') {
+              finalImageUrl = rawApod.videoThumbnailUrl || rawApod.imageUrl;
+            } else if (rawApod.imageUrl && !rawApod.imageUrl.includes('cdn.meteorit.my.id')) {
+              const imgFetch = await fetch(rawApod.imageUrl, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MeteoritIndonesia/1.0)' },
+                signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(15000) : undefined,
+              });
+              if (imgFetch.ok) {
+                const buffer = Buffer.from(await imgFetch.arrayBuffer());
+                const ext = rawApod.imageUrl.split('.').pop()?.split('?')[0]?.toLowerCase() || 'jpg';
+                const safeExt = ['jpg', 'jpeg', 'png', 'webp'].includes(ext) ? ext : 'jpg';
+                const imgKey = `data/encyclopedia/images/${apodDate}.${safeExt}`;
+                const contentType = imgFetch.headers.get('content-type') || 'image/jpeg';
+                finalImageUrl = await uploadToR2(imgKey, buffer, contentType);
               }
-            } catch (imgErr) {
-              console.error("Failed to cache NASA image to R2:", imgErr);
             }
-
-            const attribution = "\n\nSource: NASA Open Data APIs\nSumber Data: Pusat Data Publik Antariksa";
-            formattedApod = {
-              id: apodData.date,
-              title: {
-                en: apodData.title,
-                id: translatedTitle
-              },
-              explanation: {
-                en: apodData.explanation + attribution,
-                id: translatedExplanation + attribution
-              },
-              image_url: finalImageUrl,
-              copyright: apodData.copyright || 'NASA Public Domain',
-              media_type: apodData.media_type || 'image'
-            };
-
-            // Upload APOD as latest.json to Cloudflare R2
-            await uploadToR2('data/encyclopedia/latest.json', JSON.stringify(formattedApod, null, 2), 'application/json');
-
-            // Also backup APOD to Firestore
-            await adminDb.collection('apod_history').doc(formattedApod.id).set(formattedApod);
+          } catch (imgErr) {
+            console.error("Failed to cache NASA image to R2:", imgErr);
           }
 
-          // Always ensure R2 history.json is rebuilt with the latest Firestore APOD collection
-          await rebuildR2ApodHistoryCache();
+          finalImageUrl = await ensureImageUrl(finalImageUrl, 'apod');
+
+          const attribution = "\n\nSource: NASA Open Data APIs\nSumber Data: Pusat Data Publik Antariksa";
+          formattedApod = {
+            id: apodDate,
+            title: {
+              en: rawApod.title,
+              id: translatedTitle || rawApod.title
+            },
+            explanation: {
+              en: rawApod.explanation + attribution,
+              id: (translatedExplanation || rawApod.explanation) + attribution
+            },
+            image_url: finalImageUrl,
+            copyright: rawApod.copyright || 'NASA Public Domain',
+            media_type: rawApod.mediaType
+          };
+
+          // Upload APOD as latest.json to Cloudflare R2
+          await uploadToR2('data/encyclopedia/latest.json', JSON.stringify(formattedApod, null, 2), 'application/json');
+
+          // Also backup APOD to Firestore
+          await adminDb.collection('apod_history').doc(formattedApod.id).set(formattedApod);
         }
+
+        // Always ensure R2 history.json is rebuilt with the latest Firestore APOD collection
+        await rebuildR2ApodHistoryCache(formattedApod);
       } catch (e) {
         console.warn("NASA APOD rate limited or unavailable, using fallback:", e);
       }
@@ -343,7 +358,8 @@ async function rebuildR2ApodHistoryCache() {
     
     if (runMeteorites) {
       const settings = await getGlobalSettings();
-      const limit = settings.encyclopediaCronLimit || 20;
+      // Batasi 1-2 per eksekusi cron agar tidak melampaui timeout Edge Runtime
+      const limit = Math.min(settings.encyclopediaCronLimit || 1, 2);
 
       try {
         // Fetch NASA API with random offset (0 to 30000) and a 6-second timeout signal
@@ -443,9 +459,16 @@ Tuliskan langsung dalam format markdown yang rapi tanpa kata pengantar tambahan.
         }
 
         const promptText = `A high-quality realistic close-up photo of the famous ${name} meteorite, classified as ${type}. Showing its unique characteristics: ${classDescription}. Detailed texture, dark space background, scientific display.`;
-        const imagePath = `data/meteorites/images/${metId}.jpg`;
+        const imagePath = `data/meteorites/images/${metId}.webp`;
         const { generateImageWithFallback } = await import('@/lib/imageGenerator');
         const imageUrl = await generateImageWithFallback(promptText, imagePath);
+
+        const nowIso = new Date().toISOString();
+        const dateFormatted = new Date().toLocaleDateString('id-ID', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        });
 
         const metData = {
           id: metId,
@@ -458,7 +481,10 @@ Tuliskan langsung dalam format markdown yang rapi tanpa kata pengantar tambahan.
           long: met.long || met.reclong || '0',
           description: `Meteorite landing named ${name} categorized as class ${type}.`,
           translated_description: descriptionId,
-          image_url: imageUrl
+          image_url: imageUrl,
+          date: dateFormatted,
+          publishedAt: nowIso,
+          createdAt: nowIso
         };
 
         processedMeteorites.push(metData);
