@@ -113,8 +113,12 @@ async function run() {
     console.log(`⚠️ Mode: Menjalankan SEMUA tugas secara berurutan.`);
     tasksToRun = CRON_SCHEDULE;
   } else {
-    tasksToRun = CRON_SCHEDULE.filter(t => t.hourUTC === currentHourUTC);
-    console.log(`🕒 Mode Auto: Ditemukan ${tasksToRun.length} tugas yang terjadwal pada jam ${currentHourUTC}:00 UTC.`);
+    // Mode Auto: Utamakan tugas pada jam saat ini, dan periksa tugas yang jatuh tempo sebelumnya hari ini (catch-up guarantee)
+    const currentHourTasks = CRON_SCHEDULE.filter(t => t.hourUTC === currentHourUTC);
+    const earlierDueTasks = CRON_SCHEDULE.filter(t => t.hourUTC < currentHourUTC);
+    
+    tasksToRun = [...currentHourTasks, ...earlierDueTasks];
+    console.log(`🕒 Mode Auto: ${currentHourTasks.length} tugas jam ${currentHourUTC}:00 UTC + ${earlierDueTasks.length} tugas jatuh tempo hari ini.`);
   }
 
   if (tasksToRun.length === 0) {

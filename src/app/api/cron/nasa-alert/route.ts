@@ -103,7 +103,8 @@ export async function GET(request: Request) {
       const kometUrl = getAbsoluteUrl(`/api/cron/komet?secret=${encodeURIComponent(secret)}&bypass=true`);
       const kometRes = await fetch(kometUrl, { 
         headers: { 'Authorization': `Bearer ${secret}` },
-              });
+        signal: AbortSignal.timeout(15000)
+      });
       if (kometRes.ok) {
         kometArticleTriggered = true;
         kometArticleResult = await kometRes.json();

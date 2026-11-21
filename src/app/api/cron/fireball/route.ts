@@ -134,15 +134,16 @@ export async function GET(request: Request) {
       return eb - ea;
     });
 
+    // Baca posts.json sekali di luar loop untuk mencegah pemborosan memori/CPU di Cloudflare Workers
+    const existingPosts = await fetchJsonFromR2<any[]>('data/blog/posts.json') || [];
+    const existingIdSet = new Set(existingPosts.map((p: any) => p.id));
+
     for (const event of sorted) {
       const eventDate = new Date(event.date);
       if (eventDate < thirtyDaysAgo) continue;
 
       const candidateId = `fireball-${event.date.replace(/[: ]/g, '-').substring(0, 10)}`;
-      // Check R2 posts.json (no Firestore needed)
-      const existingPosts = await fetchJsonFromR2<any[]>('data/blog/posts.json') || [];
-      const alreadyExists = existingPosts.some((p: any) => p.id === candidateId);
-      if (!alreadyExists) {
+      if (!existingIdSet.has(candidateId)) {
         selectedEvent = event;
         docId = candidateId;
         break;
@@ -152,8 +153,7 @@ export async function GET(request: Request) {
     if (!selectedEvent) {
       // Jika semua kejadian 30 hari sudah ada artikelnya, buat artikel edukatif tentang fireball
       const eduDocId = `fireball-edu-${new Date().toISOString().split('T')[0]}`;
-      const existingPostsEdu = await fetchJsonFromR2<any[]>('data/blog/posts.json') || [];
-      if (existingPostsEdu.some((p: any) => p.id === eduDocId)) {
+      if (existingIdSet.has(eduDocId)) {
         return NextResponse.json({
           success: true,
           created: false,
@@ -306,8 +306,8 @@ Kembalikan HANYA JSON murni tanpa pembungkus markdown.`;
 
 
     // 7. Update posts.json index in R2
-    const existingPostsFinal = await fetchJsonFromR2<any[]>('data/blog/posts.json') || [];
-    const updatedPosts = [newArticle, ...existingPostsFinal.filter((p: any) => p.id !== docId)];
+    const latestPosts = await fetchJsonFromR2<any[]>('data/blog/posts.json') || existingPosts;
+    const updatedPosts = [newArticle, ...latestPosts.filter((p: any) => p.id !== docId)];
     updatedPosts.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     await uploadToR2('data/blog/posts.json', JSON.stringify(updatedPosts, null, 2), 'application/json');
 

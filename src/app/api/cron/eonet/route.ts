@@ -113,12 +113,13 @@ export async function GET(request: Request) {
     let selectedEvent: any | null = null;
     let docId = '';
 
+    // Baca posts.json sekali di luar loop untuk mencegah pemborosan memori dan CPU
+    const existingPosts = await fetchJsonFromR2<any[]>('data/blog/posts.json') || [];
+    const existingIdSet = new Set(existingPosts.map((p: any) => p.id));
+
     for (const event of candidateEvents) {
       const candidateId = `eonet-${event.id}`;
-      // Check R2 posts.json instead of Firestore
-      const existingPosts = await fetchJsonFromR2<any[]>('data/blog/posts.json') || [];
-      const alreadyExists = existingPosts.some((p: any) => p.id === candidateId);
-      if (!alreadyExists) {
+      if (!existingIdSet.has(candidateId)) {
         selectedEvent = event;
         docId = candidateId;
         break;
@@ -280,8 +281,8 @@ Kembalikan HANYA JSON murni tanpa pembungkus markdown.`;
 
 
     // 9. Update posts.json index in R2
-    const existingPostsFinal = await fetchJsonFromR2<any[]>('data/blog/posts.json') || [];
-    const updatedPosts = [newArticle, ...existingPostsFinal.filter((p: any) => p.id !== docId)];
+    const latestPosts = await fetchJsonFromR2<any[]>('data/blog/posts.json') || existingPosts;
+    const updatedPosts = [newArticle, ...latestPosts.filter((p: any) => p.id !== docId)];
     updatedPosts.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     await uploadToR2('data/blog/posts.json', JSON.stringify(updatedPosts, null, 2), 'application/json');
 

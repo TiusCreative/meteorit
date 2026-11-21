@@ -117,12 +117,13 @@ export async function GET(request: Request) {
     let selectedObj: any | null = null;
     let docId = '';
 
+    // Baca posts.json sekali di luar loop untuk menghindari pemborosan memori dan CPU
+    const existingPosts = await fetchJsonFromR2<any[]>('data/blog/posts.json') || [];
+    const existingIdSet = new Set(existingPosts.map((p: any) => p.id));
+
     for (const obj of sortedObjects) {
       const candidateId = `asteroid-${obj.id}`;
-      // Check if article already exists in R2 (avoid Firestore read)
-      const existingPosts = await fetchJsonFromR2<any[]>('data/blog/posts.json') || [];
-      const alreadyExists = existingPosts.some((p: any) => p.id === candidateId);
-      if (!alreadyExists) {
+      if (!existingIdSet.has(candidateId)) {
         selectedObj = obj;
         docId = candidateId;
         break;
@@ -262,8 +263,8 @@ Kembalikan HANYA string JSON murni tanpa pembungkus markdown json.`;
 
 
     // 4. Update posts.json index in R2 (prepend new article)
-    const existingPosts = await fetchJsonFromR2<any[]>('data/blog/posts.json') || [];
-    const updatedPosts = [newArticle, ...existingPosts.filter((p: any) => p.id !== docId)];
+    const latestPosts = await fetchJsonFromR2<any[]>('data/blog/posts.json') || existingPosts;
+    const updatedPosts = [newArticle, ...latestPosts.filter((p: any) => p.id !== docId)];
     updatedPosts.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     await uploadToR2('data/blog/posts.json', JSON.stringify(updatedPosts, null, 2), 'application/json');
 
@@ -296,7 +297,7 @@ Kembalikan HANYA string JSON murni tanpa pembungkus markdown json.`;
     });
 
     // Telegram Success Report to Admin
-    const totalArticles = (await fetchJsonFromR2<any[]>('data/blog/posts.json') || []).length;
+    const totalArticles = updatedPosts.length;
     const successMsg = `📢 <b>LAPORAN CRON KOMET OTOMATIS</b>\n\n` +
       `🟢 <b>Status:</b> Sukses Rilis\n` +
       `📝 <b>Artikel Baru:</b> "${newArticle.title}"\n` +

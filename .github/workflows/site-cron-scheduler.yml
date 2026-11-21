@@ -2,8 +2,8 @@ name: ⏰ Meteorit Indonesia Cron Automation
 
 on:
   schedule:
-    # Berjalan setiap jam (pada menit ke-5) untuk mengecek dan mengeksekusi cron yang jatuh tempo
-    - cron: '5 * * * *'
+    # Berjalan setiap 30 menit untuk menjamin seluruh tugas cron dieksekusi tepat waktu tanpa terlewat
+    - cron: '*/30 * * * *'
 
   # Memungkinkan pemicuan manual dari tab GitHub Actions
   workflow_dispatch:
