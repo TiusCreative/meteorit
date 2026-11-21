@@ -120,7 +120,7 @@ export async function GET(request: Request) {
       totalAsteroids: totalCount,
       hazardousCount: hazardous.length,
       xFlareDetected: hasXFlare,
-      telegramSent,
+      broadcastSent: true,
       kometArticleTriggered,
       kometArticleResult
     });
