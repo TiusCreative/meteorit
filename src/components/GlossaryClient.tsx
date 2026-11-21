@@ -166,9 +166,31 @@ export default function GlossaryClient({ initialTerms }: { initialTerms: Glossar
   const terms = useLocalizedGlossary(initialTerms, language);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<GlossaryCategory | 'Semua'>('Semua');
+  const [sortMode, setSortMode] = useState<'terbaru' | 'terlama' | 'az'>('terbaru');
   const [page, setPage] = useState(1);
   const [isListening, setIsListening] = useState(false);
   const [readerMode, setReaderMode] = useState<'grid' | 'flipboard'>('grid');
+
+  // Parse tanggal terbit dari publishedAt atau date
+  const getPublishDate = (item: GlossaryTerm): Date => {
+    if (item.publishedAt) {
+      const d = new Date(item.publishedAt);
+      if (!isNaN(d.getTime())) return d;
+    }
+    if (item.date) {
+      // Coba parse "16 Nov 2026" atau ISO string
+      const d = new Date(item.date);
+      if (!isNaN(d.getTime())) return d;
+    }
+    return new Date(0);
+  };
+
+  // Apakah terbit ≤ 7 hari
+  const isNew = (item: GlossaryTerm): boolean => {
+    const pub = getPublishDate(item);
+    if (pub.getTime() === 0) return false;
+    return (Date.now() - pub.getTime()) / (1000 * 60 * 60 * 24) <= 7;
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem('meteorit_reader_mode_glossarium');
@@ -182,7 +204,7 @@ export default function GlossaryClient({ initialTerms }: { initialTerms: Glossar
 
   const filteredTerms = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return terms.filter((item) => {
+    let result = terms.filter((item) => {
       const categoryMatch = category === 'Semua' || item.category === category;
       const haystack = [
         item.category,
@@ -198,7 +220,19 @@ export default function GlossaryClient({ initialTerms }: { initialTerms: Glossar
       ].filter(Boolean).join(' ').toLowerCase();
       return categoryMatch && (!normalized || haystack.includes(normalized));
     });
-  }, [category, terms, query, language]);
+
+    // Sort
+    result = [...result].sort((a, b) => {
+      if (sortMode === 'terbaru') return getPublishDate(b).getTime() - getPublishDate(a).getTime();
+      if (sortMode === 'terlama') return getPublishDate(a).getTime() - getPublishDate(b).getTime();
+      // az
+      const nameA = (a.term[language] || a.term.id || a.term.en || '').toLowerCase();
+      const nameB = (b.term[language] || b.term.id || b.term.en || '').toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+
+    return result;
+  }, [category, terms, query, language, sortMode]);
 
   const totalPages = Math.max(1, Math.ceil(filteredTerms.length / PAGE_SIZE));
   const paginatedTerms = filteredTerms.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -222,7 +256,7 @@ export default function GlossaryClient({ initialTerms }: { initialTerms: Glossar
 
   useEffect(() => {
     setPage(1);
-  }, [category, query, language]);
+  }, [category, query, language, sortMode]);
 
   function changeLanguage(nextLanguage: SiteLanguage) {
     try {
@@ -404,17 +438,45 @@ export default function GlossaryClient({ initialTerms }: { initialTerms: Glossar
             </select>
           </div>
 
+          {/* Sort Bar */}
+          <div className="flex flex-wrap items-center gap-2 mt-4 print:hidden">
+            <span className="text-xs font-semibold text-slate-400 shrink-0">Urutkan:</span>
+            {([
+              { key: 'terbaru', label: '🕐 Terbaru Terbit' },
+              { key: 'terlama', label: '📅 Terlama Terbit' },
+              { key: 'az',      label: '🔤 A–Z' },
+            ] as { key: 'terbaru' | 'terlama' | 'az'; label: string }[]).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setSortMode(key)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                  sortMode === key
+                    ? 'bg-cyan-500 border-cyan-400 text-slate-950 shadow'
+                    : 'border-slate-700 text-gray-400 hover:text-white hover:border-slate-500 bg-slate-900/50'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+            <span className="ml-auto text-xs text-slate-500">{filteredTerms.length} istilah</span>
+          </div>
+
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             {paginatedTerms.map((item) => (
               <article key={item.id} className="overflow-hidden rounded-xl border border-slate-700 bg-slate-950/60 text-left transition-colors hover:border-cyan-500 print:border-gray-300 print:bg-white">
                 <Link href={`/glossarium/${item.id}`} className="block">
-                  <div className="h-40 bg-slate-900">
+                  <div className="h-40 bg-slate-900 relative">
                     <SafeImage
                       src={item.image}
                       alt={item.term[language] || item.term.en || item.term.id}
                       className="h-full w-full object-cover"
                       loading="lazy"
                     />
+                    {isNew(item) && (
+                      <div className="absolute top-3 left-3 bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg animate-pulse uppercase tracking-wide">
+                        ✦ Baru
+                      </div>
+                    )}
                   </div>
                   <div className="p-5">
                     <div className="flex items-start justify-between gap-3">
