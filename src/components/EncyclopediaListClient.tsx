@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AdDisplay from '@/components/AdDisplay';
 import { useSiteLanguage } from '@/lib/useSiteLanguage';
 import { landingText } from '@/lib/landingText';
 import MobileFlipboardReader, { MobileReaderItem } from '@/components/MobileFlipboardReader';
 import SafeImage from '@/components/SafeImage';
+
+type SortMode = 'terbaru' | 'terlama' | 'tahun-jatuh-desc' | 'tahun-jatuh-asc' | 'nama-az';
 
 interface Meteorite {
   id: string;
@@ -47,9 +49,28 @@ export default function EncyclopediaListClient({ initialMeteorites }: Encycloped
     selectedMonth: '',
     selectedYear: '',
   });
+  const [sortMode, setSortMode] = useState<SortMode>('terbaru');
   const [currentPage, setCurrentPage] = useState(1);
   const [readerMode, setReaderMode] = useState<'grid' | 'flipboard'>('grid');
   const itemsPerPage = 30;
+
+  // Helper: parse tanggal terbit (createdAt / publishedAt)
+  const getPublishDate = useCallback((m: Meteorite): Date => {
+    const raw = m.createdAt || m.publishedAt || m.date || '';
+    if (raw) {
+      const d = new Date(raw);
+      if (!isNaN(d.getTime())) return d;
+    }
+    return new Date(0); // fallback: epoch
+  }, []);
+
+  // Helper: apakah artikel terbit ≤ 7 hari lalu
+  const isNew = useCallback((m: Meteorite): boolean => {
+    const pub = getPublishDate(m);
+    if (pub.getTime() === 0) return false;
+    const diffDays = (Date.now() - pub.getTime()) / (1000 * 60 * 60 * 24);
+    return diffDays <= 7;
+  }, [getPublishDate]);
 
   // Extract all unique meteorite years dynamically for the year filter dropdown
   const availableYears = useMemo(() => {
@@ -97,9 +118,26 @@ export default function EncyclopediaListClient({ initialMeteorites }: Encycloped
     if (dateFilter.startDate || dateFilter.endDate || dateFilter.selectedMonth || dateFilter.selectedYear) {
       result = result.filter(m => matchesDateFilter(m, dateFilter));
     }
+
+    // Apply sort
+    result = [...result].sort((a, b) => {
+      if (sortMode === 'terbaru') {
+        return getPublishDate(b).getTime() - getPublishDate(a).getTime();
+      } else if (sortMode === 'terlama') {
+        return getPublishDate(a).getTime() - getPublishDate(b).getTime();
+      } else if (sortMode === 'tahun-jatuh-desc') {
+        return parseInt(b.year || '0') - parseInt(a.year || '0');
+      } else if (sortMode === 'tahun-jatuh-asc') {
+        return parseInt(a.year || '0') - parseInt(b.year || '0');
+      } else if (sortMode === 'nama-az') {
+        return (a.translated_name || a.name || '').localeCompare(b.translated_name || b.name || '');
+      }
+      return 0;
+    });
+
     setFilteredMeteorites(result);
     setCurrentPage(1);
-  }, [searchQuery, selectedClass, dateFilter, initialMeteorites, language]);
+  }, [searchQuery, selectedClass, dateFilter, sortMode, initialMeteorites, language, getPublishDate]);
 
   // Extract all unique meteorite classes sorted alphabetically
   const classesList = Array.from(new Set(initialMeteorites.map(m => m.recclass).filter(Boolean))).sort();
@@ -167,6 +205,34 @@ export default function EncyclopediaListClient({ initialMeteorites }: Encycloped
 
       {/* Date Filter Bar (Historical Era Mode for Meteorite Specimens) */}
       <DateFilterBar mode="historical" value={dateFilter} onChange={setDateFilter} availableYears={availableYears} />
+
+      {/* Sort Bar */}
+      <div className="flex flex-wrap items-center gap-2 mb-4 px-1">
+        <span className="text-xs font-semibold text-slate-400 shrink-0">Urutkan:</span>
+        {([
+          { key: 'terbaru', label: '🕐 Terbaru Terbit', title: 'Artikel terbaru dipublikasikan' },
+          { key: 'terlama', label: '📅 Terlama Terbit', title: 'Artikel paling lama dipublikasikan' },
+          { key: 'tahun-jatuh-desc', label: '🌠 Tahun Jatuh ↓', title: 'Tahun jatuh terbaru dulu' },
+          { key: 'tahun-jatuh-asc', label: '🏛️ Tahun Jatuh ↑', title: 'Tahun jatuh terlama dulu' },
+          { key: 'nama-az', label: '🔤 Nama A–Z', title: 'Urut alfabet' },
+        ] as { key: SortMode; label: string; title: string }[]).map(({ key, label, title }) => (
+          <button
+            key={key}
+            title={title}
+            onClick={() => setSortMode(key)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+              sortMode === key
+                ? 'bg-amber-500 border-amber-400 text-slate-950 shadow'
+                : 'border-slate-700 text-gray-400 hover:text-white hover:border-slate-500 bg-slate-900/50'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+        <span className="ml-auto text-xs text-slate-500">
+          {filteredMeteorites.length} ensiklopedia
+        </span>
+      </div>
 
       {/* Filter Toolbar */}
       <div className="bg-slate-50 dark:bg-slate-900/60 backdrop-blur border border-slate-200 dark:border-cyan-900/30 p-6 rounded-2xl mb-12 flex flex-col md:flex-row gap-4 justify-between items-center shadow-lg transition-colors">
@@ -255,6 +321,12 @@ export default function EncyclopediaListClient({ initialMeteorites }: Encycloped
                       <div className="absolute top-3 right-3 bg-cyan-100 dark:bg-cyan-900/80 backdrop-blur text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/30 text-xs font-bold px-2 py-0.5 rounded uppercase">
                         {met.recclass}
                       </div>
+                      {/* Badge BARU untuk artikel terbit ≤ 7 hari */}
+                      {isNew(met) && (
+                        <div className="absolute top-3 left-3 bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg animate-pulse uppercase tracking-wide">
+                          ✦ Baru
+                        </div>
+                      )}
                     </div>
                     
                     <div className="p-6 flex flex-col flex-grow text-left">
@@ -262,6 +334,17 @@ export default function EncyclopediaListClient({ initialMeteorites }: Encycloped
                         {name}
                       </h2>
                       <div className="space-y-2 text-sm text-slate-700 dark:text-gray-300 mb-6 flex-grow">
+                        {/* Tanggal Terbit — lebih menonjol */}
+                        <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/50 rounded-lg px-3 py-2 mb-1">
+                          <span className="text-slate-500 dark:text-gray-400 text-xs font-semibold uppercase tracking-wide">📅 Tanggal Terbit</span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs">
+                            {(() => {
+                              const pub = getPublishDate(met);
+                              if (pub.getTime() === 0) return met.date || '—';
+                              return pub.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+                            })()}
+                          </span>
+                        </div>
                         <p className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1">
                           <span className="text-slate-400 dark:text-gray-500">{t.estimatedMass || 'Massa Berat:'}</span>
                           <span className="font-semibold text-cyan-600 dark:text-cyan-400">{met.mass}</span>
@@ -269,12 +352,6 @@ export default function EncyclopediaListClient({ initialMeteorites }: Encycloped
                         <p className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1">
                           <span className="text-slate-400 dark:text-gray-500">{t.foundYear || 'Tahun Jatuh:'}</span>
                           <span className="font-semibold">{met.year}</span>
-                        </p>
-                        <p className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1 text-xs">
-                          <span className="text-slate-400 dark:text-gray-500">Terbit:</span>
-                          <span className="font-semibold text-cyan-600 dark:text-cyan-400">
-                            {met.date || (met.publishedAt || met.createdAt ? new Date(met.publishedAt || met.createdAt!).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '16 Nov 2026')}
-                          </span>
                         </p>
                         <p className="flex justify-between">
                           <span className="text-slate-400 dark:text-gray-500">{t.latitudeLabel || 'Lintang:'}, {t.longitudeLabel || 'Bujur:'}</span>
