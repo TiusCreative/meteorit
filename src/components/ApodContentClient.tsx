@@ -102,12 +102,17 @@ export default function ApodContentClient({ initialApod, initialTitle, initialEx
       });
   }, [language, apod.id]);
 
-  const isDirectVideo = apod.image_url.includes('.mp4') || apod.image_url.includes('.webm') || apod.image_url.includes('.ogv');
-  const isIframeVideo = (apod as any).media_type === 'video' ||
-    apod.image_url.includes('youtube.com') ||
-    apod.image_url.includes('youtu.be') ||
-    apod.image_url.includes('vimeo.com') ||
-    apod.image_url.includes('player.vimeo.com');
+  const mediaUrl = (apod as any).videoEmbedUrl || apod.image_url || '';
+  const isImageAsset = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(apod.image_url || '') ||
+    (apod.image_url || '').includes('assets.science.nasa.gov/dynamicimage');
+  const isDirectVideo = mediaUrl.includes('.mp4') || mediaUrl.includes('.webm') || mediaUrl.includes('.ogv');
+  const isIframeVideo = !isDirectVideo && (
+    mediaUrl.includes('youtube.com') ||
+    mediaUrl.includes('youtu.be') ||
+    mediaUrl.includes('vimeo.com') ||
+    mediaUrl.includes('player.vimeo.com') ||
+    ((apod as any).media_type === 'video' && !isImageAsset && !!(apod as any).videoEmbedUrl)
+  );
 
   const getEmbedUrl = (url: string) => {
     if (!url) return url;

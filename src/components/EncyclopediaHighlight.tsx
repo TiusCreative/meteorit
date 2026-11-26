@@ -98,12 +98,17 @@ export default function EncyclopediaHighlight({ initialData }: EncyclopediaHighl
   }
   const dateLocale = language === 'en' ? 'en-US' : language === 'ja' ? 'ja-JP' : language === 'zh' ? 'zh-CN' : language === 'ms' ? 'ms-MY' : 'id-ID';
 
-  const isDirectVideo = data.image_url?.includes('.mp4') || data.image_url?.includes('.webm') || data.image_url?.includes('.ogv');
-  const isIframeVideo = data.image_url?.includes('youtube.com') ||
-                  data.image_url?.includes('youtu.be') ||
-                  data.image_url?.includes('vimeo.com') ||
-                  data.image_url?.includes('player.vimeo.com') ||
-                  data.media_type === 'video';
+  const mediaUrl = (data as any).videoEmbedUrl || data.image_url || '';
+  const isImageAsset = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(data.image_url || '') ||
+    (data.image_url || '').includes('assets.science.nasa.gov/dynamicimage');
+  const isDirectVideo = mediaUrl.includes('.mp4') || mediaUrl.includes('.webm') || mediaUrl.includes('.ogv');
+  const isIframeVideo = !isDirectVideo && (
+    mediaUrl.includes('youtube.com') ||
+    mediaUrl.includes('youtu.be') ||
+    mediaUrl.includes('vimeo.com') ||
+    mediaUrl.includes('player.vimeo.com') ||
+    (data.media_type === 'video' && !isImageAsset && !!(data as any).videoEmbedUrl)
+  );
 
   // Safeguard: Jika image_url adalah logo NASA, jangan pernah tampilkan logo NASA
   let safeApodImage = data.image_url;

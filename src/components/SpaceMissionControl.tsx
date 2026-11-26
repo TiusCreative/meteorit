@@ -153,28 +153,24 @@ export default function SpaceMissionControl() {
     fetchISS();
     const issInterval = setInterval(fetchISS, 5000);
 
-    // Fetch Upcoming Launch — coba 2 sumber API dengan fallback hardcoded
+    // Fetch Upcoming Launch via /api/space/live (server-side cached) agar browser tidak kena 429
     const fetchUpcomingLaunch = async () => {
-      // Sumber 1: Launch Library 2 (The Space Devs) — gratis tapi rate-limited
       try {
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 5000);
-        const res = await fetch(
-          'https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=1&format=json',
-          { signal: ctrl.signal }
-        );
+        const res = await fetch('/api/space/live', { signal: ctrl.signal });
         clearTimeout(timer);
         if (res.ok) {
           const data = await res.json();
-          if (data.results && data.results.length > 0) {
-            setLaunch(data.results[0]);
+          if (data.upcomingLaunch) {
+            setLaunch(data.upcomingLaunch);
             setLoading(p => ({ ...p, launch: false }));
             return;
           }
         }
-      } catch { /* timeout atau rate-limit */ }
+      } catch { /* fallback ke RocketLaunch.Live atau hardcoded */ }
 
-      // Sumber 2: RocketLaunch.Live (lebih cepat dan gratis)
+      // Fallback RocketLaunch.Live (tanpa 429 dari TheSpaceDevs)
       try {
         const ctrl2 = new AbortController();
         const timer2 = setTimeout(() => ctrl2.abort(), 5000);
