@@ -59,6 +59,8 @@ export interface ExtremeWeatherAlert {
 }
 
 const BMKG_AUTOGEMPA_URL = 'https://data.bmkg.go.id/DataMKG/TEWS/autogempa.json';
+const BMKG_GEMPADIRASAKAN_URL = 'https://data.bmkg.go.id/DataMKG/TEWS/gempadirasakan.json';
+const BMKG_NOWCAST_RSS_URL = 'https://www.bmkg.go.id/alerts/nowcast/id/rss.xml';
 const OPEN_METEO_FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 const EXTREME_WEATHER_KEYWORDS = [
   'badai',
@@ -240,11 +242,91 @@ async function fetchLocationWeather(location: MonitoringLocation): Promise<LiveW
 }
 
 export async function fetchLiveWeatherSnapshot() {
-  const results = await Promise.allSettled(weatherMonitoringLocations.map(fetchLocationWeather));
-  const points = results
+  // Gunakan 1 batch request ke Open-Meteo untuk menghemat subrequest Cloudflare Workers (1 vs 20)
+  try {
+    const url = new URL(OPEN_METEO_FORECAST_URL);
+    url.searchParams.set('latitude', weatherMonitoringLocations.map(l => l.latitude).join(','));
+    url.searchParams.set('longitude', weatherMonitoringLocations.map(l => l.longitude).join(','));
+    url.searchParams.set('timezone', 'Asia/Jakarta');
+    url.searchParams.set('current', [
+      'temperature_2m',
+      'relative_humidity_2m',
+      'precipitation',
+      'rain',
+      'weather_code',
+      'wind_speed_10m',
+    ].join(','));
+    url.searchParams.set('hourly', [
+      'weather_code',
+      'precipitation_probability',
+    ].join(','));
+    url.searchParams.set('forecast_days', '1');
+
+    const response = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (response.ok) {
+      const raw = await response.json();
+      const items = Array.isArray(raw) ? raw : [raw];
+      const currentHour = new Date().getHours();
+      const nowIso = new Date().toISOString();
+
+      const points: LiveWeatherPoint[] = items.slice(0, weatherMonitoringLocations.length).map((data: any, idx: number) => {
+        const location = weatherMonitoringLocations[idx];
+        const current = data?.current || {};
+        const hourly = data?.hourly || {};
+        const hourlyTimes = Array.isArray(hourly.time) ? hourly.time : [];
+        const hourlyCodes = Array.isArray(hourly.weather_code) ? hourly.weather_code : [];
+        const hourlyRain = Array.isArray(hourly.precipitation_probability) ? hourly.precipitation_probability : [];
+        const currentIndex = Math.max(0, hourlyTimes.findIndex((time: string) => Number(time.slice(11, 13)) >= currentHour));
+        const eveningIndexes = hourlyTimes
+          .map((time: string, index: number) => ({ hour: Number(time.slice(11, 13)), index }))
+          .filter(({ hour }: { hour: number }) => hour >= 18 && hour <= 23)
+          .map(({ index }: { index: number }) => index);
+        const eveningClearHours = eveningIndexes.filter((index: number) => isClearSkyCode(Number(hourlyCodes[index]))).length;
+        const eveningRainProbability = eveningIndexes.length
+          ? Math.round(eveningIndexes.reduce((total: number, index: number) => total + Number(hourlyRain[index] || 0), 0) / eveningIndexes.length)
+          : Number(hourlyRain[currentIndex] || 0);
+        const precipitation = Number(current.precipitation || current.rain || 0);
+        const rainProbability = Number(hourlyRain[currentIndex] || 0);
+        const weatherCode = Number(current.weather_code || 0);
+
+        return {
+          ...location,
+          temp: Number(current.temperature_2m || 0),
+          humidity: Number(current.relative_humidity_2m || 0),
+          precipitation,
+          rainProbability,
+          windSpeed: Number(current.wind_speed_10m || 0),
+          weatherCode,
+          condition: weatherCodeLabel(weatherCode),
+          eveningClearHours,
+          eveningRainProbability,
+          updatedAt: nowIso,
+        };
+      });
+
+      if (points.length > 0) {
+        return {
+          source: 'Open-Meteo live forecast (batch)',
+          updatedAt: nowIso,
+          points,
+          failures: Math.max(0, weatherMonitoringLocations.length - points.length),
+        };
+      }
+    }
+  } catch (batchErr) {
+    console.warn('[EarthMonitoring] Batch Open-Meteo fetch failed, trying subset fallback:', batchErr);
+  }
+
+  // Fallback ringan (hanya 5 kota utama agar tetap di bawah batas subrequest Worker)
+  const fallbackResults = await Promise.allSettled(weatherMonitoringLocations.slice(0, 5).map(fetchLocationWeather));
+  const points = fallbackResults
     .filter((result): result is PromiseFulfilledResult<LiveWeatherPoint> => result.status === 'fulfilled')
     .map((result) => result.value);
-  const failures = results.length - points.length;
+  const failures = weatherMonitoringLocations.length - points.length;
 
   if (!points.length) {
     throw new Error('Semua sumber cuaca live gagal dibaca.');
@@ -258,13 +340,55 @@ export async function fetchLiveWeatherSnapshot() {
   };
 }
 
-export async function fetchBmkgWeatherAlertText() {
-  const alertUrl = process.env.BMKG_WEATHER_ALERT_URL || '';
-  if (!alertUrl) return null;
+export interface BmkgNowcastItem {
+  title: string;
+  description: string;
+  pubDate: string;
+  link: string;
+}
 
+export async function fetchBmkgNowcastAlerts(): Promise<BmkgNowcastItem[]> {
+  const alertUrl = process.env.BMKG_WEATHER_ALERT_URL || BMKG_NOWCAST_RSS_URL;
   try {
     const response = await fetch(alertUrl, {
-            headers: { Accept: 'application/json,text/plain,*/*' },
+      headers: { Accept: 'application/xml,text/xml,application/json,text/plain,*/*' },
+      signal: AbortSignal.timeout(9000),
+    });
+    if (!response.ok) return [];
+    const xmlText = await response.text();
+    const items: BmkgNowcastItem[] = [];
+    const itemMatches = xmlText.match(/<item>[\s\S]*?<\/item>/gi) || [];
+
+    const cleanTag = (block: string, tag: string) => {
+      const m = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i'));
+      if (!m) return '';
+      return m[1]
+        .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+
+    for (const block of itemMatches.slice(0, 10)) {
+      const title = cleanTag(block, 'title');
+      const description = cleanTag(block, 'description');
+      const pubDate = cleanTag(block, 'pubDate');
+      const link = cleanTag(block, 'link');
+      if (title || description) {
+        items.push({ title, description, pubDate, link });
+      }
+    }
+    return items;
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchBmkgWeatherAlertText() {
+  const alertUrl = process.env.BMKG_WEATHER_ALERT_URL || BMKG_NOWCAST_RSS_URL;
+  try {
+    const response = await fetch(alertUrl, {
+      headers: { Accept: 'application/xml,text/xml,application/json,text/plain,*/*' },
       signal: AbortSignal.timeout(9000),
     });
     if (!response.ok) return null;
@@ -394,6 +518,38 @@ export async function fetchLatestBmkgEarthquake(): Promise<NormalizedEarthquake>
   return normalizeEarthquake(gempa);
 }
 
+export async function fetchLatestBmkgFeltEarthquake(): Promise<NormalizedEarthquake | null> {
+  try {
+    const response = await fetch(BMKG_GEMPADIRASAKAN_URL, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(9000),
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const list = data?.Infogempa?.gempa;
+    const latest = Array.isArray(list) ? list[0] : list;
+    if (!latest) return null;
+    return normalizeEarthquake(latest);
+  } catch {
+    return null;
+  }
+}
+
+export function buildBmkgNowcastMessage(items: BmkgNowcastItem[]) {
+  const top = items.slice(0, 5);
+  return [
+    '🌦️ <b>PERINGATAN DINI CUACA BMKG (NOWCAST)</b>',
+    '',
+    ...top.map((item) => {
+      const desc = item.description.length > 260 ? `${item.description.slice(0, 257)}...` : item.description;
+      return `⚠️ <b>${item.title}</b>\n${desc}${item.pubDate ? `\n<i>${item.pubDate}</i>` : ''}`;
+    }),
+    items.length > top.length ? `\n+${items.length - top.length} peringatan wilayah lainnya di BMKG.` : '',
+    '',
+    `Pantau info cuaca & kebencanaan: ${getAbsoluteUrl('/cuaca')}`,
+  ].filter(Boolean).join('\n');
+}
+
 export function buildEarthquakeAlertMessage(earthquake: NormalizedEarthquake) {
   const tsunami = isTsunamiPotential(earthquake.tsunamiPotential)
     ? 'BERPOTENSI TSUNAMI'
@@ -405,6 +561,7 @@ export function buildEarthquakeAlertMessage(earthquake: NormalizedEarthquake) {
     `<b>Magnitudo:</b> M ${earthquake.magnitude.toFixed(1)}`,
     `<b>Kedalaman:</b> ${earthquake.depth}`,
     `<b>Wilayah:</b> ${earthquake.region}`,
+    earthquake.felt && earthquake.felt !== '-' ? `<b>Dirasakan (MMI):</b> ${earthquake.felt}` : '',
     `<b>Potensi:</b> ${tsunami}`,
     `<b>Waktu:</b> ${earthquake.dateTime}`,
     earthquake.coordinates ? `<b>Koordinat:</b> ${earthquake.coordinates}` : '',

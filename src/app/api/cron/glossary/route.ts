@@ -1,9 +1,9 @@
 export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { uploadToR2 } from '@/lib/r2Client';
+import { fetchJsonFromR2, uploadToR2 } from '@/lib/r2Client';
 import { queryD1 } from '@/lib/d1Client';
-import { getGlossarySeed } from '@/lib/glossaryData';
+import { getGlossarySeed, type GlossaryTerm } from '@/lib/glossaryData';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,10 +17,68 @@ export async function GET(request: Request) {
   }
 
   try {
-    const terms = getGlossarySeed().map((term) => ({
-      ...term,
-      updatedAt: new Date().toISOString(),
-    }));
+    const nowIso = new Date().toISOString();
+    const mergedMap = new Map<string, GlossaryTerm>();
+
+    // 1. Seed terms sebagai baseline
+    for (const seedTerm of getGlossarySeed()) {
+      mergedMap.set(seedTerm.id, {
+        ...seedTerm,
+        updatedAt: nowIso,
+      });
+    }
+
+    // 2. Pertahankan terms yang sudah ada di R2 (termasuk istilah AI baru & tanggal terbit asli)
+    try {
+      const existingR2 = await fetchJsonFromR2<GlossaryTerm[]>('data/glossary/terms.json');
+      if (Array.isArray(existingR2)) {
+        for (const r2Term of existingR2) {
+          if (!r2Term?.id) continue;
+          const base = mergedMap.get(r2Term.id);
+          if (base) {
+            mergedMap.set(r2Term.id, {
+              ...base,
+              publishedAt: r2Term.publishedAt || base.publishedAt,
+              date: r2Term.date || base.date,
+              image: r2Term.image || base.image,
+            });
+          } else {
+            mergedMap.set(r2Term.id, r2Term);
+          }
+        }
+      }
+    } catch (r2Err) {
+      console.warn('[Cron Glossary] Failed to read existing R2 terms.json for merge:', r2Err);
+    }
+
+    // 3. Pertahankan seluruh istilah (termasuk AI generated) dari D1 glossary_terms
+    try {
+      const d1Rows = await queryD1('SELECT id, translations FROM glossary_terms');
+      if (Array.isArray(d1Rows?.results)) {
+        for (const row of d1Rows.results as any[]) {
+          if (!row?.id || !row?.translations) continue;
+          try {
+            const parsed = JSON.parse(row.translations) as GlossaryTerm;
+            if (!parsed?.id) continue;
+            const base = mergedMap.get(parsed.id);
+            if (!base || parsed.aiGenerated) {
+              mergedMap.set(parsed.id, {
+                ...base,
+                ...parsed,
+                publishedAt: parsed.publishedAt || base?.publishedAt || parsed.updatedAt,
+                date: parsed.date || base?.date,
+              });
+            }
+          } catch {
+            // Skip invalid JSON row
+          }
+        }
+      }
+    } catch (d1ReadErr) {
+      console.warn('[Cron Glossary] Failed to read D1 glossary_terms for merge:', d1ReadErr);
+    }
+
+    const terms = Array.from(mergedMap.values());
 
     const batch = adminDb.batch();
     terms.forEach((term) => {
@@ -44,7 +102,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Glossarium BMKG dan NASA berhasil diperbarui ke Firestore dan R2.',
+      message: 'Glossarium BMKG dan NASA berhasil diperbarui (merged) ke Firestore, D1, dan R2.',
       total: terms.length,
       r2Key: 'data/glossary/terms.json',
     });

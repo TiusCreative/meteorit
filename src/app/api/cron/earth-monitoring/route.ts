@@ -4,11 +4,14 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { sendBroadcastNotification } from '@/lib/notifications';
 import {
+  buildBmkgNowcastMessage,
   buildExtremeWeatherMessage,
   buildEarthquakeAlertMessage,
   buildExtremeWeatherSignature,
   detectExtremeWeather,
+  fetchBmkgNowcastAlerts,
   fetchLatestBmkgEarthquake,
+  fetchLatestBmkgFeltEarthquake,
   fetchBmkgWeatherAlertText,
   fetchLiveWeatherSnapshot,
   getEarthquakeEventType,
@@ -90,6 +93,86 @@ export async function GET(request: Request) {
         lastEarthquakeAlertedAt: new Date().toISOString(),
         lastEarthquakeTelegramSent: earthquakeTelegramSent,
       }, { merge: true });
+    }
+
+    // 1b. Pengecekan Gempa Dirasakan BMKG (gempadirasakan.json - termasuk M < 5 yang dirasakan masyarakat)
+    let feltEarthquakeResult = {
+      checked: false,
+      isNew: false,
+      telegramSent: false,
+      signature: '',
+    };
+    try {
+      const feltQuake = await fetchLatestBmkgFeltEarthquake();
+      if (feltQuake && feltQuake.signature) {
+        const feltState = await getNotificationState('earthquake_felt_alert');
+        const isDifferentFromAuto = feltQuake.signature !== earthquake.signature || !earthquakeTelegramSent;
+        const isNewFelt = isDifferentFromAuto && shouldSendStatefulNotification(feltState, feltQuake.signature);
+        await markNotificationChecked('earthquake_felt_alert', feltQuake.signature);
+
+        let feltTelegramSent = false;
+        if (isNewFelt) {
+          const feltMsg = buildEarthquakeAlertMessage(feltQuake);
+          const broadcastRes = await sendBroadcastNotification({
+            title: `🚨 Info Gempa Dirasakan BMKG M ${feltQuake.magnitude.toFixed(1)}`,
+            body: `Gempa dirasakan M ${feltQuake.magnitude.toFixed(1)} di ${feltQuake.region} (${feltQuake.felt}).`,
+            telegramHtml: feltMsg,
+            link: `/monitoring`,
+          });
+          feltTelegramSent = broadcastRes.tgSuccess;
+          await markNotificationSent('earthquake_felt_alert', feltQuake.signature, feltTelegramSent);
+        }
+
+        feltEarthquakeResult = {
+          checked: true,
+          isNew: isNewFelt,
+          telegramSent: feltTelegramSent,
+          signature: feltQuake.signature,
+        };
+      }
+    } catch (feltErr) {
+      console.warn('[EarthMonitoring] Gagal cek gempadirasakan BMKG:', feltErr);
+    }
+
+    // 1c. Pengecekan Peringatan Dini Cuaca BMKG Resmi (Nowcast RSS)
+    let bmkgNowcast = {
+      checked: false,
+      itemCount: 0,
+      shouldNotify: false,
+      telegramSent: false,
+    };
+    try {
+      const nowcastItems = await fetchBmkgNowcastAlerts();
+      if (nowcastItems.length > 0) {
+        const latestSig = nowcastItems.slice(0, 3).map(i => `${i.title}|${i.pubDate}`).join('||');
+        const nowcastState = await getNotificationState('bmkg_nowcast_alert');
+        const shouldNotifyNowcast = shouldSendStatefulNotification(nowcastState, latestSig, 3 * 60 * 60 * 1000);
+        await markNotificationChecked('bmkg_nowcast_alert', latestSig);
+
+        let nowcastSent = false;
+        if (shouldNotifyNowcast) {
+          const nowcastMsg = buildBmkgNowcastMessage(nowcastItems);
+          const broadcastRes = await sendBroadcastNotification({
+            title: `🌦️ Peringatan Dini Cuaca BMKG (${nowcastItems.length} wilayah)`,
+            body: nowcastItems[0]?.title || 'Peringatan dini cuaca ekstrem BMKG terbaru.',
+            telegramHtml: nowcastMsg,
+            link: `/cuaca`,
+          });
+          nowcastSent = broadcastRes.tgSuccess;
+          await markNotificationSent('bmkg_nowcast_alert', latestSig, nowcastSent);
+        }
+
+        bmkgNowcast = {
+          checked: true,
+          itemCount: nowcastItems.length,
+          shouldNotify: shouldNotifyNowcast,
+          telegramSent: nowcastSent,
+        };
+      } else {
+        bmkgNowcast.checked = true;
+      }
+    } catch (nowcastErr) {
+      console.warn('[EarthMonitoring] Gagal cek BMKG Nowcast RSS:', nowcastErr);
     }
 
     let extremeWeather = {
@@ -210,6 +293,8 @@ export async function GET(request: Request) {
         telegramSent: earthquakeTelegramSent,
         data: earthquake,
       },
+      feltEarthquake: feltEarthquakeResult,
+      bmkgNowcast,
       extremeWeather,
       magmaAlert,
     });

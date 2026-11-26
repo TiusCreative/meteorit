@@ -2,8 +2,10 @@ import { queryD1 } from './d1Client';
 
 export type NotificationEventType =
   | 'earthquake_alert'
+  | 'earthquake_felt_alert'
   | 'tsunami_alert'
   | 'extreme_weather_alert'
+  | 'bmkg_nowcast_alert'
   | 'daily_sky_summary'
   | 'weekly_energy_summary'
   | 'magma_volcano_alert';

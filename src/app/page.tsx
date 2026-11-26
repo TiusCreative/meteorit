@@ -21,8 +21,9 @@ const FireballEonetSection = dynamic(() => import('@/components/FireballEonetSec
 const MarsLandingSection = dynamic(() => import('@/components/MarsLandingSection'), { ssr: false });
 const BlogSection = dynamic(() => import('@/components/BlogSection'), { ssr: false });
 
-// Revalidate setiap 5 menit — hindari force-dynamic agar bisa di-cache Vercel Edge
-export const revalidate = 300;
+// Force dynamic di Edge Runtime agar APOD & artikel terbaru dari R2 selalu update real-time
+export const runtime = 'edge';
+export const dynamic = 'force-dynamic';
 
 interface BlogPost {
   id: string;

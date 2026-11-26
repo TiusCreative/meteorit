@@ -219,6 +219,12 @@ export async function GET(request: Request) {
 
     // 5. Buat objek GlossaryTerm lengkap
     const now = new Date().toISOString();
+    const formattedDate = new Date(now).toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'Asia/Jakarta',
+    });
     const newTerm = {
       id: term.id,
       category: term.category,
@@ -252,6 +258,8 @@ export async function GET(request: Request) {
       image: publicImageUrl,
       source: term.category === 'BMKG' ? 'BMKG public weather, climate, earthquake terminology' : 'NASA public astronomy and spaceflight terminology',
       updatedAt: now,
+      publishedAt: now,
+      date: formattedDate,
       aiGenerated: true,
     };
 
@@ -261,14 +269,29 @@ export async function GET(request: Request) {
       [newTerm.id, newTerm.term.id, newTerm.definition.id, JSON.stringify(newTerm)]
     );
 
-    // 7. Update terms.json di R2 (tambahkan term baru)
+    // 7. Update terms.json di R2 (merge seed + existing R2 + D1 agar tidak pernah hilang)
     try {
+      const { getGlossarySeed } = await import('@/lib/glossaryData');
       const existing = await fetchJsonFromR2<{ id: string }[]>('data/glossary/terms.json');
-      const allTerms = Array.isArray(existing) ? existing : [];
-      // Hindari duplikat
-      const filtered = allTerms.filter((t) => t.id !== newTerm.id);
-      filtered.push(newTerm);
-      await uploadToR2('data/glossary/terms.json', JSON.stringify(filtered, null, 2), 'application/json');
+      const baseList = Array.isArray(existing) && existing.length > 0 ? existing : getGlossarySeed();
+      const map = new Map<string, any>();
+      for (const t of baseList) {
+        if (t?.id) map.set(t.id, t);
+      }
+      // Merge semua AI/custom terms dari D1 juga
+      try {
+        const d1All = await queryD1('SELECT id, translations FROM glossary_terms');
+        for (const r of (d1All?.results || []) as any[]) {
+          if (r?.translations) {
+            const parsed = JSON.parse(r.translations);
+            if (parsed?.id && (!map.has(parsed.id) || parsed.aiGenerated)) {
+              map.set(parsed.id, parsed);
+            }
+          }
+        }
+      } catch {}
+      map.set(newTerm.id, newTerm);
+      await uploadToR2('data/glossary/terms.json', JSON.stringify(Array.from(map.values()), null, 2), 'application/json');
     } catch (r2JsonErr) {
       console.warn('[Glossary AI Cron] Gagal update terms.json di R2:', r2JsonErr);
     }

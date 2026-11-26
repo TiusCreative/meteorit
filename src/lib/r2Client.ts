@@ -43,10 +43,16 @@ export async function fetchJsonFromR2<T>(key: string): Promise<T | null> {
     const cdnBase = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.meteorit.my.id';
     const publicBase = R2_CONFIG.publicUrl || 'https://cdn.meteorit.my.id';
     
-    // Coba via CDN custom domain dulu, fallback ke public r2.dev
-    let res = await fetch(`${cdnBase}/${key}`, { signal: AbortSignal.timeout(3000) });
+    // Coba via CDN custom domain dulu dengan cache: 'no-store' agar update R2 langsung terbaca
+    let res = await fetch(`${cdnBase}/${key}`, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(3000),
+    });
     if (!res.ok) {
-      res = await fetch(`${publicBase}/${key}`, { signal: AbortSignal.timeout(3000) });
+      res = await fetch(`${publicBase}/${key}`, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(3000),
+      });
     }
 
     if (res.ok) {

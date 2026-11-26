@@ -29,7 +29,7 @@ const CRON_SCHEDULE = [
   { id: 'apod', path: '/api/cron/apod', hourUTC: 6, desc: 'NASA Astronomy Picture of the Day' },
   { id: 'astronot', path: '/api/cron/astronot', hourUTC: 6, desc: 'Update Data Astronaut' },
   { id: 'nasa-alert', path: '/api/cron/nasa-alert', hourUTC: 7, desc: 'NASA Alerts & Space Weather' },
-  { id: 'earth-monitoring', path: '/api/cron/earth-monitoring', hourUTC: 9, desc: 'Earth Monitoring Realtime' },
+  { id: 'earth-monitoring', path: '/api/cron/earth-monitoring', hourUTC: 9, alwaysRun: true, desc: 'Earth Monitoring Realtime (Gempa & Cuaca BMKG)' },
   { id: 'earth-monitoring-daily', path: '/api/cron/earth-monitoring-daily', hourUTC: 10, desc: 'Earth Monitoring Harian' },
   { id: 'glossary', path: '/api/cron/glossary', hourUTC: 20, desc: 'Update Kamus Astronomi / Glosarium' },
   { id: 'glossary-ai', path: '/api/cron/glossary-ai', hourUTC: 20, desc: 'Penerbitan Istilah Glosarium Baru (AI)' },
@@ -113,12 +113,13 @@ async function run() {
     console.log(`⚠️ Mode: Menjalankan SEMUA tugas secara berurutan.`);
     tasksToRun = CRON_SCHEDULE;
   } else {
-    // Mode Auto: Utamakan tugas pada jam saat ini, dan periksa tugas yang jatuh tempo sebelumnya hari ini (catch-up guarantee)
-    const currentHourTasks = CRON_SCHEDULE.filter(t => t.hourUTC === currentHourUTC);
-    const earlierDueTasks = CRON_SCHEDULE.filter(t => t.hourUTC < currentHourUTC);
+    // Mode Auto: Utamakan tugas pada jam saat ini, tugas alwaysRun (seperti earth-monitoring 24 jam), dan tugas jatuh tempo hari ini (catch-up)
+    const currentHourTasks = CRON_SCHEDULE.filter(t => t.hourUTC === currentHourUTC && !t.alwaysRun);
+    const alwaysRunTasks = CRON_SCHEDULE.filter(t => t.alwaysRun);
+    const earlierDueTasks = CRON_SCHEDULE.filter(t => t.hourUTC < currentHourUTC && !t.alwaysRun);
     
-    tasksToRun = [...currentHourTasks, ...earlierDueTasks];
-    console.log(`🕒 Mode Auto: ${currentHourTasks.length} tugas jam ${currentHourUTC}:00 UTC + ${earlierDueTasks.length} tugas jatuh tempo hari ini.`);
+    tasksToRun = [...alwaysRunTasks, ...currentHourTasks, ...earlierDueTasks];
+    console.log(`🕒 Mode Auto: ${alwaysRunTasks.length} tugas realtime + ${currentHourTasks.length} tugas jam ${currentHourUTC}:00 UTC + ${earlierDueTasks.length} tugas jatuh tempo hari ini.`);
   }
 
   if (tasksToRun.length === 0) {

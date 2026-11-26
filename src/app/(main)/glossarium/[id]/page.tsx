@@ -27,7 +27,19 @@ async function getGlossaryTerm(id: string) {
     console.warn('[Glossary] Error reading R2 terms:', e);
   }
 
-  // 2. Fallback ke Firestore
+  // 2. Fallback ke Cloudflare D1 (penting untuk istilah AI yang baru diterbitkan)
+  try {
+    const { queryD1 } = await import('@/lib/d1Client');
+    const d1Res = await queryD1('SELECT translations FROM glossary_terms WHERE id = ? LIMIT 1', [id]);
+    const row = d1Res?.results?.[0] as any;
+    if (row?.translations) {
+      return JSON.parse(row.translations) as GlossaryTerm;
+    }
+  } catch (e) {
+    console.warn('[Glossary] Error reading D1 term:', e);
+  }
+
+  // 3. Fallback ke Firestore
   try {
     const docSnap = await adminDb.collection('glossary_terms').doc(id).get();
     if (docSnap.exists) {
