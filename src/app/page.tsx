@@ -1,4 +1,4 @@
-import dynamic from 'next/dynamic';
+import nextDynamic from 'next/dynamic';
 import Header from '@/components/Header'
 import HeroSection from '@/components/HeroSection'
 import StatsBanner from '@/components/StatsBanner'
@@ -10,16 +10,16 @@ import { fetchJsonFromR2 } from '@/lib/r2Client';
 import { isNasaLogoPlaceholder } from '@/lib/nasaApodHelper';
 
 // Lazy load komponen berat di below-the-fold agar tidak blokir First Load JS
-const EarthTEWSWidget = dynamic(() => import('@/components/EarthTEWSWidget'), { ssr: false });
-const DisasterMapSection = dynamic(() => import('@/components/DisasterMapSection'), { ssr: false });
-const SpaceMissionControl = dynamic(() => import('@/components/SpaceMissionControl'), { ssr: false });
-const ForumHighlights = dynamic(() => import('@/components/ForumHighlights'), { ssr: false });
-const CommunityFeature = dynamic(() => import('@/components/CommunityFeature'), { ssr: false });
-const DonationSection = dynamic(() => import('@/components/DonationSection'), { ssr: false });
-const GlossaryLandingSection = dynamic(() => import('@/components/GlossaryLandingSection'), { ssr: false });
-const FireballEonetSection = dynamic(() => import('@/components/FireballEonetSection'), { ssr: false });
-const MarsLandingSection = dynamic(() => import('@/components/MarsLandingSection'), { ssr: false });
-const BlogSection = dynamic(() => import('@/components/BlogSection'), { ssr: false });
+const EarthTEWSWidget = nextDynamic(() => import('@/components/EarthTEWSWidget'), { ssr: false });
+const DisasterMapSection = nextDynamic(() => import('@/components/DisasterMapSection'), { ssr: false });
+const SpaceMissionControl = nextDynamic(() => import('@/components/SpaceMissionControl'), { ssr: false });
+const ForumHighlights = nextDynamic(() => import('@/components/ForumHighlights'), { ssr: false });
+const CommunityFeature = nextDynamic(() => import('@/components/CommunityFeature'), { ssr: false });
+const DonationSection = nextDynamic(() => import('@/components/DonationSection'), { ssr: false });
+const GlossaryLandingSection = nextDynamic(() => import('@/components/GlossaryLandingSection'), { ssr: false });
+const FireballEonetSection = nextDynamic(() => import('@/components/FireballEonetSection'), { ssr: false });
+const MarsLandingSection = nextDynamic(() => import('@/components/MarsLandingSection'), { ssr: false });
+const BlogSection = nextDynamic(() => import('@/components/BlogSection'), { ssr: false });
 
 // Force dynamic di Edge Runtime agar APOD & artikel terbaru dari R2 selalu update real-time
 export const runtime = 'edge';
